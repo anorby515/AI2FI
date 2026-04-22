@@ -95,21 +95,22 @@
       color: var(--fg);
       margin: 0 0 1.75rem;
     }
-    .info-block {
+    .term-nav {
       font-family: var(--mono);
-      font-size: 0.82rem;
-      line-height: 1.8;
-      display: grid;
-      grid-template-columns: max-content 1fr;
-      gap: 0 0.75rem;
+      font-size: 0.92rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
     }
-    .info-label {
+    .term-nav a {
       color: var(--cyan);
-      font-weight: bold;
-      white-space: nowrap;
+      text-decoration: none;
+      width: max-content;
     }
-    .info-val { color: var(--fg); }
-    .info-val span { color: var(--fg-dim); }
+    .term-nav a:hover {
+      color: var(--fg-bright);
+      text-decoration: underline;
+    }
 
     /* ── Page body ─────────────────────────────────────────── */
     .wrap { max-width: 760px; margin: 0 auto; padding: 0 1.25rem 5rem; }
@@ -147,19 +148,6 @@
     pre code { background: none; padding: 0; color: var(--fg); }
     ol, ul { padding-left: 1.3rem; }
     ol li, ul li { margin: 0.35rem 0; }
-    .toc {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem 1.25rem;
-      padding: 0.75rem 1rem;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--code-bg);
-      font-family: var(--mono);
-      font-size: 0.85rem;
-      margin-bottom: 0.5rem;
-    }
-    .toc a { color: var(--cyan); }
     .btn {
       display: inline-block;
       padding: 0.55rem 1.1rem;
@@ -241,26 +229,17 @@
     <div class="term-body">
       <div class="wordmark">AI2FI</div>
       <p class="tagline">Your AI co-pilot for financial strategy.</p>
-      <div class="info-block">
-        <span class="info-label">PROFILE</span>
-        <span class="info-val">lives in <code>user-profiles/&lt;you&gt;/</code> on your machine &mdash; never committed</span>
-        <span class="info-label">PRIVACY</span>
-        <span class="info-val">your data stays local. coaching runs through Claude <span>(Anthropic)</span>.</span>
-        <span class="info-label">SETUP</span>
-        <span class="info-val">one-click installer for macOS &mdash; manual path available for others</span>
-      </div>
+      <nav class="term-nav" aria-label="Sections">
+        <a href="#download">1. Download</a>
+        <a href="#setup">2. Set up</a>
+        <a href="#start">3. Start coaching</a>
+        <a href="#whats-new">4. What's new</a>
+      </nav>
     </div>
   </div>
 </div>
 
 <div class="wrap">
-
-<nav class="toc" aria-label="Sections">
-  <a href="#download">1. Download</a>
-  <a href="#setup">2. Set up</a>
-  <a href="#start">3. Start coaching</a>
-  <a href="#whats-new">4. What's new</a>
-</nav>
 
 <hr class="section-divider" />
 

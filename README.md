@@ -1,5 +1,7 @@
 # AI2FI
 
+> **New here?** The [welcome page](https://anorby515.github.io/AI2FI/) walks through download, setup, and how to start coaching with Claude.
+
 A coaching platform for people who want to understand their money, not just track it. Claude plays coach — warm, curious, patient — and a local web dashboard gives you a place to see your own financial picture while you work through the material.
 
 The intent is the opposite of most finance tools: instead of collecting your data and telling you what to do, AI2FI teaches you the framework and lets your data live on your own machine. Nothing is uploaded. No account to create.
@@ -17,7 +19,10 @@ The architecture doc (`ai-to-fi-architecture.md`) is the source of truth for how
 ```
 AI2FI/
 ├── ai-to-fi-architecture.md    # Source of truth — read first
+├── CHANGELOG.md                # Release notes (fetched by the welcome page)
+├── RELEASING.md                # How to cut a release
 ├── core/                       # Platform-wide content (assessment, order of operations, temperament tracker)
+├── docs/                       # Static welcome page, served via GitHub Pages
 ├── modules/                    # Topic modules (investing, saving, earning, etc.)
 │   └── investing/
 ├── skills/                     # Claude-side skills (financial-check-in, module-coach, knowledge-check)

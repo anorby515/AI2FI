@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{{LABEL}}</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>{{NODE_PATH}}</string>
+        <string>{{SERVER_ENTRY}}</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>{{WORKING_DIR}}</string>
+
+    <!-- Run as soon as the agent is loaded, and on every login. -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart automatically if the server crashes. -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <!-- Back off on repeated crashes so we don't spin. -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>{{STDOUT_LOG}}</string>
+
+    <key>StandardErrorPath</key>
+    <string>{{STDERR_LOG}}</string>
+
+    <!-- launchd strips PATH by default; restore a sane one so npm/node subprocesses work. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>

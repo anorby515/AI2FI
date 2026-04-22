@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Express API Server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["dashboard/server/index.js"],
+      "port": 3001
+    },
+    {
+      "name": "React Client (Vite)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["dashboard/client/node_modules/.bin/vite", "dashboard/client", "--config", "dashboard/client/vite.config.js"],
+      "port": 5173
+    }
+  ]
+}

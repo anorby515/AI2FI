@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome — AI2FI</title>
+  <style>
+    :root {
+      --bg: #0d0d1a;
+      --surface: #12122a;
+      --surface2: #1a1a35;
+      --border: #2a2a4a;
+      --text: #c8c8e8;
+      --text-h: #f3f4f6;
+      --text-dim: #6a6a8a;
+      --accent: #4f9cf9;
+      --accent2: #7b5cf9;
+      --positive: #34c78a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+
+    h1 {
+      font-size: 40px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+      margin-bottom: 12px;
+      line-height: 1.15;
+    }
+
+    .tagline {
+      font-size: 18px;
+      color: var(--text-h);
+      font-weight: 500;
+      margin-bottom: 32px;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-h);
+      margin: 40px 0 16px;
+      letter-spacing: -0.2px;
+    }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 24px 0 8px;
+    }
+
+    p { margin-bottom: 14px; color: var(--text); }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 16px;
+    }
+
+    li {
+      position: relative;
+      padding-left: 20px;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+
+    li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    strong { color: var(--text-h); font-weight: 600; }
+    em { color: var(--text-h); font-style: italic; }
+
+    code {
+      font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+      font-size: 13px;
+      background: var(--surface2);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin: 16px 0 24px;
+    }
+
+    .panel h3 { margin-top: 0; }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 40px 0;
+    }
+
+    .closing {
+      text-align: center;
+      color: var(--text-dim);
+      font-style: italic;
+      margin-top: 40px;
+      font-size: 15px;
+    }
+
+    .start-list {
+      list-style: none;
+      padding: 0;
+    }
+    .start-list li {
+      padding: 12px 0 12px 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .start-list li:last-child { border-bottom: none; }
+    .start-list li::before {
+      content: '>';
+      font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+      color: var(--positive);
+      font-weight: 700;
+      top: 12px;
+    }
+
+    /* ===== Section heading — monospace prefix for brand consistency ===== */
+    h2::before {
+      content: "## ";
+      font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+      color: var(--accent);
+      font-weight: 400;
+      opacity: 0.85;
+    }
+
+    /* ===== Terminal hero ===== */
+    .terminal {
+      background: #06061a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin: 0 0 40px;
+      overflow: hidden;
+      box-shadow:
+        0 22px 60px -22px rgba(79, 156, 249, 0.28),
+        0 0 0 1px rgba(255, 255, 255, 0.02);
+      font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+    }
+    .terminal-chrome {
+      background: #15152b;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .terminal-chrome .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .terminal-chrome .dot.red    { background: #ff5f56; }
+    .terminal-chrome .dot.yellow { background: #ffbd2e; }
+    .terminal-chrome .dot.green  { background: #27c93f; }
+    .terminal-chrome .term-title {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+    }
+    .terminal-body {
+      padding: 24px 20px 20px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text);
+      overflow-x: auto;
+    }
+    .terminal-body pre {
+      font-family: inherit;
+      margin: 0 0 6px;
+      white-space: pre;
+      color: inherit;
+    }
+    .term-banner {
+      color: var(--accent);
+      font-size: 15px;
+      line-height: 1.05;
+      text-shadow: 0 0 12px rgba(79, 156, 249, 0.28);
+      margin-bottom: 14px !important;
+    }
+    .term-tagline {
+      color: var(--text-h);
+      margin-bottom: 20px !important;
+    }
+    .term-status { margin-bottom: 18px !important; }
+    .term-status .k {
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .term-prompts { margin-bottom: 8px !important; }
+    .term-prompts .arrow,
+    .term-cursor  .arrow { color: var(--positive); font-weight: 700; }
+    .term-prompts .cmd   { color: #f3b04d; }
+    .term-cursor .blink {
+      color: var(--accent);
+      animation: termblink 1.1s steps(2, start) infinite;
+    }
+    @keyframes termblink {
+      to { opacity: 0; }
+    }
+
+    @media (max-width: 600px) {
+      .term-banner { font-size: 12px; }
+      .terminal-body { font-size: 12px; padding: 18px 14px 14px; }
+      .terminal-chrome .term-title { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="terminal" aria-label="AI2FI boot screen">
+      <div class="terminal-chrome">
+        <span class="dot red"></span>
+        <span class="dot yellow"></span>
+        <span class="dot green"></span>
+        <span class="term-title">ai2fi &nbsp;—&nbsp; ~/your-financial-journey</span>
+      </div>
+      <div class="terminal-body">
+<pre class="term-banner" aria-label="AI2FI">   █████╗ ██╗██████╗ ███████╗██╗
+  ██╔══██╗██║╚════██╗██╔════╝██║
+  ███████║██║ █████╔╝█████╗  ██║
+  ██╔══██║██║██╔═══╝ ██╔══╝  ██║
+  ██║  ██║██║███████╗██║     ██║
+  ╚═╝  ╚═╝╚═╝╚══════╝╚═╝     ╚═╝</pre>
+<pre class="term-tagline">  Your AI co-pilot for financial strategy.</pre>
+<pre class="term-status">  <span class="k">PROFILE</span>  : not detected — looks like you're new here
+  <span class="k">PRIVACY</span>  : your profile lives in this folder, on this machine.
+             the conversation itself runs through Claude (Anthropic).
+  <span class="k">SESSIONS</span> : we'll do three short ones to get you set up.</pre>
+<pre class="term-prompts">  <span class="arrow">&gt;</span> To begin, type:  <span class="cmd">let's start my financial journey</span>
+  <span class="arrow">&gt;</span> For a tour:      <span class="cmd">/help</span></pre>
+<pre class="term-cursor">  <span class="arrow">&gt;</span> <span class="blink">▋</span></pre>
+      </div>
+    </div>
+
+    <p class="tagline">Financial intelligence, on your terms — and at your pace.</p>
+
+    <p>
+      AI2FI is a coaching companion for the slow, durable work of building financial
+      confidence — while learning to use AI. It's not a budgeting app. It's not a robo-advisor.
+      It's a place to learn to think clearly about money — your money, your life, your
+      timeline — with a coach that remembers what you've learned, notices what's changed,
+      and grows with you over the years.
+    </p>
+
+    <p>
+      Most financial tools optimize for <em>transactions</em>. This one optimizes for
+      <em>understanding</em>. Numbers matter, but the goal is the judgment behind the
+      numbers: knowing why you're doing what you're doing, what you'd do differently if
+      circumstances changed, and what to revisit next quarter.
+    </p>
+
+    <hr />
+
+    <h2>How you'll use it</h2>
+
+    <p>
+      AI2FI lives across two surfaces. They're designed to do different things well —
+      and to stay out of each other's way.
+    </p>
+
+    <div class="panel">
+      <h3>AI Co-Pilot — the place to <em>think</em></h3>
+      <p>
+        This is where the coaching happens. Bring your favorite AI tool (Claude, ChatGPT,
+        Grok, Gemini, ...). Have a conversation. You'll be asked questions. You'll work
+        through scenarios, run knowledge checks, and journal what you're noticing. Your AI
+        Co-Pilot will know your history, your goals, and what you've already covered, so
+        each session picks up where the last one left off rather than starting from scratch.
+      </p>
+
+      <p>A few of the things you can do here:</p>
+
+      <ul>
+        <li><strong>Quarterly check-ins</strong> — a lightweight assessment that surfaces what's changed and what needs attention.</li>
+        <li><strong>Module deep-dives</strong> — work through one topic at a time (investing, retirement, mortgage strategy, charitable giving, and more) at the tier that fits your current comfort level.</li>
+        <li><strong>Knowledge checks</strong> — short, conversational quizzes that meet you where you are and unlock the next tier when you're ready.</li>
+        <li><strong>Open-ended questions</strong> — anything from "should I rebalance?" to "I just got a job offer with RSUs — how do I think about this?"</li>
+      </ul>
+
+      <p>
+        The tone here is warm and curious. There are no wrong answers, and nothing is graded.
+        Comfort grows in stages: emerging → comfortable → confident → mastery.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h3>The web dashboard — the place to <em>see</em></h3>
+      <p>
+        This is where you watch your story unfold. The dashboard is an analysis and review
+        tool: it visualizes what you've built up over time. You'll have modules to track
+        your net worth, analyze your investments, and decide how best to tackle your debt.
+      </p>
+
+      <p>What lives here:</p>
+
+      <ul>
+        <li><strong>Net worth</strong> trends over time, broken down the way <em>you</em> care about.</li>
+        <li><strong>Goal tracking</strong> — where you said you wanted to be, where you actually are, and what's changed.</li>
+        <li><strong>Portfolio</strong> — holdings, closed positions, tax-loss harvesting candidates, moat analysis on companies you own.</li>
+        <li><strong>Module summaries</strong> — what you've covered, where you're confident, where you've flagged questions to revisit.</li>
+        <li><strong>Session history</strong> — the journal of your conversations with Your Favorite AI Co-Pilot, in your own words.</li>
+      </ul>
+
+      <p>
+        The dashboard is honest, not flattering. No streaks. No badges. No dopamine loops.
+        Just a clear picture of where you stand.
+      </p>
+    </div>
+
+    <hr />
+
+    <h2>Where to start</h2>
+
+    <ul class="start-list">
+      <li>
+        <strong>If this is your first session:</strong> open your favorite AI Co-Pilot and run
+        <code>/financial-check-in</code>. It will introduce itself, ask a handful of questions
+        to understand your situation, and route you to the most useful next step. The
+        conversation takes about fifteen minutes.
+      </li>
+      <li>
+        <strong>If you've been here before:</strong> pick up where you left off — your
+        AI Co-Pilot will remember.
+      </li>
+      <li>
+        <strong>If you just want to look around:</strong> explore the dashboard. Nothing you
+        do here will change your data.
+      </li>
+    </ul>
+  </div>
+</body>
+</html>

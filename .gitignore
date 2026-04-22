@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+
+# OS cruft
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Build output
+dashboard/client/dist/
+dist/
+
+# Caches
+server/cache/
+dashboard/server/cache/
+dashboard/scripts/cache/
+
+# Logs
+dashboard/logs/
+
+# Per-user profiles — only the example template is committed
+user-profiles/*/
+!user-profiles/example/
+!user-profiles/README.md
+
+# Personal drafts
+dashboard/welcome-draft.md
+
+# Dev-only working documents
+internal/
+
+# Claude Code per-machine state (skills/ at repo root are shared; this is not)
+.claude/settings.local.json
+
+# Obsidian — not part of the project
+.obsidian/

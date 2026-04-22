@@ -296,6 +296,44 @@ Every other module feeds *into* the financial strategy module. It's the context 
 
 ---
 
+## Release Process & Public Surface
+
+AI2FI ships as a git repository — users clone it or download a ZIP. There is
+no package registry, no hosted app. "Releasing" therefore means: tag a commit
+on `main`, write up what changed, and let the public welcome page reflect it.
+
+### The three moving parts
+
+| Piece | Location | Role |
+|---|---|---|
+| **Welcome page** | `docs/index.html` | Static HTML served by GitHub Pages from `main` `/docs`. Tells new users how to download, install, and start coaching. Fetches the changelog at runtime. |
+| **Changelog** | `CHANGELOG.md` (repo root) | Single source of truth for release notes. [Keep a Changelog](https://keepachangelog.com/) format. Edited in-repo, versioned with code. |
+| **Release doc** | `RELEASING.md` (repo root) | The checklist for cutting a release and the one-time GitHub Pages setup. |
+
+### Why this shape
+
+- **No build step at the repo root.** Adding an SSG (Astro, 11ty, Next) would
+  force a toolchain on a repo that currently has none outside `dashboard/`.
+  Static HTML keeps the root simple.
+- **Release notes are code.** `CHANGELOG.md` lives in the repo, is reviewed
+  in PRs, and travels with tags. The welcome page fetches it client-side, so
+  a changelog edit is the only thing needed to update the public notes.
+- **The welcome page is a navigation surface, not a product surface.** It
+  exists to answer four questions: where do I get this, how do I install it,
+  how do I start, and what changed recently. It is deliberately not a
+  marketing site.
+
+### The flow in one paragraph
+
+A change lands on `main`. If it's user-facing, `CHANGELOG.md` gets a line
+under `[Unreleased]` in the same PR. When we're ready to cut a release, those
+`[Unreleased]` lines move into a new `## [X.Y.Z]` section, the commit is
+tagged `vX.Y.Z`, and a GitHub Release is created with the matching notes.
+GitHub Pages re-serves `main` automatically, and the welcome page's next
+pageload fetches the new `CHANGELOG.md`. Full checklist in `RELEASING.md`.
+
+---
+
 ## Open Questions to Revisit
 
 - Calendar integrations & reminder system — which platforms first?
@@ -307,4 +345,4 @@ Every other module feeds *into* the financial strategy module. It's the context 
 
 ---
 
-*Last updated: April 18, 2026*
+*Last updated: April 22, 2026*

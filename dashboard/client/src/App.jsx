@@ -14,6 +14,7 @@ import CollegeView from './components/CollegeView';
 import ComingSoon from './components/ComingSoon';
 import Welcome from './components/Welcome';
 import FinancialStrategy from './components/FinancialStrategy';
+import OnboardingEmptyState from './components/OnboardingEmptyState';
 import './App.css';
 
 // Map sidebar keys to Coming Soon page titles
@@ -153,7 +154,7 @@ export default function App() {
     window.location.reload();
   }
 
-  const { lots: allLots, openLots: rawOpenLots, closedLots: rawClosedLots, positions: rawPositions, allPositions: rawAllPositions, quotes, loading, error } = usePortfolio();
+  const { lots: allLots, openLots: rawOpenLots, closedLots: rawClosedLots, positions: rawPositions, allPositions: rawAllPositions, quotes, loading, error, emptyState } = usePortfolio();
 
   // Derive owners and accounts dynamically from data
   const OWNERS = useMemo(() => [...new Set(allLots.map(l => l.owner).filter(Boolean))].sort(), [allLots]);
@@ -187,6 +188,7 @@ export default function App() {
   const { lookup: spyLookup } = useBenchmark('SPY');
 
   if (loading) return <div className="loading-screen">Loading portfolio...</div>;
+  if (emptyState) return <OnboardingEmptyState info={emptyState} />;
   if (error) return <div className="error-screen">Error: {error}<br />Make sure the server is running at localhost:3001</div>;
 
   const hasImported = openLots.some(l => l.account === 'Imported') || closedLots.some(l => l.account === 'Imported');

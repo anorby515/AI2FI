@@ -2,8 +2,12 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const { resolveProfile } = require('../profile-resolver');
 
-const MOAT_DIR = path.join(__dirname, '../../../user-profiles/andrew/research');
+function moatDir() {
+  const profile = resolveProfile();
+  return profile ? profile.researchDir : null;
+}
 
 function parseMoatFile(content) {
   const lines = content.split('\n');
@@ -54,8 +58,11 @@ function parseMoatFile(content) {
 
 // GET /api/moat/:ticker
 router.get('/:ticker', (req, res) => {
+  const dir = moatDir();
+  if (!dir) return res.status(404).json({ error: 'No moat analysis available' });
+
   const { ticker } = req.params;
-  const filePath = path.join(MOAT_DIR, `${ticker.toUpperCase()}.md`);
+  const filePath = path.join(dir, `${ticker.toUpperCase()}.md`);
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: 'No moat analysis available' });
@@ -72,8 +79,10 @@ router.get('/:ticker', (req, res) => {
 
 // GET /api/moat — list all available tickers
 router.get('/', (_, res) => {
+  const dir = moatDir();
+  if (!dir || !fs.existsSync(dir)) return res.json([]);
   try {
-    const files = fs.readdirSync(MOAT_DIR).filter(f => f.endsWith('.md'));
+    const files = fs.readdirSync(dir).filter(f => f.endsWith('.md'));
     const tickers = files.map(f => f.replace('.md', ''));
     res.json(tickers);
   } catch {

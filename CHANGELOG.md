@@ -33,6 +33,28 @@ every edit here updates the public notes without a rebuild.
   `.command` files downloaded from the internet.
 
 ### Changed
+- **Dashboard is now multi-user.** The previously hardcoded `andrew` profile
+  has been replaced with a profile resolver at
+  `dashboard/server/profile-resolver.js`. Resolution order: `AI2FI_PROFILE`
+  env var → `.ai2fi-config` at repo root → auto-detect the first non-`example`
+  directory under `user-profiles/`. All five call sites (server index,
+  portfolio, networth, moat, profile routes) use the resolver instead of
+  baking in a username.
+- **Onboarding empty state.** When the server has no profile configured or
+  no spreadsheet, endpoints return a structured `{ noProfile | noSpreadsheet }`
+  404 instead of a generic 500. The client renders a new
+  `OnboardingEmptyState` component with concrete "create your profile /
+  drop in your spreadsheet" instructions — replacing the old red
+  "Server error 500" screen that every new user was hitting.
+- **`setup.command` configures the profile.** Prompts for a profile name
+  on first run (or auto-detects if a non-example folder already exists),
+  creates `user-profiles/<name>/private/` + `research/`, and writes
+  `.ai2fi-config` at the repo root. Skips the prompt if a config already
+  exists.
+- **`FinancialStrategy.jsx` resolves the profile dynamically** — fetches
+  `/api/profile` first to learn the active user's name, then loads that
+  user's `financial-dashboard.md`. Handles `no-profile` and `no-artifact`
+  states with their own messaging.
 - Welcome page restructure: `1. Install` now presents three paths ranked by
   friction (one-line, git clone, ZIP+Finder); `2. After install` covers
   spreadsheet placement and uninstall.
@@ -42,6 +64,13 @@ every edit here updates the public notes without a rebuild.
 - `dashboard/README.md` Gatekeeper instructions updated for macOS 15+
   (System Settings → Privacy & Security → Open Anyway). The old right-click
   → Open trick no longer works on Sequoia and newer.
+
+### Added (continued)
+- `GET /api/profile` endpoint returns the active profile's name and a list
+  of all configured profiles. Lets the client discover the current user
+  instead of hardcoding one.
+- `.ai2fi-config` (gitignored) at the repo root is the per-machine pointer
+  to the active profile.
 
 ## [0.1.0] - 2026-04-18
 

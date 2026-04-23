@@ -71,6 +71,62 @@ fi
 NODE_PATH="$(command -v node)"
 ok "Node.js $(node --version) at $NODE_PATH"
 
+# --- Step 2.5: User profile ---
+# The dashboard reads from user-profiles/<name>/private/Finances.xlsx. The server
+# resolves the active profile via (env → .ai2fi-config → auto-detect). We make sure
+# one of those signals exists before launching, so the first page load has data
+# (or at least a configured directory to drop the spreadsheet into).
+step "Configuring your profile"
+REPO_ROOT="$(cd "$DASHBOARD_DIR/.." && pwd)"
+CONFIG_FILE="$REPO_ROOT/.ai2fi-config"
+PROFILES_DIR="$REPO_ROOT/user-profiles"
+
+configured_profile=""
+if [ -f "$CONFIG_FILE" ]; then
+  configured_profile="$(node -e 'try { const c = JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); process.stdout.write(c.profile || ""); } catch { process.stdout.write(""); }' "$CONFIG_FILE")"
+fi
+
+if [ -n "$configured_profile" ]; then
+  ok "Using existing profile: $configured_profile (from .ai2fi-config)"
+else
+  # Auto-detect: any non-example directory under user-profiles/
+  detected=""
+  if [ -d "$PROFILES_DIR" ]; then
+    for dir in "$PROFILES_DIR"/*/; do
+      [ -d "$dir" ] || continue
+      name="$(basename "$dir")"
+      if [ "$name" != "example" ]; then
+        detected="$name"
+        break
+      fi
+    done
+  fi
+
+  if [ -n "$detected" ]; then
+    echo "{\"profile\": \"$detected\"}" > "$CONFIG_FILE"
+    ok "Detected existing profile \"$detected\" — wrote .ai2fi-config"
+  else
+    echo ""
+    echo "The dashboard reads your financial data from a local spreadsheet at:"
+    echo "  ${DIM}user-profiles/<name>/private/Finances.xlsx${RESET}"
+    echo ""
+    echo "What name should we use for your profile? (lowercase letters, numbers, dashes)"
+    printf "Profile name: "
+    read -r profile_name
+    # Normalize + validate
+    profile_name="$(echo "$profile_name" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')"
+    if [ -z "$profile_name" ] || [ "$profile_name" = "example" ]; then
+      fail "Invalid name. Using 'you' as a fallback — rename the folder later if you want."
+      profile_name="you"
+    fi
+    mkdir -p "$PROFILES_DIR/$profile_name/private"
+    mkdir -p "$PROFILES_DIR/$profile_name/research"
+    echo "{\"profile\": \"$profile_name\"}" > "$CONFIG_FILE"
+    ok "Created user-profiles/$profile_name/ and wrote .ai2fi-config"
+    warn "When you have your spreadsheet, save it to user-profiles/$profile_name/private/Finances.xlsx"
+  fi
+fi
+
 # --- Step 3: Install dependencies ---
 step "Installing server dependencies"
 cd "$DASHBOARD_DIR"

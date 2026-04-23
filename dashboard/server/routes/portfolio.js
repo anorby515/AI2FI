@@ -4,6 +4,7 @@ const XLSX = require('xlsx');
 const path = require('path');
 const fs = require('fs');
 const cache = require('../cache');
+const { resolveProfile, noProfileResponse, noSpreadsheetResponse } = require('../profile-resolver');
 
 const IMPORT_FILE = path.join(__dirname, '../data/imported-lots.json');
 
@@ -12,7 +13,6 @@ function loadImportedLots() {
   try { return JSON.parse(fs.readFileSync(IMPORT_FILE, 'utf8')); } catch { return []; }
 }
 
-const SPREADSHEET = path.join(__dirname, '../../../user-profiles/andrew/private/Finances.xlsx');
 const SPLIT_TTL = 7 * 24 * 60 * 60 * 1000;
 
 // Map spreadsheet tickers to Yahoo Finance tickers
@@ -34,8 +34,8 @@ function formatDate(val) {
   return null;
 }
 
-function parseSheet() {
-  const wb = XLSX.readFile(SPREADSHEET, { cellDates: false });
+function parseSheet(spreadsheetPath) {
+  const wb = XLSX.readFile(spreadsheetPath, { cellDates: false });
   const ws = wb.Sheets['Brokerage Ledger'];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 
@@ -153,11 +153,23 @@ function normalizeHoldings(holdings) {
 
 // GET /api/portfolio
 router.get('/', async (req, res) => {
-  try {
-    const raw = parseSheet();
-    const filtered = raw;
+  const profile = resolveProfile();
+  if (!profile) {
+    return res.status(404).json(noProfileResponse());
+  }
+  if (!profile.hasSpreadsheet()) {
+    // Imported lots may still exist — return those even without a spreadsheet,
+    // so a user mid-onboarding can still see any CSV imports they've done.
     const imported = loadImportedLots();
-    const combined = [...filtered, ...imported];
+    if (imported.length > 0) {
+      return res.json(normalizeHoldings(imported));
+    }
+    return res.status(404).json(noSpreadsheetResponse(profile));
+  }
+  try {
+    const raw = parseSheet(profile.spreadsheetPath);
+    const imported = loadImportedLots();
+    const combined = [...raw, ...imported];
     const data = normalizeHoldings(combined);
     res.json(data);
   } catch (err) {

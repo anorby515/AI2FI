@@ -22,6 +22,8 @@ app.use('/api/quotes', require('./routes/quotes'));
 app.use('/api/import/csv', require('./routes/csvImport'));
 app.use('/api/profile', require('./routes/profile'));
 
+const { resolveProfile, noProfileResponse, noSpreadsheetResponse } = require('./profile-resolver');
+
 // GET /api/status
 app.get('/api/status', (_, res) => {
   const status = tracker.getStatus();
@@ -47,7 +49,15 @@ app.post('/api/sync', async (_, res) => {
   const log = [];
   let errors = 0;
 
-  // Step 0: Preflight
+  // Step 0: Preflight — profile + spreadsheet must exist before we hit Yahoo
+  const profile = resolveProfile();
+  if (!profile) {
+    return res.status(404).json({ log: ['No user profile configured — sync aborted'], errors: 1, aborted: true, ...noProfileResponse() });
+  }
+  if (!profile.hasSpreadsheet()) {
+    return res.status(404).json({ log: [`Spreadsheet missing for profile "${profile.name}" — sync aborted`], errors: 1, aborted: true, ...noSpreadsheetResponse(profile) });
+  }
+
   const available = await healthCheck();
   if (!available) {
     return res.json({ log: ['Yahoo Finance is unavailable. Sync aborted.'], errors: 1, aborted: true, ...tracker.getStatus() });
@@ -56,7 +66,7 @@ app.post('/api/sync', async (_, res) => {
 
   // Step 1: Read spreadsheet to get all tickers
   const XLSX = require('xlsx');
-  const wb = XLSX.readFile(path.join(__dirname, '../../user-profiles/andrew/private/Finances.xlsx'), { cellDates: false });
+  const wb = XLSX.readFile(profile.spreadsheetPath, { cellDates: false });
   const ws = wb.Sheets['Brokerage Ledger'];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 

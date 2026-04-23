@@ -95,21 +95,22 @@
       color: var(--fg);
       margin: 0 0 1.75rem;
     }
-    .info-block {
+    .term-nav {
       font-family: var(--mono);
-      font-size: 0.82rem;
-      line-height: 1.8;
-      display: grid;
-      grid-template-columns: max-content 1fr;
-      gap: 0 0.75rem;
+      font-size: 0.92rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
     }
-    .info-label {
+    .term-nav a {
       color: var(--cyan);
-      font-weight: bold;
-      white-space: nowrap;
+      text-decoration: none;
+      width: max-content;
     }
-    .info-val { color: var(--fg); }
-    .info-val span { color: var(--fg-dim); }
+    .term-nav a:hover {
+      color: var(--fg-bright);
+      text-decoration: underline;
+    }
 
     /* ── Page body ─────────────────────────────────────────── */
     .wrap { max-width: 760px; margin: 0 auto; padding: 0 1.25rem 5rem; }
@@ -147,19 +148,6 @@
     pre code { background: none; padding: 0; color: var(--fg); }
     ol, ul { padding-left: 1.3rem; }
     ol li, ul li { margin: 0.35rem 0; }
-    .toc {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem 1.25rem;
-      padding: 0.75rem 1rem;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--code-bg);
-      font-family: var(--mono);
-      font-size: 0.85rem;
-      margin-bottom: 0.5rem;
-    }
-    .toc a { color: var(--cyan); }
     .btn {
       display: inline-block;
       padding: 0.55rem 1.1rem;
@@ -241,72 +229,65 @@
     <div class="term-body">
       <div class="wordmark">AI2FI</div>
       <p class="tagline">Your AI co-pilot for financial strategy.</p>
-      <div class="info-block">
-        <span class="info-label">PROFILE</span>
-        <span class="info-val">lives in <code>user-profiles/&lt;you&gt;/</code> on your machine &mdash; never committed</span>
-        <span class="info-label">PRIVACY</span>
-        <span class="info-val">your data stays local. coaching runs through Claude <span>(Anthropic)</span>.</span>
-        <span class="info-label">SETUP</span>
-        <span class="info-val">one-click installer for macOS &mdash; manual path available for others</span>
-      </div>
+      <nav class="term-nav" aria-label="Sections">
+        <a href="#download">1. Install</a>
+        <a href="#setup">2. After install</a>
+        <a href="#start">3. Start coaching</a>
+        <a href="#whats-new">4. What's new</a>
+      </nav>
     </div>
   </div>
 </div>
 
 <div class="wrap">
 
-<nav class="toc" aria-label="Sections">
-  <a href="#download">1. Download</a>
-  <a href="#setup">2. Set up</a>
-  <a href="#start">3. Start coaching</a>
-  <a href="#whats-new">4. What's new</a>
-</nav>
-
 <hr class="section-divider" />
 
 <section id="download">
-  <h2>1. Download the repo</h2>
-  <p>AI2FI is a plain git repository. You can either clone it or download a ZIP — both work, both leave everything on your machine.</p>
+  <h2>1. Install</h2>
+  <p>Three ways, ranked by least friction. All of them end with the dashboard running at <code>http://localhost:3001</code> and auto-starting at login. Nothing is uploaded — the whole install is local.</p>
 
-  <h3>Option A &mdash; Download ZIP (simplest)</h3>
-  <p>
-    <a class="btn" href="https://github.com/anorby515/AI2FI/archive/refs/heads/main.zip">Download AI2FI.zip</a>
-  </p>
-  <p class="muted">Unzip it anywhere — Documents, Desktop, a projects folder. The folder will be named <code>AI2FI-main</code>; rename it to <code>AI2FI</code> if you prefer.</p>
+  <h3>Option A &mdash; One-line Terminal install <span class="muted">(recommended)</span></h3>
+  <p>Open Terminal (<code>&#8984;-Space</code>, type "Terminal") and paste:</p>
+  <pre><code>curl -L https://github.com/anorby515/AI2FI/archive/refs/heads/main.tar.gz | tar xz &amp;&amp; cd AI2FI-main &amp;&amp; bash dashboard/setup.command</code></pre>
+  <p class="muted">Downloads, unpacks, installs. No Gatekeeper prompt, no rename step. The script runs Homebrew and Node checks, installs dependencies, builds the client, registers the login agent, and opens the dashboard in your browser. First run takes a couple of minutes.</p>
 
   <h3>Option B &mdash; Git clone</h3>
   <pre><code>git clone https://github.com/anorby515/AI2FI.git
-cd AI2FI</code></pre>
+cd AI2FI
+bash dashboard/setup.command</code></pre>
+  <p class="muted">Good if you already have <code>git</code>. Files cloned via git aren't quarantined, so double-clicking <code>setup.command</code> from Finder also works with no Gatekeeper dance.</p>
+
+  <h3>Option C &mdash; ZIP download + Finder</h3>
+  <p>
+    <a class="btn secondary" href="https://github.com/anorby515/AI2FI/archive/refs/heads/main.zip">Download AI2FI.zip</a>
+  </p>
+  <p class="muted">Unzip, then in Finder open <code>AI2FI-main/dashboard/</code> and double-click <code>setup.command</code>.</p>
 
   <div class="callout">
-    <strong>macOS only for now.</strong> The one-click installer (<code>setup.command</code>) uses <code>launchd</code> to auto-start the dashboard at login. Linux and Windows users can still run the dashboard manually &mdash; see <a href="https://github.com/anorby515/AI2FI/blob/main/dashboard/README.md">dashboard/README.md</a>.
+    <strong>Finder path hits Gatekeeper.</strong> macOS 15+ blocks <code>.command</code> files downloaded from the internet. You'll see a "cannot be opened" dialog &mdash; click <strong>Done</strong>, open <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll to the Security section, click <strong>Open Anyway</strong>, and enter your password. Option A avoids this entirely.
   </div>
 </section>
 
 <hr class="section-divider" />
 
 <section id="setup">
-  <h2>2. Set up the dashboard</h2>
-  <p>The dashboard reads a spreadsheet on your machine and renders portfolio, net worth, and benchmark views. It runs at <code>http://localhost:3001</code> and auto-starts when you log in.</p>
+  <h2>2. After install</h2>
+  <p>When the installer finishes, your browser opens <a href="http://localhost:3001">http://localhost:3001</a> and you're looking at the dashboard. It auto-starts every time you log into your Mac.</p>
 
-  <h3>One-time install (macOS)</h3>
-  <ol>
-    <li>In Finder, open the <code>AI2FI</code> folder you just downloaded.</li>
-    <li>Open the <code>dashboard/</code> subfolder.</li>
-    <li>Double-click <a href="https://github.com/anorby515/AI2FI/blob/main/dashboard/setup.command"><code>setup.command</code></a>.</li>
-    <li>A Terminal window opens and walks through: Homebrew check &rarr; Node install if needed &rarr; <code>npm install</code> &rarr; build &rarr; register login agent &rarr; open the dashboard in your browser.</li>
-  </ol>
-
-  <div class="callout">
-    <strong>First-run Gatekeeper hurdle.</strong> macOS may refuse to run <code>setup.command</code> the first time because it was downloaded from the internet. Right-click <code>setup.command</code> &rarr; <strong>Open</strong> &rarr; <strong>Open</strong> in the dialog. macOS remembers afterward.
-  </div>
+  <h3>Drop in your spreadsheet</h3>
+  <p>The dashboard reads a local spreadsheet to render portfolio, net worth, and benchmark views. Put yours at:</p>
+  <pre><code>user-profiles/&lt;your-name&gt;/private/Finances.xlsx</code></pre>
+  <p class="muted">Start from <code>user-profiles/example/</code> as a template if you want the expected shape. Everything under <code>user-profiles/&lt;your-name&gt;/</code> is gitignored &mdash; it never leaves your machine.</p>
 
   <h3>To uninstall</h3>
-  <p>Double-click <a href="https://github.com/anorby515/AI2FI/blob/main/dashboard/uninstall.command"><code>uninstall.command</code></a> in the same <code>dashboard/</code> folder. It unloads the login agent and removes the plist. Your project files, spreadsheet, and user profile are untouched.</p>
+  <p>From the repo root:</p>
+  <pre><code>bash dashboard/uninstall.command</code></pre>
+  <p class="muted">Unloads the login agent, removes the plist, kills anything on port 3001. Your files, spreadsheet, and profile are untouched. (Double-clicking <code>uninstall.command</code> in Finder works too, if it isn't blocked by Gatekeeper.)</p>
 
   <details>
     <summary>Non-Mac / run it manually</summary>
-    <p>You'll need Node 18+ installed. From the repo root:</p>
+    <p>The installer uses <code>launchd</code> (macOS only), but the server itself runs anywhere Node does. You'll need Node 18+. From the repo root:</p>
     <pre><code>cd dashboard
 npm install
 cd client &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; cd ..

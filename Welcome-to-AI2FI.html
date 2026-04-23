@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Welcome to AI2FI</title>
+  <meta name="description" content="You've downloaded AI2FI. Here's how to finish setting it up — all local, nothing transmitted." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --page-bg:      #13151a;
+      --term-bg:      #1e2128;
+      --titlebar-bg:  #282c34;
+      --border:       #2e323c;
+      --fg:           #abb2bf;
+      --fg-dim:       #636d83;
+      --fg-bright:    #dde1e8;
+      --cyan:         #56b6c2;
+      --green:        #98c379;
+      --accent:       #61afef;
+      --warn-bg:      #2a2213;
+      --warn-border:  #7a5c1e;
+      --code-bg:      #282c34;
+      --dot-red:      #ff5f56;
+      --dot-yellow:   #ffbd2e;
+      --dot-green:    #27c93f;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--page-bg);
+      color: var(--fg);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    /* ── Terminal hero ─────────────────────────────────────── */
+    .hero-outer {
+      padding: 2.5rem 1.25rem 2rem;
+      display: flex;
+      justify-content: center;
+    }
+    .terminal {
+      width: 100%;
+      max-width: 760px;
+      background: var(--term-bg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.55);
+      overflow: hidden;
+    }
+    .titlebar {
+      background: var(--titlebar-bg);
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .dots { display: flex; gap: 6px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-r { background: var(--dot-red); }
+    .dot-y { background: var(--dot-yellow); }
+    .dot-g { background: var(--dot-green); }
+    .titlebar-label {
+      flex: 1;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--fg-dim);
+      letter-spacing: 0.02em;
+    }
+    .term-body { padding: 2rem 2rem 2.25rem; }
+    .wordmark {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(1.6rem, 7vw, 3rem);
+      color: var(--fg-bright);
+      letter-spacing: 0.05em;
+      line-height: 1.25;
+      margin: 0 0 1.25rem;
+    }
+    .tagline {
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      color: var(--fg);
+      margin: 0 0 1.75rem;
+    }
+    .term-nav {
+      font-family: var(--mono);
+      font-size: 0.92rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .term-nav a {
+      color: var(--cyan);
+      text-decoration: none;
+      width: max-content;
+    }
+    .term-nav a:hover {
+      color: var(--fg-bright);
+      text-decoration: underline;
+    }
+
+    /* ── Page body ─────────────────────────────────────────── */
+    .wrap { max-width: 760px; margin: 0 auto; padding: 0 1.25rem 5rem; }
+    h2 {
+      font-size: 1.2rem;
+      margin: 2.75rem 0 0.6rem;
+      color: var(--fg-bright);
+    }
+    h3 {
+      font-size: 1rem;
+      margin: 1.4rem 0 0.4rem;
+      color: var(--fg-bright);
+    }
+    p { margin: 0.4rem 0 0.9rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      font-family: var(--mono);
+      background: var(--code-bg);
+      color: var(--green);
+      padding: 0.1em 0.4em;
+      border-radius: 4px;
+      font-size: 0.88em;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 0.9rem 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+    pre code { background: none; padding: 0; color: var(--fg); }
+    ol, ul { padding-left: 1.3rem; }
+    ol li, ul li { margin: 0.35rem 0; }
+
+    /* Install block — the centerpiece */
+    .install-block {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--term-bg);
+      padding: 1rem 1.15rem 1.1rem;
+      margin: 1rem 0 1.2rem;
+    }
+    .install-block .label {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--fg-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+    .install-cmd {
+      position: relative;
+      background: var(--page-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.85rem 3rem 0.85rem 0.95rem;
+      font-family: var(--mono);
+      font-size: 0.88rem;
+      color: var(--fg);
+      word-break: break-all;
+      min-height: 2.5rem;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 0.45rem;
+      right: 0.45rem;
+      background: var(--accent);
+      color: #13151a;
+      border: none;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .copy-btn:hover { opacity: 0.9; }
+    .copy-btn.copied { background: var(--green); }
+
+    .callout {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      border-left: 3px solid var(--dot-yellow);
+      padding: 0.75rem 1rem;
+      border-radius: 4px;
+      margin: 0.9rem 0;
+      font-size: 0.92rem;
+    }
+    .muted { color: var(--fg-dim); font-size: 0.9rem; }
+    details {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.9rem;
+      margin: 0.75rem 0;
+      background: var(--code-bg);
+    }
+    details[open] { padding-bottom: 0.9rem; }
+    summary { cursor: pointer; font-weight: 500; padding: 0.25rem 0; color: var(--fg-bright); }
+    #changelog-content h2 {
+      font-size: 1rem;
+      margin-top: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.3rem;
+      color: var(--fg-bright);
+    }
+    #changelog-content h3 { font-size: 0.95rem; color: var(--fg-dim); }
+    #changelog-content ul { margin-top: 0.3rem; }
+    #changelog-status { color: var(--fg-dim); font-size: 0.92rem; }
+    footer {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--fg-dim);
+      font-size: 0.88rem;
+      font-family: var(--mono);
+      line-height: 1.8;
+    }
+    footer a { color: var(--fg-dim); }
+    footer a:hover { color: var(--accent); }
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2.5rem 0 0;
+    }
+    #folder-path {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--fg-dim);
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Terminal hero -->
+<div class="hero-outer">
+  <div class="terminal">
+    <div class="titlebar">
+      <div class="dots">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+      </div>
+      <span class="titlebar-label">ai2fi &mdash; ~/your-financial-journey</span>
+    </div>
+    <div class="term-body">
+      <div class="wordmark">AI2FI</div>
+      <p class="tagline">You're here. Let's get you set up.</p>
+      <nav class="term-nav" aria-label="Sections">
+        <a href="#install">1. Install</a>
+        <a href="#after">2. After install</a>
+        <a href="#start">3. Start coaching</a>
+        <a href="#whats-new">4. What's new</a>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<hr class="section-divider" />
+
+<section id="install">
+  <h2>1. Install the dashboard</h2>
+  <p>You've downloaded AI2FI and opened this file. One more step gets the dashboard running at <code>http://localhost:3001</code> and auto-starting at login.</p>
+
+  <p><strong>Open Terminal</strong> (<code>&#8984;-Space</code>, type "Terminal") and paste the command below. It's pre-filled with the full path to your AI2FI folder:</p>
+
+  <div class="install-block">
+    <div class="label">Install command &mdash; copy and paste into Terminal</div>
+    <div class="install-cmd">
+      <span id="install-cmd-text">cd "&lt;detecting&hellip;&gt;" &amp;&amp; bash dashboard/setup.command</span>
+      <button class="copy-btn" id="copy-btn" type="button">Copy</button>
+    </div>
+    <p class="muted" style="margin: 0.6rem 0 0;">
+      Folder detected as: <span id="folder-path">(detecting&hellip;)</span>
+    </p>
+  </div>
+
+  <p>The installer will:</p>
+  <ol>
+    <li>Check for Homebrew and Node, install them via Homebrew if missing.</li>
+    <li>Install dashboard dependencies and build the client.</li>
+    <li>Register a macOS login agent so the dashboard auto-starts.</li>
+    <li>Open <a href="http://localhost:3001">http://localhost:3001</a> in your browser.</li>
+  </ol>
+  <p class="muted">First run takes a couple of minutes. You'll be prompted for your password once so the installer can register the login agent.</p>
+
+  <details>
+    <summary>Why Terminal and not double-click?</summary>
+    <p>Double-clicking <code>dashboard/setup.command</code> from Finder triggers macOS Gatekeeper because the file was downloaded from the internet &mdash; it blocks with a "cannot be opened" dialog that only offers "Move to Trash" or "Done". The Terminal path above reads the script with <code>bash</code>, which doesn't invoke the Gatekeeper check. Same script, same install, just no ceremony.</p>
+    <p>If you've already cloned this repo with <code>git</code> (not downloaded a ZIP), double-clicking <code>setup.command</code> works normally &mdash; git-cloned files aren't quarantined.</p>
+  </details>
+
+  <details>
+    <summary>Non-Mac / manual install</summary>
+    <p>The installer script uses <code>launchd</code> (macOS only), but the dashboard server itself runs anywhere Node does. You'll need Node 18+. From Terminal:</p>
+    <pre><code>cd dashboard
+npm install
+cd client &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; cd ..
+npm start</code></pre>
+    <p>Then open <a href="http://localhost:3001">http://localhost:3001</a>.</p>
+  </details>
+</section>
+
+<hr class="section-divider" />
+
+<section id="after">
+  <h2>2. After install</h2>
+  <p>When the installer finishes, your browser opens <a href="http://localhost:3001">http://localhost:3001</a> and you're looking at the dashboard. It'll be mostly empty until you drop in your spreadsheet.</p>
+
+  <h3>Drop in your spreadsheet</h3>
+  <p>The dashboard reads a local spreadsheet to render portfolio, net worth, and benchmark views. Put yours at:</p>
+  <pre><code>user-profiles/&lt;your-name&gt;/private/Finances.xlsx</code></pre>
+  <p class="muted">Start from <code>user-profiles/example/</code> as a template if you want the expected shape. Everything under <code>user-profiles/&lt;your-name&gt;/</code> is gitignored &mdash; it never leaves your machine.</p>
+
+  <h3>Uninstall anytime</h3>
+  <p>From Terminal, in this folder:</p>
+  <pre><code>bash dashboard/uninstall.command</code></pre>
+  <p class="muted">Unloads the login agent, removes the plist, kills anything on port 3001. Your files, spreadsheet, and profile are untouched.</p>
+</section>
+
+<hr class="section-divider" />
+
+<section id="start">
+  <h2>3. Start coaching with Claude</h2>
+  <p>The dashboard is the "seeing" half. Claude is the "thinking" half &mdash; and that's where the work happens.</p>
+
+  <h3>Open Claude in this folder</h3>
+  <p>Open Claude Code, Claude Desktop, or <a href="https://claude.ai/code">claude.ai/code</a> and point it at this AI2FI folder as the working directory. Claude automatically picks up the skills in <code>skills/</code> and the curriculum in <code>core/</code> and <code>modules/</code>.</p>
+
+  <h3>Run the entry skill</h3>
+  <p>In Claude, type:</p>
+  <pre><code>/financial-check-in</code></pre>
+  <p>That's the front door. It runs the master assessment, consults the financial order-of-operations, and routes you into whichever module matches where you are today. First-time users get the full two-pass assessment; returning users get the lightweight check-in.</p>
+
+  <h3>Other skills</h3>
+  <ul>
+    <li><code>/module-coach &lt;module-name&gt;</code> &mdash; dives into one topic (e.g. <code>/module-coach investing</code>).</li>
+    <li><code>/knowledge-check &lt;topic&gt; &lt;level&gt;</code> &mdash; standalone quiz, tiered fundamentals &rarr; intermediate &rarr; advanced.</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Your data stays yours.</strong> Personal financial files live under <code>user-profiles/&lt;you&gt;/private/</code> and are gitignored. Session notes, goals, and competency levels are written by Claude at session close &mdash; also gitignored.
+  </div>
+</section>
+
+<hr class="section-divider" />
+
+<section id="whats-new">
+  <h2>4. What's new</h2>
+  <p class="muted">Release notes for the version of AI2FI you have (read from the local <code>CHANGELOG.md</code>).</p>
+  <div id="changelog-status">Loading release notes&hellip;</div>
+  <div id="changelog-content" hidden></div>
+  <p class="muted" style="margin-top:1rem;">
+    Latest notes online: <a href="https://github.com/anorby515/AI2FI/blob/main/CHANGELOG.md">GitHub CHANGELOG</a> &middot;
+    <a href="https://github.com/anorby515/AI2FI/releases">all releases</a>
+  </p>
+</section>
+
+<footer>
+  <a href="https://github.com/anorby515/AI2FI">GitHub</a> &middot;
+  <a href="https://anorby515.github.io/AI2FI/">Welcome page (online)</a> &middot;
+  <a href="./ai-to-fi-architecture.md">Architecture</a> &middot;
+  <a href="./RELEASING.md">Release process</a>
+  <br />
+  Nothing on this page, nor anywhere in AI2FI, transmits your financial data.
+</footer>
+
+</div>
+
+<!-- marked for CHANGELOG rendering; loaded from CDN so it works online. -->
+<!-- If offline, the raw CHANGELOG text is shown instead. -->
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script>
+(function () {
+  // ── Path detection + install-command hydration ─────────────────
+  //
+  // window.location.href on file:// gives us an absolute path to
+  // THIS HTML file; stripping the filename leaves the folder.
+  // We URL-decode (spaces → %20 etc.) and shell-escape by wrapping
+  // in double quotes and escaping any embedded " characters.
+  var rawHref = window.location.href;
+  var folderPath = null;
+
+  try {
+    if (rawHref.indexOf('file://') === 0) {
+      var path = decodeURIComponent(rawHref.slice('file://'.length));
+      // drop the filename
+      path = path.replace(/\/[^\/]*$/, '');
+      // strip trailing slash
+      if (path.length > 1 && path[path.length - 1] === '/') path = path.slice(0, -1);
+      folderPath = path;
+    }
+  } catch (e) { /* fall through to unknown */ }
+
+  var pathEl = document.getElementById('folder-path');
+  var cmdEl  = document.getElementById('install-cmd-text');
+
+  function shellQuote(p) {
+    return '"' + String(p).replace(/"/g, '\\"') + '"';
+  }
+
+  var commandText;
+  if (folderPath) {
+    pathEl.textContent = folderPath;
+    commandText = 'cd ' + shellQuote(folderPath) + ' && bash dashboard/setup.command';
+  } else {
+    pathEl.textContent = "couldn't detect — open Terminal, cd to this folder, then run: bash dashboard/setup.command";
+    commandText = 'cd /path/to/this/folder && bash dashboard/setup.command';
+  }
+  cmdEl.textContent = commandText;
+
+  // ── Copy button ────────────────────────────────────────────────
+  var btn = document.getElementById('copy-btn');
+  btn.addEventListener('click', function () {
+    var done = function () {
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1800);
+    };
+    // navigator.clipboard may be unavailable on file:// in some browsers;
+    // fall back to execCommand.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(commandText).then(done, fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+    function fallbackCopy() {
+      var ta = document.createElement('textarea');
+      ta.value = commandText;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); }
+      catch (e) { btn.textContent = 'Press ⌘-C'; }
+      finally { document.body.removeChild(ta); }
+    }
+  });
+
+  // ── CHANGELOG render ───────────────────────────────────────────
+  var statusEl  = document.getElementById('changelog-status');
+  var contentEl = document.getElementById('changelog-content');
+
+  function showRawFallback(md, msg) {
+    statusEl.textContent = msg;
+    var pre = document.createElement('pre');
+    pre.textContent = md;
+    contentEl.innerHTML = '';
+    contentEl.appendChild(pre);
+    contentEl.hidden = false;
+  }
+  function showTextFallback(msg) {
+    statusEl.innerHTML = msg +
+      ' See <a href="./CHANGELOG.md">CHANGELOG.md</a> in this folder, or ' +
+      '<a href="https://github.com/anorby515/AI2FI/blob/main/CHANGELOG.md">the latest on GitHub</a>.';
+  }
+
+  fetch('./CHANGELOG.md', { cache: 'no-cache' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function (md) {
+      var firstH1 = md.indexOf('\n# ');
+      var body = firstH1 >= 0 ? md.slice(md.indexOf('\n', firstH1 + 1) + 1) : md;
+      if (typeof marked !== 'undefined') {
+        contentEl.innerHTML = marked.parse(body);
+        contentEl.hidden = false;
+        statusEl.hidden = true;
+      } else {
+        showRawFallback(body, 'Showing raw changelog (offline — markdown renderer unavailable):');
+      }
+    })
+    .catch(function () {
+      showTextFallback("Couldn't read the local CHANGELOG.md.");
+    });
+})();
+</script>
+</body>
+</html>

@@ -4,6 +4,9 @@ node_modules/
 # Environment files
 .env
 
+# Per-machine active profile pointer (written by dashboard/setup.command)
+.ai2fi-config
+
 # OS cruft
 .DS_Store
 

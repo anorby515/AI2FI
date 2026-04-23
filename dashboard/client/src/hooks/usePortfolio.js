@@ -6,15 +6,27 @@ export function usePortfolio() {
   const [quotes, setQuotes] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // emptyState carries { noProfile | noSpreadsheet, profileName?, hint } when the server
+  // signals that the dashboard has nothing to render yet — used by the UI to show
+  // an onboarding screen instead of a red error.
+  const [emptyState, setEmptyState] = useState(null);
 
   const fetchPortfolio = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setEmptyState(null);
     try {
       const res = await fetch('/api/portfolio');
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
-      const data = await res.json();
-      setLots(data);
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        if (body && (body.noProfile || body.noSpreadsheet)) {
+          setEmptyState(body);
+          setLots([]);
+          return;
+        }
+        throw new Error(`Server error ${res.status}`);
+      }
+      setLots(Array.isArray(body) ? body : []);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -51,7 +63,7 @@ export function usePortfolio() {
   const positions = aggregateOpenBySymbol(lots);
   const allPositions = aggregateAllBySymbol(lots);
 
-  return { lots, openLots, closedLots, positions, allPositions, quotes, loading, error, refetch: fetchPortfolio };
+  return { lots, openLots, closedLots, positions, allPositions, quotes, loading, error, emptyState, refetch: fetchPortfolio };
 }
 
 export function useBenchmark(ticker = 'SPY') {

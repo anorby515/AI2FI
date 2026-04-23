@@ -1,9 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ExcelJS = require('exceljs');
-const path = require('path');
-
-const SPREADSHEET = path.join(__dirname, '../../../user-profiles/andrew/private/Finances.xlsx');
+const { resolveProfile, noProfileResponse, noSpreadsheetResponse } = require('../profile-resolver');
 
 // Row mapping (1-indexed in Excel, matches the HTML dashboard)
 const ROW_MAP = {
@@ -29,9 +27,9 @@ function formatDate(val) {
   return null;
 }
 
-async function parseNetWorth() {
+async function parseNetWorth(spreadsheetPath) {
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.readFile(SPREADSHEET);
+  await wb.xlsx.readFile(spreadsheetPath);
   const ws = wb.getWorksheet('Net Worth MoM');
 
   // Row 2 has dates starting from column 3 (C)
@@ -68,8 +66,11 @@ async function parseNetWorth() {
 
 // GET /api/networth
 router.get('/', async (req, res) => {
+  const profile = resolveProfile();
+  if (!profile) return res.status(404).json(noProfileResponse());
+  if (!profile.hasSpreadsheet()) return res.status(404).json(noSpreadsheetResponse(profile));
   try {
-    const data = await parseNetWorth();
+    const data = await parseNetWorth(profile.spreadsheetPath);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });

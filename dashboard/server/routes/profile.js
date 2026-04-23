@@ -4,14 +4,14 @@
 // The dashboard markdown is the synthesis artifact described in core/design-backlog.md
 // (Financial Dashboard artifact pattern). This route exposes it as JSON so the client
 // can render it with a markdown library.
+//
+// Active profile is resolved via ../profile-resolver (env > .ai2fi-config > auto-detect).
 
 const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-
-// user-profiles/ lives at the repo root. From dashboard/server/routes/ that's three ..
-const PROFILES_ROOT = path.join(__dirname, '../../../user-profiles');
+const { resolveProfile, listProfileDirs, PROFILES_DIR } = require('../profile-resolver');
 
 // Allow-list of artifact names that can be requested. Keeps the path-join safe
 // from `..` traversal and documents the contract.
@@ -19,15 +19,34 @@ const ARTIFACTS = {
   'financial-dashboard': 'financial-dashboard.md',
 };
 
-// Allow-list of users. Today: just andrew. Easy to extend.
-const USERS = new Set(['andrew']);
+// GET /api/profile — returns the active profile's metadata so the client
+// knows whose data to render. Used instead of hardcoding a username on the
+// client side.
+router.get('/', (_, res) => {
+  const profile = resolveProfile();
+  if (!profile) {
+    return res.status(404).json({
+      noProfile: true,
+      profiles: listProfileDirs(),
+      error: 'No user profile configured',
+    });
+  }
+  res.json({
+    name: profile.name,
+    hasSpreadsheet: profile.hasSpreadsheet(),
+    profiles: listProfileDirs(),
+  });
+});
 
-// GET /api/profile/:user/:artifact
-//   returns: { markdown: string, lastModified: ISO string, source: relative path }
+// GET /api/profile/:user/:artifact — returns { markdown, lastModified, source }
+// for a named artifact belonging to a user. The allow-list of users is the
+// set of directories present under user-profiles/ (minus the example template);
+// it's dynamic so new users don't need a code change.
 router.get('/:user/:artifact', (req, res) => {
   const { user, artifact } = req.params;
 
-  if (!USERS.has(user)) {
+  const known = new Set(listProfileDirs());
+  if (!known.has(user)) {
     return res.status(404).json({ error: `Unknown user: ${user}` });
   }
   const filename = ARTIFACTS[artifact];
@@ -35,7 +54,7 @@ router.get('/:user/:artifact', (req, res) => {
     return res.status(404).json({ error: `Unknown artifact: ${artifact}` });
   }
 
-  const filePath = path.join(PROFILES_ROOT, user, filename);
+  const filePath = path.join(PROFILES_DIR, user, filename);
   try {
     const stat = fs.statSync(filePath);
     const markdown = fs.readFileSync(filePath, 'utf8');

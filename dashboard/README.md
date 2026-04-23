@@ -14,20 +14,36 @@ Note on Node: if you use `nvm`, see the caveat at the bottom. The short version 
 
 ## Quick start
 
-1. Open Finder and navigate to this folder (`dashboard/`).
-2. Double-click `setup.command`.
-3. A Terminal window opens. Follow any prompts. The script will install dependencies, build the client, register a launchd agent, and open `http://localhost:3001` in your browser.
+The path with the least friction is a one-line Terminal install from the repo root:
 
-That's it. The dashboard will now auto-start every time you log into your Mac.
+```
+curl -L https://github.com/anorby515/AI2FI/archive/refs/heads/main.tar.gz | tar xz && cd AI2FI-main && bash dashboard/setup.command
+```
 
-First run takes a couple of minutes (npm install + client build). Subsequent logins are near-instant — launchd just runs the already-built server.
+This downloads, unpacks, and runs setup in one step. No Gatekeeper prompt, no rename.
 
-### First time? A small Gatekeeper hurdle
+Alternatively, if you already have the repo locally (via `git clone` or an unzipped download):
 
-The first time you double-click `setup.command`, macOS may refuse to run it because it was downloaded from the internet. If that happens:
+```
+cd /path/to/AI2FI
+bash dashboard/setup.command
+```
 
-1. Right-click `setup.command` → **Open** → **Open** in the dialog.
-2. It runs once with your explicit permission; macOS remembers and won't ask again.
+Either way, the script installs dependencies, builds the client, registers a launchd agent, and opens `http://localhost:3001` in your browser. First run takes a couple of minutes; subsequent logins are near-instant.
+
+### If you double-click `setup.command` from Finder
+
+It works, but on macOS 15+ Gatekeeper will block the file if it was downloaded from the internet (ZIP downloads get the quarantine flag; git clones don't). You'll see a "setup.command cannot be opened" dialog with only "Move to Trash" and "Done" options.
+
+To get past it:
+
+1. Click **Done**.
+2. Open **System Settings → Privacy & Security**.
+3. Scroll to the Security section at the bottom.
+4. Next to "*setup.command was blocked to protect your Mac*", click **Open Anyway**.
+5. Confirm and authenticate.
+
+The `bash dashboard/setup.command` path above avoids all of this — `bash` reads the script contents and doesn't invoke the Gatekeeper check that Finder does.
 
 ## What `setup.command` does
 

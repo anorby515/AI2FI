@@ -6,7 +6,8 @@
 // canonical user-facing view of FOO state + active goals.
 //
 // This component:
-//   1. Fetches /api/profile/andrew/financial-dashboard
+//   1. Resolves the active profile via GET /api/profile, then fetches
+//      /api/profile/<name>/financial-dashboard
 //   2. Strips and parses YAML frontmatter for the header strip
 //   3. Renders the markdown body with a small inline renderer
 //
@@ -22,8 +23,6 @@
 // If the markdown grows beyond this, swap in react-markdown + remark-gfm.
 
 import { useEffect, useState } from 'react';
-
-const ENDPOINT = '/api/profile/andrew/financial-dashboard';
 
 // ---------- Frontmatter ----------
 
@@ -305,13 +304,21 @@ export default function FinancialStrategy() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(ENDPOINT)
-      .then(async r => {
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.error || 'Failed to load dashboard');
-        return data;
-      })
-      .then(data => {
+    (async () => {
+      try {
+        // Resolve active profile first so we know whose dashboard to load.
+        const profRes = await fetch('/api/profile');
+        const profBody = await profRes.json().catch(() => null);
+        if (!profRes.ok || !profBody || !profBody.name) {
+          if (!cancelled) setState({ status: 'no-profile' });
+          return;
+        }
+        const res = await fetch(`/api/profile/${encodeURIComponent(profBody.name)}/financial-dashboard`);
+        const data = await res.json();
+        if (!res.ok) {
+          if (!cancelled) setState({ status: 'no-artifact', profileName: profBody.name });
+          return;
+        }
         if (cancelled) return;
         const { meta, body } = parseFrontmatter(data.markdown);
         setState({
@@ -320,26 +327,46 @@ export default function FinancialStrategy() {
           body,
           source: data.source,
           lastModified: data.lastModified,
+          profileName: profBody.name,
         });
-      })
-      .catch(err => {
+      } catch (err) {
         if (!cancelled) setState({ status: 'error', error: err.message });
-      });
+      }
+    })();
     return () => { cancelled = true; };
   }, []);
 
   if (state.status === 'loading') {
     return <div className="financial-strategy fs-loading">Loading your strategy…</div>;
   }
+  if (state.status === 'no-profile') {
+    return (
+      <div className="financial-strategy fs-error">
+        <h2>No profile configured yet</h2>
+        <p>The dashboard needs a user profile before it can show a financial strategy.</p>
+        <p className="fs-hint">
+          Create a folder at <code>user-profiles/&lt;your-name&gt;/</code> (see{' '}
+          <code>user-profiles/example/</code> for the layout), then reload.
+        </p>
+      </div>
+    );
+  }
+  if (state.status === 'no-artifact') {
+    return (
+      <div className="financial-strategy fs-error">
+        <h2>No financial strategy yet</h2>
+        <p className="fs-hint">
+          Expected file: <code>user-profiles/{state.profileName}/financial-dashboard.md</code>.
+          The Coach refreshes this at the close of each Part 3 / quarterly check-in.
+        </p>
+      </div>
+    );
+  }
   if (state.status === 'error') {
     return (
       <div className="financial-strategy fs-error">
         <h2>Couldn't load Financial Strategy</h2>
         <p>{state.error}</p>
-        <p className="fs-hint">
-          Expected file: <code>user-profiles/andrew/financial-dashboard.md</code>.
-          The Coach refreshes this at the close of each Part 3 / quarterly check-in.
-        </p>
       </div>
     );
   }

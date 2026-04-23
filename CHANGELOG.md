@@ -11,11 +11,19 @@ every edit here updates the public notes without a rebuild.
 ## [Unreleased]
 
 ### Added
-- Static welcome page at `docs/index.html`, served via GitHub Pages from the
-  `main` branch `/docs` folder. Covers install, dashboard basics, coach entry
-  point, and release notes. Terminal-style branding with macOS title bar and
-  pixel wordmark.
-- `CHANGELOG.md` at the repo root. The welcome page fetches it client-side.
+- `Welcome-to-AI2FI.html` at the repo root — a local, path-aware welcome
+  page users double-click after unzipping. Browsers don't hit Gatekeeper,
+  so the file opens immediately. JavaScript inspects `window.location` to
+  detect the folder's absolute path and pre-fills a copy-to-clipboard
+  install command with that path already baked in. Renders the local
+  `CHANGELOG.md` (works offline); falls back to a GitHub link if the
+  local read fails.
+- Static welcome page at `docs/index.html`, served via GitHub Pages from
+  the `main` branch `/docs` folder. Mirrors the same 4-section structure
+  (Install / After install / Start coaching / What's new). Terminal-style
+  branding with macOS title bar and pixel wordmark.
+- `CHANGELOG.md` at the repo root. Single source of truth for release
+  notes; rendered by both welcome pages.
 - `RELEASING.md` describing the tag-and-release flow.
 - "Release process & public surface" section in
   `ai-to-fi-architecture.md`.
@@ -28,6 +36,9 @@ every edit here updates the public notes without a rebuild.
 - Welcome page restructure: `1. Install` now presents three paths ranked by
   friction (one-line, git clone, ZIP+Finder); `2. After install` covers
   spreadsheet placement and uninstall.
+- `README.md` expanded to the same 4-section structure so the GitHub repo
+  page shows the full welcome. Layout block updated to include
+  `Welcome-to-AI2FI.html`.
 - `dashboard/README.md` Gatekeeper instructions updated for macOS 15+
   (System Settings → Privacy & Security → Open Anyway). The old right-click
   → Open trick no longer works on Sequoia and newer.

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 // Each entry: { key, label, children?: [...] }
-const NAV = [
+const BASE_NAV = [
   { key: 'welcome', label: 'Welcome' },
   { key: 'strategy', label: 'Financial Strategy' },
   {
@@ -31,8 +31,14 @@ const NAV = [
   },
 ];
 
-export default function Sidebar({ activeView, onViewChange }) {
+export default function Sidebar({ activeView, onViewChange, isSampleData = false }) {
   const [expanded, setExpanded] = useState(false);
+
+  // Prepend "Getting Started" when the dashboard is running on sample data.
+  // Falls off the list once the onboarding skill clears the marker.
+  const nav = isSampleData
+    ? [{ key: 'getting-started', label: 'Getting Started' }, ...BASE_NAV]
+    : BASE_NAV;
 
   return (
     <nav
@@ -43,7 +49,7 @@ export default function Sidebar({ activeView, onViewChange }) {
       <div className="sidebar-logo">
         {expanded ? 'AI2FI' : 'A'}
       </div>
-      {NAV.map(item => {
+      {nav.map(item => {
         const hasChildren = item.children && item.children.length > 0;
         return (
           <div key={item.key}>

@@ -22,6 +22,12 @@ const ARTIFACTS = {
 // GET /api/profile — returns the active profile's metadata so the client
 // knows whose data to render. Used instead of hardcoding a username on the
 // client side.
+//
+// `isSampleData` is true when dashboard/setup.command seeded the profile
+// from core/sample-data/ on first install (it writes a .sample-data marker
+// in the profile directory). The client keys on this to default to the
+// "Getting Started" view and show a sample-data banner. The marker is
+// torn down by the /financial-check-in onboarding skill at Part 3 close.
 router.get('/', (_, res) => {
   const profile = resolveProfile();
   if (!profile) {
@@ -31,9 +37,11 @@ router.get('/', (_, res) => {
       error: 'No user profile configured',
     });
   }
+  const markerPath = path.join(profile.profileDir, '.sample-data');
   res.json({
     name: profile.name,
     hasSpreadsheet: profile.hasSpreadsheet(),
+    isSampleData: fs.existsSync(markerPath),
     profiles: listProfileDirs(),
   });
 });

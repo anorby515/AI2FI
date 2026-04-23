@@ -11,6 +11,22 @@ every edit here updates the public notes without a rebuild.
 ## [Unreleased]
 
 ### Added
+- **Functional first-run experience with sample data.** Setup now seeds
+  new profiles from `core/sample-data/Finances.xlsx` (committed template),
+  so the dashboard lands on a fully-populated view instead of an empty
+  onboarding screen. A `.sample-data` marker file in the profile folder
+  tags the install as demo data; the `/financial-check-in` skill removes
+  it at Part 3 close when the user commits to their own data.
+- **"Getting Started" dashboard view** (`client/src/components/GettingStarted.jsx`).
+  Selected by default when the server reports `isSampleData: true`.
+  Explains that the user is looking at demo data, and points them into
+  Claude to run the boot-experience onboarding (`let's start my financial
+  journey` / `/financial-check-in`).
+- **Sticky "sample data" banner** across other dashboard views when
+  running on seeded data, with a one-click jump back to Getting Started.
+- `/api/profile` now returns `isSampleData` based on the marker file.
+- `core/sample-data/` directory with a README documenting the seeding
+  mechanism, shape expectations, and teardown path.
 - `Welcome-to-AI2FI.html` at the repo root — a local, path-aware welcome
   page users double-click after unzipping. Browsers don't hit Gatekeeper,
   so the file opens immediately. JavaScript inspects `window.location` to

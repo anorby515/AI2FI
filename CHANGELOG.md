@@ -12,12 +12,25 @@ every edit here updates the public notes without a rebuild.
 
 ### Added
 - Static welcome page at `docs/index.html`, served via GitHub Pages from the
-  `main` branch `/docs` folder. Covers download, dashboard setup, coach entry
-  point, and release notes.
+  `main` branch `/docs` folder. Covers install, dashboard basics, coach entry
+  point, and release notes. Terminal-style branding with macOS title bar and
+  pixel wordmark.
 - `CHANGELOG.md` at the repo root. The welcome page fetches it client-side.
 - `RELEASING.md` describing the tag-and-release flow.
 - "Release process & public surface" section in
   `ai-to-fi-architecture.md`.
+- One-line Terminal install path as the recommended way to set up the
+  dashboard (`curl ... | tar xz && cd ... && bash dashboard/setup.command`)
+  — avoids the macOS Gatekeeper block that affects Finder double-clicks of
+  `.command` files downloaded from the internet.
+
+### Changed
+- Welcome page restructure: `1. Install` now presents three paths ranked by
+  friction (one-line, git clone, ZIP+Finder); `2. After install` covers
+  spreadsheet placement and uninstall.
+- `dashboard/README.md` Gatekeeper instructions updated for macOS 15+
+  (System Settings → Privacy & Security → Open Anyway). The old right-click
+  → Open trick no longer works on Sequoia and newer.
 
 ## [0.1.0] - 2026-04-18
 

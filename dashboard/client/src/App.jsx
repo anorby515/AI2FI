@@ -15,6 +15,7 @@ import ComingSoon from './components/ComingSoon';
 import Welcome from './components/Welcome';
 import FinancialStrategy from './components/FinancialStrategy';
 import OnboardingEmptyState from './components/OnboardingEmptyState';
+import GettingStarted from './components/GettingStarted';
 import './App.css';
 
 // Map sidebar keys to Coming Soon page titles
@@ -91,6 +92,21 @@ export default function App() {
     fetch('/api/status').then(r => r.json()).then(setApiStatus).catch(() => {});
   }, []);
   useEffect(() => { fetchStatus(); }, [fetchStatus]);
+
+  // Active profile (for sample-data detection + Getting Started routing)
+  const [profile, setProfile] = useState(null);
+  useEffect(() => {
+    fetch('/api/profile')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        setProfile(data);
+        // First-load routing: if the dashboard is running on sample data,
+        // drop the user on Getting Started instead of the generic Welcome.
+        if (data.isSampleData) setSidebarView('getting-started');
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleCheckYahoo() {
     setChecking(true);
@@ -267,7 +283,7 @@ export default function App() {
   if (selectedSymbol) {
     return (
       <div className="app">
-        <Sidebar activeView={sidebarView} onViewChange={(v) => { setSidebarView(v); setSelectedSymbol(null); }} />
+        <Sidebar activeView={sidebarView} isSampleData={!!profile?.isSampleData} onViewChange={(v) => { setSidebarView(v); setSelectedSymbol(null); }} />
         <div className="app-body">
         <header className="app-header">
           <div className="header-filters">
@@ -316,7 +332,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Sidebar activeView={sidebarView} onViewChange={setSidebarView} />
+      <Sidebar activeView={sidebarView} isSampleData={!!profile?.isSampleData} onViewChange={setSidebarView} />
       <div className="app-body">
       <header className="app-header">
         <div className="header-filters">
@@ -345,7 +361,20 @@ export default function App() {
       </header>
       {(sidebarView === 'portfolio' || sidebarView === 'analysis') && statusBar}
 
+      {profile?.isSampleData && sidebarView !== 'getting-started' && (
+        <div className="sample-data-banner">
+          <span>
+            <strong>Sample data.</strong> This dashboard is populated from the committed template &mdash;
+            none of it is yours yet.
+          </span>
+          <button className="sample-data-cta" onClick={() => setSidebarView('getting-started')}>
+            Start onboarding &rarr;
+          </button>
+        </div>
+      )}
+
       <main>
+        {sidebarView === 'getting-started' && <GettingStarted profileName={profile?.name} />}
         {sidebarView === 'welcome' && <Welcome />}
         {sidebarView === 'strategy' && <FinancialStrategy />}
         {sidebarView === 'networth' && <NetWorthView />}
@@ -403,7 +432,7 @@ export default function App() {
           )}
         </>)}
 
-        {!['welcome', 'strategy', 'networth', 'college', 'portfolio'].includes(sidebarView) && (
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'portfolio'].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

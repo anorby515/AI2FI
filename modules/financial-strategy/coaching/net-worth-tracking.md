@@ -53,6 +53,7 @@ Skip if the user has already run it and the module memory shows `comfort: confid
 - **Resist the urge to validate or comfort.** "Big or small, the number is just a starting line" — say it once, then drop it.
 - **Calibrate to existing knowledge.** If they're already fluent (they say "yes, I track it monthly in YNAB"), shorten Movement 2 dramatically. Don't make them sit through a definition they already own.
 - **One question at a time.** Never stack.
+- **Numbers belong in the file, not in the conversation.** Aggregate figures and ranges the user volunteers (estimates, "I'm somewhere around X") are fair game — those are calibration moves. Per-account balances and line-item detail belong in the spreadsheet, full stop. The Coach never asks for them, never solicits them, never offers to type them on the user's behalf. If the user starts dictating numbers, redirect: *"Pop those into the spreadsheet directly — that's where they live. I'm here for the thinking, not the typing."*
 
 ---
 
@@ -176,7 +177,7 @@ Capture the cadence and the first scheduled date.
 
 > "When you populate the `Net Worth MoM` sheet in your spreadsheet, the dashboard will render it as a chart over time. The sheet is a snapshot per month; the dashboard is the trend. Watching the trend is the actual practice — one number is just a number."
 
-If template-setup is already done and they have data: pivot to showing them their actual current net worth in the dashboard. Compare to their estimate from the start of this movement. Note the delta in temperament memory if it's large.
+If template-setup is already done and they have data: prompt them to compare their estimate to what the dashboard shows. The Coach doesn't see the actual figure — the user reports the comparison ("close to what I guessed", "higher", "lower", or declines to share). Capture their report in temperament memory.
 
 ---
 
@@ -225,13 +226,13 @@ The file pops open in the user's default spreadsheet app — Excel, Numbers, Lib
 
 **Then offer two paths**:
 
-> "Two options. We can do the first column together right now — I'll walk you through each row, you tell me the number, I'll keep us moving. Takes about ten minutes. Or you can do it yourself before [cadence date] and I'll check in then."
+> "Two options. You can populate it right now — I'll stay with you, available for category questions, but you're driving the entry. Takes about ten minutes. Or you can do it on your own before [cadence date] and I'll check in then."
 
 Wait for the choice.
 
-- **"Let's do it now"** → run the *First entry — Coach-assisted walkthrough* below.
+- **"I'll do it now"** → run the *First entry — guided self-entry* below.
 - **"I'll do it myself by [date]"** → confirm the date, capture in memory under `next_action`, end.
-- **"Can you just do it?"** → no. The Coach doesn't have access to private numbers, and even if it did, the practice of touching the numbers is part of the point. Reframe: *"I'm here to keep us moving — but the entries are yours."*
+- **"Can you just type the numbers in for me?"** → no. The Coach doesn't take dictation of financial figures and doesn't enter them on the user's behalf — those belong in the file directly, not in the conversation. Reframe: *"Pop them into the spreadsheet as you go — that's where they live. I'm here for the thinking, not the typing."*
 
 ### Residue check
 
@@ -251,46 +252,67 @@ If every prior beat earned a one-line affirmation ("makes sense", "got it", "yep
 
 ---
 
-## First entry — Coach-assisted walkthrough (optional)
+## First entry — guided self-entry (optional)
 
-Run this only if the user picked "let's do it now" at the action handoff. Goal: by the end, they have one populated column in `Net Worth MoM` and have seen the dashboard render their actual number.
+Run this only if the user picked "I'll do it now" at the action handoff. Goal: by the end, they have one populated column in `Net Worth MoM` and have seen the dashboard render their net worth. **The Coach is a presence here, not a data-entry assistant.** The user types the numbers into the spreadsheet themselves; the Coach is available to answer category questions, resolve ambiguities, and prompt the next step.
 
 ### Setup
 
-> "Open `user-profiles/<your-name>/private/Finances.xlsx` and go to `Net Worth MoM`. What's the next empty column?"
+Confirm the file is open and they can see the `Net Worth MoM` sheet. Confirm the column for the entry date exists in row 2 (or have them add it). Then ask once:
 
-Confirm the column. The header in row 2 is the date — use today if running the cadence today, or the upcoming cadence date if they're staging next month's entry.
+> "Got the file open and ready?"
 
-### Walk the rows
+Wait for confirmation before moving on.
 
-The `Net Worth MoM` sheet has rows for `debt`, `cash/savings/CD`, `brokerage`, `RSUs`, `retirement`, `assets`, `education`. Walk them in this order, one at a time. Don't ask for them all at once — the point is steady forward motion, not a 7-row prompt:
+### Hand them the row list
 
-1. **Cash & savings.** *"Sum of checking + savings + HYSA + any CDs. What's that total?"*
-2. **Brokerage.** *"Taxable brokerage, including vested-but-unsold RSUs at current price. Total?"*
-3. **RSUs (vested).** *"If your sheet tracks RSUs separately from brokerage, this is where they go. Skip if you bundle them."*
-4. **Retirement.** *"401(k) + IRA / Roth + employer plan balances. Total?"*
-5. **Education.** *"529 + Coverdell + any other education-dedicated accounts."*
-6. **Assets.** *"Real assets — house at a defensible value, vehicles at used-value, anything else material. Skip if you don't track this monthly."*
-7. **Debt.** *"Mortgage + student loans + auto + credit card statement balance + medical + anything else outstanding. Single number, sum of everything you owe."*
+Give the categories all at once — they're going to work through them themselves at their own pace. Order matters less than completeness.
 
-For each row, confirm the number is entered before moving on. Don't perform the net-worth math out loud — that's the dashboard's job, and watching the dashboard reveal the number is part of the calibration moment.
+> "Here are the rows to populate, in whatever order makes sense to you:
+>
+> - **Cash & savings** — checking, savings, HYSA, CDs.
+> - **Brokerage** — taxable accounts, including any vested-but-unsold RSUs at current price.
+> - **Retirement** — 401(k), IRA, Roth, employer plan balances.
+> - **Education** — 529, Coverdell, dedicated education accounts.
+> - **Real assets** — house at a defensible value, vehicles at used-value, anything material. Skip if you don't track this monthly.
+> - **Debt** — mortgage, student loans, auto, credit card statement balances, medical, anything outstanding.
+>
+> Round numbers are fine — you're not balancing to the penny. Take your time. Ping me if a category gets ambiguous, otherwise just tell me when you're done and we'll refresh the dashboard."
 
-### Wrap and calibrate
+### While they work
 
-After the column is populated:
+Stay available. The user may surface mid-flow questions: *"does my crypto go in brokerage?"* *"what about the security deposit on my apartment?"* *"do I count the IRS refund I'm waiting on?"*
 
-> "Save the file. Open `localhost:3001` and refresh — you should see your first data point on the Net Worth chart. How close was it to your $X estimate?"
+Answer in one or two sentences and let them keep going. **Do not ask for numbers, even casually.** If they volunteer a figure, redirect them back to the sheet rather than inviting them to keep dictating.
 
-This is the calibration moment the entire session has been building toward. Capture the delta in module memory under temperament notes:
+If they get stuck or distracted: *"How's it going — anything blocking you on a category?"*
 
-- **Estimate within ±10%** — calibrated. Note `temperament: well-calibrated`.
-- **Estimate too high by >20%** — common with people who anchor on gross account balances and forget liabilities. Note `temperament: optimistic-anchor` and revisit at next quarterly check.
-- **Estimate too low by >20%** — common with people who haven't looked at retirement balances in a while or anchor on liquid only. Note `temperament: pessimistic-anchor`.
-- **No estimate given** — capture the actual; revisit calibration next quarter.
+If they cancel mid-entry: honor it without friction. *"No problem — save what you've got. We can pick it up next session, or you can finish on your own before [cadence date]."* Update memory: `first_entry_made: false` (or `partial`), `next_action: "Finish first NW column by <date>"`.
+
+### When they signal they're done
+
+> "Save the file, then refresh `localhost:3001`. Tell me when the chart loads."
+
+Wait for them to refresh and confirm.
+
+### Calibrate from their report
+
+Once they've seen the dashboard render:
+
+> "How does the number compare to the $X you guessed at the start? Roughly in range, surprisingly higher, surprisingly lower?"
+
+The Coach does not see the actual figure. The user reports the comparison qualitatively. Capture the temperament tag from their words:
+
+- **"Pretty close" / "right around what I guessed"** → `temperament: well-calibrated`
+- **"Higher than I thought"** → `temperament: pessimistic-anchor`
+- **"Lower than I thought"** → `temperament: optimistic-anchor`
+- **"I'd rather not say" / they decline** → respect it; capture only `temperament: declined-to-share` and move on.
+
+Don't push for a number. The point of the calibration is the user's relationship with their own estimate, not a metric the Coach extracts.
 
 ### If the dashboard still shows the demo banner
 
-The template-fallback was active because `private/Finances.xlsx` didn't exist (or was empty) when the dashboard last polled. Tell them to refresh again — the resolver checks `private/` per request, so the next poll will pick up the populated file and pivot to their data automatically. No restart needed.
+The template-fallback was active because `private/Finances.xlsx` didn't exist (or was unchanged) when the dashboard last polled. Tell them to refresh again — the resolver checks `private/` per request, so the next poll picks up the populated file and pivots to their data automatically. No restart needed.
 
 ---
 
@@ -304,19 +326,21 @@ Update `user-profiles/<name>/modules/financial-strategy/memory.md` under `### ne
 - current_state: <not_yet | starting | active | mostly_done | complete>
 - comfort: <emerging | comfortable | confident | mastery>
 - last_touched: YYYY-MM-DD
-- first_entry_made: <true | false>          # did they populate their first column this session?
-- first_entry_date: <YYYY-MM-DD | null>     # when the first column was populated, if at all
+- first_entry_made: <true | false | partial>    # did they populate the first column this session?
+- first_entry_date: <YYYY-MM-DD | null>          # when the first column was populated, if at all
 - next_action: <verbatim hand-off — e.g. "Populate first NW column by 2026-05-01">
-- revisit_date: YYYY-MM-DD                  # the next scheduled review
+- revisit_date: YYYY-MM-DD                       # the next scheduled review
 - notes: |
-    Ran net-worth coaching session. Pre-math estimate: <amount or range>.
+    Ran net-worth coaching session. Pre-math estimate: <amount or range, as user offered>.
     Cadence: <monthly|quarterly|other>, starting <date>.
-    First entry: <made together this session | committed for <date> | deferred>.
-    Estimate-vs-actual delta (if first entry made): <±X% | not measured>.
+    First entry: <user populated this session | committed for <date> | deferred | partial>.
+    Calibration (self-reported): <close | higher | lower | declined-to-share | n/a>.
     Notable surfaces: <one or two lines, in user voice>.
     Temperament: <well-calibrated | optimistic-anchor | pessimistic-anchor |
-                  anxious | calm | other>.
+                  declined-to-share | anxious | calm | other>.
 ```
+
+The Coach never records dollar figures from the spreadsheet here. Estimates and ranges the user volunteered in conversation are fine to capture; per-account numbers are not. Memory tracks *patterns* and *progress*, not balances.
 
 Map the comfort level by what you observed:
 

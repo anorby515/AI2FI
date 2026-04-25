@@ -62,9 +62,9 @@ Running list. Seeded from the flow above; add emergent items as they surface —
 
 **Modules — build-out**
 - [ ] Financial Strategy
-	- [x] Net Worth Tracking — reference content (`topics/net-worth-tracking.md`) and coaching script (`coaching/net-worth-tracking.md`) both drafted; in dog-fooding
-	- [ ] High Level Budget + Sankey viewer
-- [ ] Savings & Debt Strategy *(module not yet created)*
+	- [x] **Net Worth Tracking** — complete. Reference content (`topics/net-worth-tracking.md`), conversational coaching script (`coaching/net-worth-tracking.md`), dog-fooded twice and revised: load-bearing hand-off action, profile-resolve + offer-to-open file, "numbers belong in the file" privacy posture (Coach never receives line-item financial data — user types into spreadsheet themselves, Coach available for category questions).
+	- [ ] **High Level Budget + Sankey viewer** — *next pickup. Pattern established by Net Worth Tracking: write `topics/high-level-budget.md` (reference) and `coaching/high-level-budget.md` (script). Defer Sankey rendering until the data shape is clear.*
+- [ ] Savings & Debt Strategy *(module not yet created — largest unstarted module; covers FOO steps 4, 5, 7, 8, 11, 13b, 13c, 14)*
 	- [ ] Emergency
 	- [ ] Non-discretionary Savings (HSA, Planned, Unplanned)
 	- [ ] Debt Reduction (High-Interest)
@@ -76,6 +76,8 @@ Running list. Seeded from the flow above; add emergent items as they surface —
 	- [ ] Liquid Investing (Taxable Brokerage, Crypto)
 
 **Cross-cutting / emergent**
+- [ ] Wire `modules/financial-strategy/cadence-reminders.md` to actually fire — coaching scripts say "I'll remind you", but nothing currently does the reminding (surfaced during Net Worth dog-food)
+- [ ] Generalize `skills/module-coach/SKILL.md` to dispatch sub-topic content (defer until at least one more sub-topic exists to test against)
 - [ ] Reconcile `core/master-financial-order-of-operations.md` (TODO stub) with `modules/financial-strategy/frameworks/financial-order-of-operations.md` (canonical)
 - [ ] Flesh out `core/master-assessment.md` (Pass-1/Pass-2 routing tree)
 - [ ] Flesh out `core/temperament-tracker.md`

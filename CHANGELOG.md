@@ -53,8 +53,19 @@ every edit here updates the public notes without a rebuild.
 - `modules/financial-strategy/topics/net-worth-tracking.md` — first
   sub-topic content under the new flat-modules + sub-topics
   convention. Reference / spec layer (definitions, traps, readiness,
-  memory schema). The conversational coaching script is queued as the
-  next task.
+  memory schema).
+- `modules/financial-strategy/coaching/net-worth-tracking.md` —
+  conversational walkthrough the Coach runs in real time. ~15-minute
+  teaching session covering why net worth matters, what it's made of,
+  and how to think about your own. Establishes the `coaching/`
+  directory convention as the sibling to `topics/`. Iterated twice
+  via dog-food: gained a load-bearing action hand-off (resolve profile,
+  offer to open file, two paths to populating the first column) and a
+  load-bearing privacy posture — **numbers belong in the file, not in
+  the conversation**. The Coach never receives line-item financial
+  data; the user types into the spreadsheet themselves while the Coach
+  remains available for category questions and self-reported
+  calibration.
 
 ### Removed
 - The auto-seed block in `dashboard/setup.command`. The `.sample-data`

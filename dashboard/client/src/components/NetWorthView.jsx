@@ -1,13 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Stat, Segment, Chart, ProgressBar } from '../ui';
+import { Card, Stat, Segment, Chart } from '../ui';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './NetWorthView.css';
 
 /**
- * NetWorthView — Bento-ported reference screen.
+ * NetWorthView — Bento-styled.
  *
  * Same data contract as before (fetches /api/networth which returns
  * [{ date, net_worth, debt, cash_savings_cd, brokerage, rsus, retirement,
- *    assets, education, debt_ratio }]). Renders with the new primitives.
+ *    assets, education, debt_ratio }]).
+ *
+ * Layout:
+ *   Hero card — total net worth + MoM/YoY deltas + line chart over selected range.
+ *   Composition pie — assets only (debt is a separate scoreboard tile below).
+ *   2x4 value grid — Cash | Debt | Debt Ratio | Assets / Brokerage | RSUs | Retirement | Education.
  */
 
 const RANGE_OPTIONS = [
@@ -20,12 +26,12 @@ const RANGE_OPTIONS = [
 ];
 
 const COMPOSITION_KEYS = [
-  { key: 'brokerage',       label: 'Brokerage',   color: 'var(--accent)' },
-  { key: 'retirement',      label: 'Retirement',  color: 'var(--accent-2)' },
-  { key: 'rsus',            label: 'RSUs',        color: '#f472b6' },
-  { key: 'cash_savings_cd', label: 'Cash',        color: '#fbbf24' },
-  { key: 'assets',          label: 'Other assets',color: '#9ba4cc' },
-  { key: 'education',       label: 'Education',   color: '#a78bfa' },
+  { key: 'brokerage',       label: 'Brokerage',    color: 'var(--accent)' },
+  { key: 'retirement',      label: 'Retirement',   color: 'var(--accent-2)' },
+  { key: 'rsus',            label: 'RSUs',         color: '#f472b6' },
+  { key: 'cash_savings_cd', label: 'Cash',         color: '#fbbf24' },
+  { key: 'assets',          label: 'Other assets', color: '#9ba4cc' },
+  { key: 'education',       label: 'Education',    color: '#a78bfa' },
 ];
 
 function fmtUSD(v) {
@@ -86,15 +92,14 @@ export default function NetWorthView() {
   const yoyChange = current && yoy ? current.net_worth - yoy.net_worth : null;
   const yoyPct = current && yoy && yoy.net_worth ? yoyChange / yoy.net_worth : null;
 
-  // Composition from current row
-  const composition = useMemo(() => {
+  // Pie data — assets only; debt is shown separately in the value grid below.
+  const pieData = useMemo(() => {
     if (!current) return [];
-    const total = COMPOSITION_KEYS.reduce((s, k) => s + Math.max(0, current[k.key] || 0), 0);
-    return COMPOSITION_KEYS.map(k => {
-      const v = Math.max(0, current[k.key] || 0);
-      return { ...k, v, p: total > 0 ? (v / total) * 100 : 0 };
-    }).filter(r => r.v > 0);
+    return COMPOSITION_KEYS
+      .map(k => ({ key: k.key, name: k.label, color: k.color, value: Math.max(0, Number(current[k.key]) || 0) }))
+      .filter(slice => slice.value > 0);
   }, [current]);
+  const totalAssets = pieData.reduce((sum, s) => sum + s.value, 0);
 
   if (!data.length) return <div className="nw__loading">Loading net worth data…</div>;
 
@@ -138,40 +143,56 @@ export default function NetWorthView() {
         </div>
       </Card>
 
-      <div className="nw__grid-split">
-        <Card>
-          <div className="nw__composition-title">Composition · current month</div>
-          {composition.map(c => (
-            <div key={c.key} className="nw__composition-row">
-              <div className="nw__composition-head">
-                <span>{c.label}</span>
-                <span>{fmtUSDK(c.v)} · {c.p.toFixed(0)}%</span>
-              </div>
-              <ProgressBar value={c.p} tone={c.color} />
-            </div>
-          ))}
-        </Card>
-
-        <div className="nw__side-grid">
-          <Card><Stat label="Debt" value={fmtUSD(current?.debt)} tone="neg" /></Card>
-          <Card>
-            <Stat
-              label="Debt ratio"
-              value={current?.debt_ratio != null ? (current.debt_ratio * 100).toFixed(1) + '%' : '—'}
-              sub={current?.debt_ratio > 0.3 ? 'Above 30% target' : 'Within target'}
-              subTone={current?.debt_ratio > 0.3 ? 'neg' : 'pos'}
+      {/* Composition pie — current month */}
+      <Card>
+        <div className="nw__composition-title">Composition · current month</div>
+        <ResponsiveContainer width="100%" height={360}>
+          <PieChart>
+            <Pie
+              data={pieData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={140}
+              innerRadius={60}
+              paddingAngle={1}
+              label={({ name, value }) =>
+                totalAssets ? `${name} · ${(value / totalAssets * 100).toFixed(1)}%` : name
+              }
+            >
+              {pieData.map((slice) => (
+                <Cell key={slice.key} fill={slice.color} stroke="var(--surface)" strokeWidth={1} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{ background: 'var(--surface)', border: '1px solid var(--rule-2)', fontSize: 12 }}
+              formatter={(v, name) => [fmtUSDK(v), name]}
             />
-          </Card>
-          <Card><Stat label="Cash" value={fmtUSD(current?.cash_savings_cd)} /></Card>
-          <Card><Stat label="Retirement" value={fmtUSD(current?.retirement)} /></Card>
-        </div>
-      </div>
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+          </PieChart>
+        </ResponsiveContainer>
+      </Card>
 
+      {/* 2x4 value grid: row 1 — top-line; row 2 — asset categories. */}
       <div className="nw__grid-4">
-        <Card><Stat label="Brokerage" value={fmtUSDK(current?.brokerage)} /></Card>
-        <Card><Stat label="RSUs" value={fmtUSDK(current?.rsus)} /></Card>
-        <Card><Stat label="Assets" value={fmtUSDK(current?.assets)} /></Card>
-        <Card><Stat label="Education" value={fmtUSDK(current?.education)} /></Card>
+        <Card><Stat label="Cash" value={fmtUSD(current?.cash_savings_cd)} /></Card>
+        <Card><Stat label="Debt" value={fmtUSD(current?.debt)} tone="neg" /></Card>
+        <Card>
+          <Stat
+            label="Debt ratio"
+            value={current?.debt_ratio != null ? (current.debt_ratio * 100).toFixed(1) + '%' : '—'}
+            sub={current?.debt_ratio > 0.3 ? 'Above 30% target' : 'Within target'}
+            subTone={current?.debt_ratio > 0.3 ? 'neg' : 'pos'}
+          />
+        </Card>
+        <Card><Stat label="Assets" value={fmtUSD(current?.assets)} /></Card>
+      </div>
+      <div className="nw__grid-4">
+        <Card><Stat label="Brokerage" value={fmtUSD(current?.brokerage)} /></Card>
+        <Card><Stat label="RSUs" value={fmtUSD(current?.rsus)} /></Card>
+        <Card><Stat label="Retirement" value={fmtUSD(current?.retirement)} /></Card>
+        <Card><Stat label="Education" value={fmtUSD(current?.education)} /></Card>
       </div>
     </div>
   );

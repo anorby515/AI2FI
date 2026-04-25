@@ -60,26 +60,40 @@ Running list. Seeded from the flow above; add emergent items as they surface —
 - [x] Dashboard template-fallback pattern — `private/Finances.xlsx` first, fall back to `core/sample-data/Financial Template.xlsx`. Client banner + Getting Started default while reading the template; `/api/sync` refuses to run against it. Implemented in `server/profile-resolver.js → resolveSpreadsheet()`.
 - [ ] Welcome-to-AI2FI.html landing page (post-download entry point)
 
+**Dashboard surface**
+- [x] Net Worth view: pie composition + 2x4 value grid layout (pie at 2x2 footprint, 8 value boxes 4x2 to its right). Uses Nocturne `Card` / `Stat` primitives + Recharts pie. `dashboard/client/src/components/NetWorthView.jsx`.
+- [x] Sidebar restructured to match the FOO-aligned module hierarchy. Tree below in the *Modules — build-out* section is now the source of truth for both content and navigation. `dashboard/client/src/components/Sidebar.jsx`.
+- [ ] **`GettingStarted` copy needs to be adaptive.** It's now always visible in the sidebar (not just when `isTemplate === true`), but the text still reads as if the user is on the demo template. Make the copy pivot when `isTemplate === false` so it doesn't lie to live users.
+- [ ] **Decide what to do with implementations no longer reachable from the sidebar:** `Portfolio`, `Analysis`, `Moat Analysis`, `College Savings`, the old `Dashboard` parent. Code paths preserved in `App.jsx` but no nav button triggers them. Either delete cleanly or rewire under the new tree.
+
 **Modules — build-out**
+
+The current sidebar tree is the source of truth. Items checked are content-complete; items unchecked have no reference content yet.
+
 - [ ] Financial Strategy
-	- [x] **Net Worth Tracking** — complete. Reference content (`topics/net-worth-tracking.md`), conversational coaching script (`coaching/net-worth-tracking.md`), dog-fooded twice and revised: load-bearing hand-off action, profile-resolve + offer-to-open file, "numbers belong in the file" privacy posture (Coach never receives line-item financial data — user types into spreadsheet themselves, Coach available for category questions).
-	- [ ] **High Level Budget + Sankey viewer** — *next pickup. Pattern established by Net Worth Tracking: write `topics/high-level-budget.md` (reference) and `coaching/high-level-budget.md` (script). Defer Sankey rendering until the data shape is clear.*
-- [ ] Savings & Debt Strategy *(module not yet created — largest unstarted module; covers FOO steps 4, 5, 7, 8, 11, 13b, 13c, 14)*
-	- [ ] Emergency
-	- [ ] Non-discretionary Savings (HSA, Planned, Unplanned)
-	- [ ] Debt Reduction (High-Interest)
-	- [ ] Discretionary Savings & Debt (Charitable, Non-Mortgage Debts, Irregular/Goals, Mortgage Paydown)
-	- [ ] Whatever You Want
-- [ ] Investing *(partial — fundamentals KC exists, curriculum is a TODO outline)*
-	- [ ] Retirement (401k, IRAs)
-	- [ ] Education Accounts
-	- [ ] Liquid Investing (Taxable Brokerage, Crypto)
+	- [x] **Net Worth** — complete. `topics/net-worth-tracking.md` (reference), `coaching/net-worth-tracking.md` (script). Two dog-food passes; "numbers belong in the file" privacy posture locked in. View ported to Nocturne primitives.
+	- [ ] **Goals** — surfaced under Financial Strategy in the new sidebar. No content yet. Likely belongs as a sub-topic of Part 3 goal-setting (`parts/part-3-goal-setting.md`) — decide whether it's its own coaching script or a wrapper around the Part 3 flow.
+	- [ ] **Annual Budget** — was queued as "High Level Budget + Sankey viewer." Pattern: `topics/annual-budget.md` (reference) + `coaching/annual-budget.md` (script). Defer Sankey render until the data shape is settled.
+	- [ ] **Assets** — new. The asset side of net worth at higher fidelity than the rolled-up `Net Worth MoM` — likely covers homes, vehicles, business equity, anything beyond financial accounts. Out of scope until Net Worth has been used a few cycles.
+- [ ] Cash & Debt *(replaces the prior "Savings & Debt Strategy" module name; covers FOO steps 4, 5, 7, 8, 11, 13b, 13c, 14)*
+	- [ ] Emergency Savings (FOO 4 / 7)
+	- [ ] Non-Discretionary Savings (HSA — FOO 8; planned and unplanned expenses)
+	- [ ] High Interest Debt (FOO 5)
+	- [ ] Non-mortgage Debt (FOO 11)
+	- [ ] Mortgage (FOO 13b)
+	- [ ] Charitable Giving
+	- [ ] Education Savings (FOO 10)
+	- [ ] Irregular Expenses / Goals (FOO 13c)
+	- [ ] Whatever You Want (FOO 14)
+- [ ] Retirement (401k, IRA) *(FOO 6, 9, 12 — pulled out as a top-level module in the new sidebar)*
+- [ ] Investing (ETFs, Stocks, Crypto) *(FOO 13a — top-level. Existing `modules/investing/` has fundamentals KC and a curriculum TODO; needs reconciliation with the new top-level scope)*
 
 **Cross-cutting / emergent**
-- [ ] Wire `modules/financial-strategy/cadence-reminders.md` to actually fire — coaching scripts say "I'll remind you", but nothing currently does the reminding (surfaced during Net Worth dog-food)
-- [ ] Generalize `skills/module-coach/SKILL.md` to dispatch sub-topic content (defer until at least one more sub-topic exists to test against)
-- [ ] Reconcile `core/master-financial-order-of-operations.md` (TODO stub) with `modules/financial-strategy/frameworks/financial-order-of-operations.md` (canonical)
-- [ ] Flesh out `core/master-assessment.md` (Pass-1/Pass-2 routing tree)
-- [ ] Flesh out `core/temperament-tracker.md`
-- [ ] Decide where cross-cutting topics live when they touch multiple modules (e.g., HSA: savings vs. investing)
+- [ ] Wire `modules/financial-strategy/cadence-reminders.md` to actually fire — coaching scripts say "I'll remind you", but nothing currently does the reminding (surfaced during Net Worth dog-food).
+- [ ] Generalize `skills/module-coach/SKILL.md` to dispatch sub-topic content (defer until at least one more sub-topic exists to test against).
+- [ ] Reconcile `core/master-financial-order-of-operations.md` (TODO stub) with `modules/financial-strategy/frameworks/financial-order-of-operations.md` (canonical).
+- [ ] Flesh out `core/master-assessment.md` (Pass-1/Pass-2 routing tree).
+- [ ] Flesh out `core/temperament-tracker.md`.
+- [ ] Decide where cross-cutting topics live when they touch multiple modules (e.g., HSA: Cash & Debt vs. Retirement; Education Savings vs. Investing).
+- [ ] Reconcile the `# Module Build Out` scaffolding section above with the new flat-tree the sidebar uses. The two should agree — current sidebar tree is more current than the original scaffolding.
 	  

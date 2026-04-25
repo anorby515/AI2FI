@@ -20,19 +20,21 @@ import './App.css';
 
 // Map sidebar keys to Coming Soon page titles
 const COMING_SOON_TITLES = {
-  dashboard: 'Dashboard',
-  goals: 'Goal Tracking',
-  budget: 'Annual Budget (Sankey)',
-  retirement: 'Retirement',
-  health: 'Health Savings',
-  debt: 'Debt',
-  'debt-advisor': 'Debt Advisor',
+  goals: 'Goals',
+  budget: 'Annual Budget',
+  assets: 'Assets',
+  'cash-debt': 'Cash & Debt',
+  'emergency-savings': 'Emergency Savings',
+  'non-discretionary-savings': 'Non-Discretionary Savings',
   'debt-high': 'High Interest Debt',
-  'debt-non-mortgage': 'Non-Mortgage Debt',
+  'debt-non-mortgage': 'Non-mortgage Debt',
   'debt-mortgage': 'Mortgage',
-  investing: 'Investing',
-  analysis: 'Analysis',
-  moat: 'Moat Analysis Results & Tool',
+  'charitable-giving': 'Charitable Giving',
+  'education-savings': 'Education Savings',
+  'irregular-expenses': 'Irregular Expenses / Goals',
+  'whatever-you-want': 'Whatever You Want',
+  retirement: 'Retirement (401k, IRA)',
+  investing: 'Investing (ETFs, Stocks, Crypto)',
 };
 
 const PORTFOLIO_TABS = ['Holdings', 'Closed', 'Harvest'];

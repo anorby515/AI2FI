@@ -161,6 +161,7 @@ If a goal was committed in `goals.md` (e.g., "Set up monthly net-worth review by
 
 ## Cross-references
 
+- **Coaching script** — `modules/financial-strategy/coaching/net-worth-tracking.md`. The conversational walkthrough the Coach actually runs in real time.
 - **FOO step 1** — `modules/financial-strategy/frameworks/financial-order-of-operations.md`
 - **High Level Budget sub-topic** — captures income and expenses, the other half of FOO step 1. Net worth is the snapshot; the budget is the flow.
 - **Template setup** — `core/finances-template-setup.md`. Must run before this sub-topic; the user populates the `Net Worth MoM` sheet there.

@@ -62,7 +62,7 @@ Running list. Seeded from the flow above; add emergent items as they surface —
 
 **Modules — build-out**
 - [ ] Financial Strategy
-	- [ ] Net Worth Tracking — reference content drafted (`topics/net-worth-tracking.md`); next: build the Net Worth Coaching script (conversational walkthrough — how to think about net worth, why to track it, what the elements are)
+	- [x] Net Worth Tracking — reference content (`topics/net-worth-tracking.md`) and coaching script (`coaching/net-worth-tracking.md`) both drafted; in dog-fooding
 	- [ ] High Level Budget + Sankey viewer
 - [ ] Savings & Debt Strategy *(module not yet created)*
 	- [ ] Emergency

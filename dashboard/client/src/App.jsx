@@ -10,6 +10,7 @@ import PortfolioChart from './components/PortfolioChart';
 // import PortfolioPies from './components/PortfolioPies';
 import Sidebar from './components/Sidebar';
 import NetWorthView from './components/NetWorthView';
+import MortgageView from './components/MortgageView';
 import CollegeView from './components/CollegeView';
 import ComingSoon from './components/ComingSoon';
 import Welcome from './components/Welcome';
@@ -28,7 +29,6 @@ const COMING_SOON_TITLES = {
   'non-discretionary-savings': 'Non-Discretionary Savings',
   'debt-high': 'High Interest Debt',
   'debt-non-mortgage': 'Non-mortgage Debt',
-  'debt-mortgage': 'Mortgage',
   'charitable-giving': 'Charitable Giving',
   'education-savings': 'Education Savings',
   'irregular-expenses': 'Irregular Expenses / Goals',
@@ -383,6 +383,7 @@ export default function App() {
         {sidebarView === 'welcome' && <Welcome />}
         {sidebarView === 'strategy' && <FinancialStrategy />}
         {sidebarView === 'networth' && <NetWorthView />}
+        {sidebarView === 'debt-mortgage' && <MortgageView />}
         {sidebarView === 'college' && <CollegeView />}
 
         {sidebarView === 'portfolio' && (<>
@@ -437,7 +438,7 @@ export default function App() {
           )}
         </>)}
 
-        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'portfolio'].includes(sidebarView) && (
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'portfolio', 'debt-mortgage'].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

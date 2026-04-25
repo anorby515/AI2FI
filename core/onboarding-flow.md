@@ -5,14 +5,24 @@ owner: AI2FI
 last_updated: 2026-04-25
 ---
 
-# Onboarding Flow — Design
+# Onboarding Flow
 
+# Download & Install
 The Onboarding starts with the user on the GitHub website downloading the files and folder.
-Once they've unzipped the folder, then the user will open Welcome-to-AI2FI.html to guide the user to the next steps of using an AI tool of their choice to do the boot-experience to developer their financial strategy baseline and initial assessment of the user financial knowledge and competency.
+Once they've unzipped the folder, then the user will open Welcome-to-AI2FI.html to guide the user 
 
-After the boot-experience, then the needs to be directed on how to use the modules that are surfaced through the web app interfaces.
+# boot-experience.MD
 
-Nudge the user towards building it based on their financial strategy, and following the order of operations as the default build out.
+ The next steps of using an AI tool of their choice to go through the coaching boot-experience to develop their financial strategy baseline and initial assessment of the user financial knowledge and competency.
+
+Once that initial assessment is complete, then we want to walk the user through building out their own web app dashboard with their data input into the Finances.xlsx template.
+
+The AI2FI Coach needs to nudge the user towards building it based on their financial strategy, and following the order of operations as the default build out.
+
+# Module Build Out
+The Module Build Out needs memory system as its being build.  #TBD the name of this MD file.
+
+The following is just scaffolding that we need to build and flesh out.
 
 Each items below is a Module that has its own Coach, Skills, MD files
 1. Financial Strategy

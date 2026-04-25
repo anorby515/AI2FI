@@ -182,17 +182,86 @@ If template-setup is already done and they have data: pivot to showing them thei
 
 ## Close
 
-Two parts: summary, then memory write.
+Three parts: hand off the action, residue check, memory write. The user knows the *concept* by the end of Movement 3 — they need to know exactly *what to do next* or the conversation evaporates.
 
-> "So today: net worth is the one number that captures where you stand. It's made of what you own minus what you owe — both sides matter. You picked a cadence of [monthly / quarterly / X], starting [date]. I'll remind you when it's time. Anything sitting unresolved from this conversation?"
+### Hand off the action
 
-Listen. Common surfaces:
+This is the load-bearing beat. Without it, the user has language and intent but no first move.
+
+Walk them through the next action concretely:
+
+> "Here's your action. Open `user-profiles/<your-name>/private/Finances.xlsx` and go to the `Net Worth MoM` sheet. Dates run across the top in row 2 — find the column for your cadence date, or add one if it's not there yet. Then fill in the rows for each category we discussed: cash & savings, brokerage, retirement, education, real assets, and debt. Save the file."
+>
+> "The dashboard reads that sheet directly. Refresh `localhost:3001` after saving and your first data point will show up on the chart."
+
+Then offer two paths:
+
+> "Two options. We can do the first column together right now — I'll walk you through each row, you tell me the number, I'll keep us moving. Takes about ten minutes. Or you can do it yourself before [cadence date] and I'll check in with you then."
+
+Wait for the choice.
+
+- **"Let's do it now"** → run the *First entry — Coach-assisted walkthrough* below.
+- **"I'll do it myself by [date]"** → confirm the date, capture in memory under `next_action`, end.
+- **"Can you just do it?"** → no. The Coach doesn't have access to private numbers, and even if it did, the practice of touching the numbers is part of the point. Reframe: *"I'm here to keep us moving — but the entries are yours."*
+
+### Residue check
+
+> "Anything sitting unresolved from this — categories you weren't sure about, things you want to come back to later?"
+
+Common surfaces:
 
 - **A category they're not sure where to put.** Resolve in one or two sentences.
 - **An anxiety about what the number is.** Acknowledge once, normalize, move on.
 - **A goal they want to set.** Capture it for Part 3 / next session — don't draft it inline.
 
 Then thank them for the time and end.
+
+### Skip the recap when?
+
+If every prior beat earned a one-line affirmation ("makes sense", "got it", "yep"), **skip the structural recap and go straight to the action handoff.** Recapping for a fluent user feels like talking down. The action is what matters; the recap is a comfort beat for users who needed the teaching to land.
+
+---
+
+## First entry — Coach-assisted walkthrough (optional)
+
+Run this only if the user picked "let's do it now" at the action handoff. Goal: by the end, they have one populated column in `Net Worth MoM` and have seen the dashboard render their actual number.
+
+### Setup
+
+> "Open `user-profiles/<your-name>/private/Finances.xlsx` and go to `Net Worth MoM`. What's the next empty column?"
+
+Confirm the column. The header in row 2 is the date — use today if running the cadence today, or the upcoming cadence date if they're staging next month's entry.
+
+### Walk the rows
+
+The `Net Worth MoM` sheet has rows for `debt`, `cash/savings/CD`, `brokerage`, `RSUs`, `retirement`, `assets`, `education`. Walk them in this order, one at a time. Don't ask for them all at once — the point is steady forward motion, not a 7-row prompt:
+
+1. **Cash & savings.** *"Sum of checking + savings + HYSA + any CDs. What's that total?"*
+2. **Brokerage.** *"Taxable brokerage, including vested-but-unsold RSUs at current price. Total?"*
+3. **RSUs (vested).** *"If your sheet tracks RSUs separately from brokerage, this is where they go. Skip if you bundle them."*
+4. **Retirement.** *"401(k) + IRA / Roth + employer plan balances. Total?"*
+5. **Education.** *"529 + Coverdell + any other education-dedicated accounts."*
+6. **Assets.** *"Real assets — house at a defensible value, vehicles at used-value, anything else material. Skip if you don't track this monthly."*
+7. **Debt.** *"Mortgage + student loans + auto + credit card statement balance + medical + anything else outstanding. Single number, sum of everything you owe."*
+
+For each row, confirm the number is entered before moving on. Don't perform the net-worth math out loud — that's the dashboard's job, and watching the dashboard reveal the number is part of the calibration moment.
+
+### Wrap and calibrate
+
+After the column is populated:
+
+> "Save the file. Open `localhost:3001` and refresh — you should see your first data point on the Net Worth chart. How close was it to your $X estimate?"
+
+This is the calibration moment the entire session has been building toward. Capture the delta in module memory under temperament notes:
+
+- **Estimate within ±10%** — calibrated. Note `temperament: well-calibrated`.
+- **Estimate too high by >20%** — common with people who anchor on gross account balances and forget liabilities. Note `temperament: optimistic-anchor` and revisit at next quarterly check.
+- **Estimate too low by >20%** — common with people who haven't looked at retirement balances in a while or anchor on liquid only. Note `temperament: pessimistic-anchor`.
+- **No estimate given** — capture the actual; revisit calibration next quarter.
+
+### If the dashboard still shows the demo banner
+
+The template-fallback was active because `private/Finances.xlsx` didn't exist (or was empty) when the dashboard last polled. Tell them to refresh again — the resolver checks `private/` per request, so the next poll will pick up the populated file and pivot to their data automatically. No restart needed.
 
 ---
 
@@ -206,13 +275,18 @@ Update `user-profiles/<name>/modules/financial-strategy/memory.md` under `### ne
 - current_state: <not_yet | starting | active | mostly_done | complete>
 - comfort: <emerging | comfortable | confident | mastery>
 - last_touched: YYYY-MM-DD
-- next_action: First net-worth review on YYYY-MM-DD (cadence: monthly|quarterly).
-- revisit_date: YYYY-MM-DD  # the next scheduled review
+- first_entry_made: <true | false>          # did they populate their first column this session?
+- first_entry_date: <YYYY-MM-DD | null>     # when the first column was populated, if at all
+- next_action: <verbatim hand-off — e.g. "Populate first NW column by 2026-05-01">
+- revisit_date: YYYY-MM-DD                  # the next scheduled review
 - notes: |
-    Ran net-worth coaching session. User's pre-math estimate: <range>.
+    Ran net-worth coaching session. Pre-math estimate: <amount or range>.
     Cadence: <monthly|quarterly|other>, starting <date>.
-    Notable surfaces from the conversation: <one or two lines, in user voice>.
-    Temperament signal: <if any — anxiety, shame, pride, calm, etc.>
+    First entry: <made together this session | committed for <date> | deferred>.
+    Estimate-vs-actual delta (if first entry made): <±X% | not measured>.
+    Notable surfaces: <one or two lines, in user voice>.
+    Temperament: <well-calibrated | optimistic-anchor | pessimistic-anchor |
+                  anxious | calm | other>.
 ```
 
 Map the comfort level by what you observed:

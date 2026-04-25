@@ -1,0 +1,8 @@
+.ui-chart { position: relative; width: 100%; }
+.ui-chart__svg { display: block; width: 100%; cursor: crosshair; }
+.ui-chart__grid { stroke: var(--rule-2); stroke-width: 1; }
+.ui-chart__axis { fill: var(--dim); font-size: 10px; font-family: var(--font-mono); }
+.ui-chart__crosshair { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.4; }
+.ui-chart__tip-bg { fill: var(--card-hi); stroke: var(--rule); }
+.ui-chart__tip-label { fill: var(--dim); font-size: 10px; font-family: var(--font-mono); }
+.ui-chart__tip-val { fill: var(--ink); font-size: 14px; font-weight: 700; font-family: var(--font-mono); }

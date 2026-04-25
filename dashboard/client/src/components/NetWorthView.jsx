@@ -1,39 +1,54 @@
 import { useState, useEffect, useMemo } from 'react';
-import {
-  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, Brush,
-} from 'recharts';
+import { Card, Stat, Segment, Chart, ProgressBar } from '../ui';
+import './NetWorthView.css';
 
-const INTERVALS = ['Monthly', 'Quarterly', 'Annual'];
-const RANGES = ['6M', 'YTD', '1Y', '2Y', '3Y', 'All'];
+/**
+ * NetWorthView — Bento-ported reference screen.
+ *
+ * Same data contract as before (fetches /api/networth which returns
+ * [{ date, net_worth, debt, cash_savings_cd, brokerage, rsus, retirement,
+ *    assets, education, debt_ratio }]). Renders with the new primitives.
+ */
 
-function fmt(val) {
-  if (val == null) return '—';
-  const abs = Math.abs(val);
-  if (abs >= 1e6) return `$${(val / 1e6).toFixed(2)}M`;
-  if (abs >= 1e3) return `$${(val / 1e3).toFixed(0)}K`;
-  return `$${val.toFixed(0)}`;
+const RANGE_OPTIONS = [
+  { label: '6M', value: '6M' },
+  { label: 'YTD', value: 'YTD' },
+  { label: '1Y', value: '1Y' },
+  { label: '2Y', value: '2Y' },
+  { label: '3Y', value: '3Y' },
+  { label: 'All', value: 'All' },
+];
+
+const COMPOSITION_KEYS = [
+  { key: 'brokerage',       label: 'Brokerage',   color: 'var(--accent)' },
+  { key: 'retirement',      label: 'Retirement',  color: 'var(--accent-2)' },
+  { key: 'rsus',            label: 'RSUs',        color: '#f472b6' },
+  { key: 'cash_savings_cd', label: 'Cash',        color: '#fbbf24' },
+  { key: 'assets',          label: 'Other assets',color: '#9ba4cc' },
+  { key: 'education',       label: 'Education',   color: '#a78bfa' },
+];
+
+function fmtUSD(v) {
+  if (v == null) return '—';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 }
 
-function fmtFull(val) {
-  if (val == null) return '—';
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
+function fmtUSDK(v) {
+  if (v == null) return '—';
+  const a = Math.abs(v), s = v < 0 ? '−' : '';
+  if (a >= 1_000_000) return s + '$' + (a / 1_000_000).toFixed(2) + 'M';
+  if (a >= 1_000) return s + '$' + Math.round(a / 1000) + 'k';
+  return s + '$' + Math.round(a);
 }
 
-function fmtPct(val) {
-  if (val == null) return '—';
-  return (val >= 0 ? '+' : '') + (val * 100).toFixed(2) + '%';
-}
-
-function fmtDelta(val) {
-  if (val == null) return '—';
-  return (val >= 0 ? '+' : '') + fmtFull(val);
+function fmtPct(v) {
+  if (v == null) return '—';
+  return (v >= 0 ? '+' : '−') + (Math.abs(v) * 100).toFixed(2) + '%';
 }
 
 export default function NetWorthView() {
   const [data, setData] = useState([]);
-  const [interval, setInterval] = useState('Monthly');
-  const [range, setRange] = useState('All');
+  const [range, setRange] = useState('1Y');
 
   useEffect(() => {
     fetch('/api/networth')
@@ -42,142 +57,121 @@ export default function NetWorthView() {
       .catch(() => {});
   }, []);
 
-  // Filter by range
+  // Range filter
   const rangeFiltered = useMemo(() => {
     if (!data.length || range === 'All') return data;
     const now = new Date();
     let start;
     switch (range) {
-      case '6M': start = new Date(now.getFullYear(), now.getMonth() - 6, 1); break;
+      case '6M':  start = new Date(now.getFullYear(), now.getMonth() - 6, 1); break;
       case 'YTD': start = new Date(now.getFullYear(), 0, 1); break;
-      case '1Y': start = new Date(now.getFullYear() - 1, now.getMonth(), 1); break;
-      case '2Y': start = new Date(now.getFullYear() - 2, now.getMonth(), 1); break;
-      case '3Y': start = new Date(now.getFullYear() - 3, now.getMonth(), 1); break;
-      default: return data;
+      case '1Y':  start = new Date(now.getFullYear() - 1, now.getMonth(), 1); break;
+      case '2Y':  start = new Date(now.getFullYear() - 2, now.getMonth(), 1); break;
+      case '3Y':  start = new Date(now.getFullYear() - 3, now.getMonth(), 1); break;
+      default:    return data;
     }
-    const startStr = start.toISOString().slice(0, 10);
-    return data.filter(d => d.date >= startStr);
+    const s = start.toISOString().slice(0, 10);
+    return data.filter(d => d.date >= s);
   }, [data, range]);
 
-  // Filter by interval
-  const filtered = useMemo(() => {
-    if (interval === 'Monthly') return rangeFiltered;
-    return rangeFiltered.filter(d => {
-      const month = parseInt(d.date.slice(5, 7));
-      if (interval === 'Quarterly') return [1, 4, 7, 10].includes(month);
-      if (interval === 'Annual') return month === 1;
-      return true;
-    });
-  }, [rangeFiltered, interval]);
+  const series = useMemo(() => rangeFiltered.map(d => d.net_worth), [rangeFiltered]);
+  const dates = useMemo(() => rangeFiltered.map(d => d.date), [rangeFiltered]);
 
-  // Format dates for display
-  const chartData = useMemo(() => filtered.map(d => ({
-    ...d,
-    label: d.date.slice(0, 7),
-  })), [filtered]);
-
-  // Scoreboard calculations
-  const current = data.length > 0 ? data[data.length - 1] : null;
+  // Scoreboard calcs (use ALL data, not range-filtered, for MoM/YoY)
+  const current = data.length ? data[data.length - 1] : null;
   const prev = data.length > 1 ? data[data.length - 2] : null;
-  const yoyIdx = data.length > 12 ? data.length - 13 : null;
-  const yoy = yoyIdx != null ? data[yoyIdx] : null;
+  const yoy = data.length > 12 ? data[data.length - 13] : null;
 
   const momChange = current && prev ? current.net_worth - prev.net_worth : null;
-  const momPct = current && prev && prev.net_worth ? momChange / prev.net_worth : null;
   const yoyChange = current && yoy ? current.net_worth - yoy.net_worth : null;
   const yoyPct = current && yoy && yoy.net_worth ? yoyChange / yoy.net_worth : null;
 
-  if (!data.length) return <div className="loading">Loading net worth data...</div>;
+  // Composition from current row
+  const composition = useMemo(() => {
+    if (!current) return [];
+    const total = COMPOSITION_KEYS.reduce((s, k) => s + Math.max(0, current[k.key] || 0), 0);
+    return COMPOSITION_KEYS.map(k => {
+      const v = Math.max(0, current[k.key] || 0);
+      return { ...k, v, p: total > 0 ? (v / total) * 100 : 0 };
+    }).filter(r => r.v > 0);
+  }, [current]);
+
+  if (!data.length) return <div className="nw__loading">Loading net worth data…</div>;
 
   return (
-    <div className="networth-view">
-      {/* Scoreboard */}
-      <div className="nw-scoreboard">
-        <div className="nw-card nw-card-hero">
-          <div className="nw-card-label">Net Worth</div>
-          <div className="nw-card-value">{fmtFull(current?.net_worth)}</div>
+    <div className="nw">
+      <div className="nw__head">
+        <div>
+          <div className="nw__title">Net Worth</div>
+          <div className="nw__subtitle">{current?.date}</div>
         </div>
-        <div className="nw-card">
-          <div className="nw-card-label">Debt Ratio</div>
-          <div className="nw-card-value">{current?.debt_ratio != null ? (current.debt_ratio * 100).toFixed(1) + '%' : '—'}</div>
+        <Segment options={RANGE_OPTIONS} value={range} onChange={setRange} mono />
+      </div>
+
+      <Card variant="grad" className="nw__hero">
+        <Stat label="Total net worth" value={fmtUSD(current?.net_worth)} size="lg" />
+        <div className="nw__hero-stats">
+          {yoyChange != null && (
+            <span className={yoyChange >= 0 ? 'nw__delta-pos' : 'nw__delta-neg'}>
+              {yoyChange >= 0 ? '↑' : '↓'} {fmtUSDK(Math.abs(yoyChange))} ({fmtPct(yoyPct)})
+              <span className="nw__delta-label">YoY</span>
+            </span>
+          )}
+          {momChange != null && (
+            <span className={momChange >= 0 ? 'nw__delta-pos' : 'nw__delta-neg'}>
+              {momChange >= 0 ? '↑' : '↓'} {fmtUSDK(Math.abs(momChange))}
+              <span className="nw__delta-label">MoM</span>
+            </span>
+          )}
         </div>
-        <div className="nw-card">
-          <div className="nw-card-label">MoM Change</div>
-          <div className={`nw-card-value ${momChange >= 0 ? 'positive' : 'negative'}`}>{fmtDelta(momChange)}</div>
-          <div className={`nw-card-sub ${momPct >= 0 ? 'positive' : 'negative'}`}>{fmtPct(momPct)}</div>
+        <div className="nw__hero-chart">
+          <Chart
+            data={series}
+            height={280}
+            labelFn={(i) => {
+              const d = dates[i];
+              if (!d) return '';
+              return d.slice(0, 7);
+            }}
+            valueFn={(v) => fmtUSDK(v)}
+          />
         </div>
-        <div className="nw-card">
-          <div className="nw-card-label">YoY Change</div>
-          <div className={`nw-card-value ${yoyChange >= 0 ? 'positive' : 'negative'}`}>{fmtDelta(yoyChange)}</div>
-          <div className={`nw-card-sub ${yoyPct >= 0 ? 'positive' : 'negative'}`}>{fmtPct(yoyPct)}</div>
+      </Card>
+
+      <div className="nw__grid-split">
+        <Card>
+          <div className="nw__composition-title">Composition · current month</div>
+          {composition.map(c => (
+            <div key={c.key} className="nw__composition-row">
+              <div className="nw__composition-head">
+                <span>{c.label}</span>
+                <span>{fmtUSDK(c.v)} · {c.p.toFixed(0)}%</span>
+              </div>
+              <ProgressBar value={c.p} tone={c.color} />
+            </div>
+          ))}
+        </Card>
+
+        <div className="nw__side-grid">
+          <Card><Stat label="Debt" value={fmtUSD(current?.debt)} tone="neg" /></Card>
+          <Card>
+            <Stat
+              label="Debt ratio"
+              value={current?.debt_ratio != null ? (current.debt_ratio * 100).toFixed(1) + '%' : '—'}
+              sub={current?.debt_ratio > 0.3 ? 'Above 30% target' : 'Within target'}
+              subTone={current?.debt_ratio > 0.3 ? 'neg' : 'pos'}
+            />
+          </Card>
+          <Card><Stat label="Cash" value={fmtUSD(current?.cash_savings_cd)} /></Card>
+          <Card><Stat label="Retirement" value={fmtUSD(current?.retirement)} /></Card>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="nw-controls">
-        <div className="filter-group">
-          {INTERVALS.map(i => (
-            <button key={i} className={`tab ${interval === i ? 'active' : ''}`} onClick={() => setInterval(i)}>{i}</button>
-          ))}
-        </div>
-        <div className="filter-group">
-          {RANGES.map(r => (
-            <button key={r} className={`tab ${range === r ? 'active' : ''}`} onClick={() => setRange(r)}>{r}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="chart-wrapper">
-        <ResponsiveContainer width="100%" height={500}>
-          <ComposedChart data={chartData} margin={{ top: 8, right: 24, left: 12, bottom: 0 }} stackOffset="sign">
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#6a6a8a' }} minTickGap={40} />
-            <YAxis
-              yAxisId="bar"
-              tick={{ fontSize: 10, fill: '#6a6a8a' }}
-              tickFormatter={v => fmt(v)}
-            />
-            <YAxis
-              yAxisId="line"
-              orientation="right"
-              tick={{ fontSize: 10, fill: '#6a6a8a' }}
-              tickFormatter={v => fmt(v)}
-            />
-            <Tooltip
-              contentStyle={{ background: '#1a1a2e', border: '1px solid #333', fontSize: 12 }}
-              formatter={(v, name) => [fmtFull(v), name]}
-            />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-
-            <Bar yAxisId="bar" dataKey="debt" name="Debt" fill="#f94f6a" stackId="stack" opacity={0.8} />
-            <Bar yAxisId="bar" dataKey="cash_savings_cd" name="Cash/Savings" fill="#4fc3f7" stackId="stack" opacity={0.8} />
-            <Bar yAxisId="bar" dataKey="brokerage" name="Brokerage" fill="#4f9cf9" stackId="stack" opacity={0.8} />
-            <Bar yAxisId="bar" dataKey="rsus" name="RSUs" fill="#7baaf7" stackId="stack" opacity={0.8} />
-            <Bar yAxisId="bar" dataKey="retirement" name="Retirement" fill="#34c78a" stackId="stack" opacity={0.8} />
-            <Bar yAxisId="bar" dataKey="assets" name="Assets" fill="#81c784" stackId="stack" opacity={0.8} />
-            <Bar yAxisId="bar" dataKey="education" name="Education" fill="#ce93d8" stackId="stack" opacity={0.8} />
-
-            <Line
-              yAxisId="line"
-              type="monotone"
-              dataKey="net_worth"
-              name="Net Worth"
-              stroke="#d463e9"
-              strokeWidth={2.5}
-              dot={false}
-            />
-
-            <Brush
-              dataKey="label"
-              height={30}
-              stroke="#4f9cf9"
-              fill="#12122a"
-              tickFormatter={d => d}
-              travellerWidth={10}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
+      <div className="nw__grid-4">
+        <Card><Stat label="Brokerage" value={fmtUSDK(current?.brokerage)} /></Card>
+        <Card><Stat label="RSUs" value={fmtUSDK(current?.rsus)} /></Card>
+        <Card><Stat label="Assets" value={fmtUSDK(current?.assets)} /></Card>
+        <Card><Stat label="Education" value={fmtUSDK(current?.education)} /></Card>
       </div>
     </div>
   );

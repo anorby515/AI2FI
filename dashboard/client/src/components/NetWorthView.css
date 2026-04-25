@@ -1,0 +1,93 @@
+.nw {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--pad-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.nw__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--pad-lg) 0 0;
+}
+
+.nw__title { font-size: 24px; font-weight: 700; letter-spacing: -0.6px; }
+.nw__subtitle { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
+
+.nw__hero {
+  padding: var(--pad-lg);
+  position: relative;
+  overflow: hidden;
+}
+.nw__hero::before {
+  content: "";
+  position: absolute;
+  top: -100px; right: -80px;
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, var(--accent-weak), transparent 70%);
+  pointer-events: none;
+}
+.nw__hero-stats {
+  display: flex;
+  gap: 28px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.nw__hero-chart { margin-top: 20px; position: relative; z-index: 1; }
+
+.nw__grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+}
+
+.nw__grid-split {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: var(--gap);
+}
+
+.nw__side-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+  align-content: start;
+}
+
+.nw__composition-row {
+  padding: 6px 0;
+}
+.nw__composition-row + .nw__composition-row { border-top: 1px solid var(--rule-2); }
+.nw__composition-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  margin-bottom: 6px;
+}
+.nw__composition-head span:first-child { color: var(--ink-2); }
+.nw__composition-head span:last-child  { font-family: var(--font-mono); color: var(--ink); }
+
+.nw__composition-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.nw__loading {
+  padding: 80px 40px;
+  color: var(--dim);
+  font-size: 13px;
+  text-align: center;
+}
+
+.nw__delta-pos { color: var(--pos); }
+.nw__delta-neg { color: var(--neg); }
+.nw__delta-label { color: var(--dim); margin-left: 4px; font-size: 11px; }
+
+@media (max-width: 900px) {
+  .nw__grid-split { grid-template-columns: 1fr; }
+  .nw__grid-4 { grid-template-columns: repeat(2, 1fr); }
+}

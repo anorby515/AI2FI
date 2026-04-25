@@ -1,0 +1,31 @@
+.ui-segment {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: calc(var(--r-btn) + 2px);
+}
+
+.ui-segment--mono .ui-segment__btn { font-family: var(--font-mono); }
+
+.ui-segment__btn {
+  padding: 6px 12px;
+  border-radius: var(--r-btn);
+  border: none;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+
+.ui-segment__btn:hover { color: var(--ink); }
+
+.ui-segment__btn.is-active {
+  background: var(--accent);
+  color: var(--contrast);
+  font-weight: 700;
+}

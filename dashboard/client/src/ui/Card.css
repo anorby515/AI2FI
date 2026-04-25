@@ -1,0 +1,20 @@
+.ui-card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-card);
+  padding: var(--pad);
+  box-shadow: var(--shadow-card);
+  transition: transform var(--t-base), border-color var(--t-base), box-shadow var(--t-base);
+}
+
+.ui-card--grad {
+  background: linear-gradient(145deg, var(--card-hi), var(--card));
+}
+
+.ui-card--interactive { cursor: pointer; }
+
+.ui-card--hover:hover {
+  border-color: var(--rule-3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-lg);
+}

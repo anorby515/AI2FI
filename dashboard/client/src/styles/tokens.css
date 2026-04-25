@@ -1,0 +1,124 @@
+/* ──────────────────────────────────────────────────────────────────────
+ * AI2FI — Design Tokens
+ * Single source of truth for colors, radii, shadows, spacing, type.
+ * Everything else in the app reads from these via var(--…).
+ * Switch accents via <body class="accent-blue"> etc.
+ * Switch density via <body class="density-compact">.
+ * Switch radius via <body class="radius-square"> / <body class="radius-standard">.
+ * ──────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surfaces */
+  --bg:        #060912;
+  --card:      #12172b;
+  --card-hi:   #1a2140;
+  --card-hi-2: #242b4f;
+
+  /* Ink */
+  --ink:    #f1f3fb;
+  --ink-2:  #9ba4cc;
+  --dim:    #5a638a;
+
+  /* Hairlines */
+  --rule:   rgba(255, 255, 255, 0.06);
+  --rule-2: rgba(255, 255, 255, 0.03);
+  --rule-3: rgba(255, 255, 255, 0.12);
+
+  /* Semantic */
+  --pos:    #34d399;
+  --neg:    #fb7185;
+  --warn:   #fbbf24;
+
+  /* Accent — emerald default (Bento) */
+  --accent:   #34d399;
+  --accent-2: #60a5fa;
+  --contrast: #062;
+  --accent-weak: rgba(52, 211, 153, 0.12);
+  --accent-glow: rgba(52, 211, 153, 0.28);
+
+  /* Radii */
+  --r-card: 24px;
+  --r-btn:  14px;
+  --r-pill: 999px;
+  --r-dock: 22px;
+  --r-chip: 10px;
+
+  /* Spacing */
+  --pad:      22px;
+  --pad-lg:   26px;
+  --pad-xl:   36px;
+  --gap:      14px;
+  --gap-sm:   10px;
+  --gap-lg:   20px;
+
+  /* Shadows */
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.3),
+                 inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-card-lg: 0 20px 50px rgba(0, 0, 0, 0.5),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-dock: 0 20px 40px rgba(0, 0, 0, 0.5),
+                 inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-accent: 0 8px 20px rgba(52, 211, 153, 0.33);
+
+  /* Type */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Motion */
+  --t-fast: 120ms ease;
+  --t-base: 180ms cubic-bezier(0.2, 0.0, 0.2, 1);
+}
+
+/* ── Accent themes ──────────────────────────────────────────────────── */
+body.accent-blue {
+  --accent:      #60a5fa;
+  --accent-2:    #a78bfa;
+  --contrast:    #051a33;
+  --accent-weak: rgba(96, 165, 250, 0.14);
+  --accent-glow: rgba(96, 165, 250, 0.32);
+  --shadow-accent: 0 8px 20px rgba(96, 165, 250, 0.33);
+}
+body.accent-violet {
+  --accent:      #a78bfa;
+  --accent-2:    #f472b6;
+  --contrast:    #1a0b3a;
+  --accent-weak: rgba(167, 139, 250, 0.14);
+  --accent-glow: rgba(167, 139, 250, 0.32);
+  --shadow-accent: 0 8px 20px rgba(167, 139, 250, 0.33);
+}
+body.accent-amber {
+  --accent:      #fbbf24;
+  --accent-2:    #fb923c;
+  --contrast:    #3a1f04;
+  --accent-weak: rgba(251, 191, 36, 0.14);
+  --accent-glow: rgba(251, 191, 36, 0.32);
+  --shadow-accent: 0 8px 20px rgba(251, 191, 36, 0.33);
+}
+body.accent-rose {
+  --accent:      #fb7185;
+  --accent-2:    #f472b6;
+  --contrast:    #3a0818;
+  --accent-weak: rgba(251, 113, 133, 0.14);
+  --accent-glow: rgba(251, 113, 133, 0.32);
+  --shadow-accent: 0 8px 20px rgba(251, 113, 133, 0.33);
+}
+
+/* ── Density ────────────────────────────────────────────────────────── */
+body.density-compact {
+  --pad: 16px; --pad-lg: 18px; --pad-xl: 24px;
+  --gap: 10px; --gap-sm: 6px; --gap-lg: 14px;
+}
+
+/* ── Radius scales ──────────────────────────────────────────────────── */
+body.radius-square   { --r-card: 8px;  --r-btn: 6px;  --r-dock: 10px; --r-chip: 4px; }
+body.radius-standard { --r-card: 16px; --r-btn: 10px; --r-dock: 16px; --r-chip: 8px; }
+
+/* ── Global resets the tokens expect ────────────────────────────────── */
+html, body, #root { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+*, *::before, *::after { box-sizing: border-box; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule-3); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-2); }

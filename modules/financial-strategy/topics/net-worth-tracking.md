@@ -105,11 +105,11 @@ Then move into the doing. Most users don't need a lecture — they need a struct
 
 ### Tie-in to `Finances.xlsx`
 
-The user populates the **`Accounts`** sheet in `Finances.xlsx` — one row per account with current balance, type, and last-updated date. Net worth is **aggregated at render time** by the dashboard from the `Accounts` sheet; there is no separate Net Worth sheet for the user to maintain.
+The user populates the **`Net Worth MoM`** sheet in `Finances.xlsx` — one column per month, with assets and liabilities rolled up to a net-worth row. The dashboard's `NetWorthView` reads this sheet directly via `/api/networth`.
 
-Setup of the file is a separate, prior step (see `core/finances-template-setup.md`) — by the time this sub-topic is in scope, the user has already consented to the template and seen a walkthrough of the `Accounts` sheet. This sub-topic focuses on the substance of *what to track*, not on file mechanics.
+Setup of the file is a separate, prior step (see `core/finances-template-setup.md`) — by the time this sub-topic is in scope, the user has already consented to the template and seen a walkthrough of the `Net Worth MoM` sheet. This sub-topic focuses on the substance of *what to track*, not on file mechanics.
 
-If the user is not yet at the template-setup stage, capture the numbers in the conversation and tell them they'll be transferred into `Accounts` during the template setup session.
+If the user is not yet at the template-setup stage, capture the numbers in the conversation and tell them they'll be transferred into `Net Worth MoM` during the template setup session.
 
 ---
 
@@ -163,4 +163,4 @@ If a goal was committed in `goals.md` (e.g., "Set up monthly net-worth review by
 
 - **FOO step 1** — `modules/financial-strategy/frameworks/financial-order-of-operations.md`
 - **High Level Budget sub-topic** — captures income and expenses, the other half of FOO step 1. Net worth is the snapshot; the budget is the flow.
-- **Template setup** — `core/finances-template-setup.md`. Must run before this sub-topic; the user populates the `Accounts` sheet there.
+- **Template setup** — `core/finances-template-setup.md`. Must run before this sub-topic; the user populates the `Net Worth MoM` sheet there.

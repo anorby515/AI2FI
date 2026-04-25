@@ -22,12 +22,6 @@ every edit here updates the public notes without a rebuild.
   The Coach also drops a reference copy at
   `user-profiles/<name>/Financial Template.xlsx` in addition to the
   live `private/Finances.xlsx`.
-- **`Net Worth MoM` sheet retired from the template.** Net worth is
-  now aggregated at render time from the `Accounts` sheet. If we later
-  need historical net-worth snapshots, those will be written to a
-  separate history record (likely `private/net-worth-history.json`)
-  rather than back into the user-edited xlsx.
-
 ### Added
 - `core/module-memory.md` — per-module memory spec defining where
   module state persists, the sub-topic schema, and the Coach's

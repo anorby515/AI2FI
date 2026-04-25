@@ -56,9 +56,8 @@ Running list. Seeded from the flow above; add emergent items as they surface —
 - [x] Boot experience design (`core/boot-experience.md`)
 - [x] Onboarding flow (this file)
 - [x] Module memory spec (`core/module-memory.md`)
-- [x] Finances template setup procedure (`core/finances-template-setup.md`) — Coach-driven consent + copy to profile root + `private/`, plus Accounts-sheet walkthrough
+- [x] Finances template setup procedure (`core/finances-template-setup.md`) — Coach-driven consent + copy to profile root + `private/`, plus walkthrough of `Net Worth MoM`, `Brokerage Ledger`, `Accounts`, `TICKERS`
 - [ ] Welcome-to-AI2FI.html landing page (post-download entry point)
-- [ ] Net Worth historical snapshot mechanism (deferred — needed only when historical deltas matter; likely lives at `private/net-worth-history.json` or a system-managed sheet)
 
 **Modules — build-out**
 - [ ] Financial Strategy

@@ -8,11 +8,10 @@ The template is **not** auto-copied into a user profile at install. The Coach as
 
 ## Sheets
 
-- **`Accounts`** — the user-edited source of truth. One row per account with current balance, last-updated date, and account type. Net worth is aggregated from this at render time by the dashboard.
+- **`Accounts`** — lookup table mapping account identifiers to account type and owner. Used by the Brokerage Ledger and the dashboard to enrich row-level data.
 - **`Brokerage Ledger`** — headers in row 2, one row per tax lot. Columns: Symbol, Transaction, Shares Bought, Cost Basis Per Share, Date Acquired, Owner, Account, etc. Used by the investing module / dashboard.
+- **`Net Worth MoM`** — month-over-month net worth tracking. Dates across row 2 (column C onward), categories in rows 3–19 (debt, cash/savings/CD, brokerage, RSUs, retirement, assets, education, net worth, debt ratio). Read by `/api/networth` and rendered by the dashboard's `NetWorthView`.
 - **`TICKERS`** — supporting reference data for the dashboard's investing views.
-
-The earlier `Net Worth MoM` sheet has been retired — net worth is now computed from `Accounts` at render time. If we later need historical net-worth deltas, those will be written to a separate history record (likely `private/net-worth-history.json`), not back into the user-edited xlsx.
 
 ## How it lands in a profile
 

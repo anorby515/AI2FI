@@ -96,30 +96,27 @@ Once the files are in place, the Coach moves into a brief teaching pass on the t
 
 ### What to cover
 
-The template has three sheets. The Coach explains them in this order:
+The template has four sheets. The Coach explains the user-facing ones first:
 
-**`Accounts` *(the only sheet the user edits)***
+**`Net Worth MoM` *(the primary user-edited sheet for net worth tracking)***
 
-This is where the user lists their accounts. One row per account. The Coach walks through what to include:
+Month-over-month snapshot. Dates run across row 2 starting in column C; each subsequent row is a category (debt, cash/savings/CD, brokerage, RSUs, retirement, assets, education, then net worth + debt ratio rows). Each month the user adds a column with current values. The Coach walks through:
 
-- **What counts as an account.** Checking, savings, brokerage, retirement (401k, IRA, Roth IRA), HSA, 529, mortgage, auto loan, credit cards (current statement balance), other debt. Anything with a balance that meaningfully moves net worth.
-- **What doesn't count.** Day-to-day cash on hand, anticipated future income, pending charges that will clear in days. Track at a useful level, not a perfect one.
-- **What each row needs.** Account name, type, current balance, last-updated date.
-- **Cadence.** Monthly is the default. Same date each month. The Coach sets a reminder via cadence-reminders.
+- **What counts as an asset.** Checking, savings, brokerage, retirement (401k, IRA, Roth IRA), HSA, 529, vehicles or property at a defensible value. Anything with meaningful weight on net worth.
+- **What counts as debt.** Mortgage, student loans, auto loans, credit cards (current statement balance), personal loans, medical debt.
+- **Cadence.** Monthly is the default — same date each month. The Coach sets a reminder via cadence-reminders.
 
-**`Brokerage Ledger` *(supporting, not net-worth-relevant)***
+**`Brokerage Ledger` *(for users with taxable investments)***
 
 Used by the investing module to track tax lots — one row per purchase. The Coach mentions it but defers the walkthrough to the investing module. If the user has no taxable brokerage activity, this sheet stays empty without consequence.
+
+**`Accounts` *(lookup table — light touch)***
+
+Maps account identifiers (e.g., `XX123`) to type (e.g., `Brokerage`, `IRA`, `HSA`) and owner. The dashboard uses this to enrich the Brokerage Ledger. The user should add a row for each account they reference in the ledger. They don't track balances here.
 
 **`TICKERS` *(reference data, do not edit)***
 
 Reference data the dashboard uses for symbol metadata. Surface it briefly so the user knows it's there, then move on. They should never need to touch it.
-
-### Net Worth — handled at render time
-
-There is intentionally no Net Worth sheet for the user to maintain. The dashboard aggregates net worth from the `Accounts` sheet at render time. The user updates one place; the dashboard handles the math.
-
-If the user asks where they can see net worth: point them to the dashboard at `http://localhost:3001`.
 
 ### Memory write at end of Step 3
 

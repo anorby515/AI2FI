@@ -1,18 +1,28 @@
-# Sample data for AI2FI
+# Financial Template
 
-This directory holds a committed `Finances.xlsx` used to populate the dashboard for new users so the first-run experience shows a functional site instead of an empty state.
+This directory holds the committed `Financial Template.xlsx` — the structural starting point for every user's local `Finances.xlsx` working file.
 
-## Shape
+## Role
 
-- **`Brokerage Ledger`** sheet — headers in row 2, one row per tax lot. Columns: Symbol, Transaction, Shares Bought, Cost Basis Per Share, Date Acquired, Owner, Account, (etc.).
-- **`Net Worth MoM`** sheet — dates across row 2 (column C onward), categories in rows 3–19 (debt, cash/savings/CD, brokerage, RSUs, retirement, assets, education, net worth, debt ratio).
+The template is **not** auto-copied into a user profile at install. The Coach asks for consent during the Module Build Out flow, explains the privacy posture (local, gitignored), and only on a yes does it copy the template into the user's profile. The full procedure lives in `core/finances-template-setup.md`.
 
-## How it gets to the user
+## Sheets
 
-`dashboard/setup.command` copies `Finances.xlsx` from this folder into `user-profiles/<name>/private/` on first-run install if the user has no spreadsheet yet. It also writes a `.sample-data` marker in the profile folder, which the dashboard uses to default the sidebar to "Getting Started" and show a persistent banner reminding the user they're viewing demo data.
+- **`Accounts`** — the user-edited source of truth. One row per account with current balance, last-updated date, and account type. Net worth is aggregated from this at render time by the dashboard.
+- **`Brokerage Ledger`** — headers in row 2, one row per tax lot. Columns: Symbol, Transaction, Shares Bought, Cost Basis Per Share, Date Acquired, Owner, Account, etc. Used by the investing module / dashboard.
+- **`TICKERS`** — supporting reference data for the dashboard's investing views.
 
-The marker (and optionally the sample xlsx) is torn down by the `/financial-check-in` skill at the close of Part 3 — once the user has committed to their own profile, they get their own data.
+The earlier `Net Worth MoM` sheet has been retired — net worth is now computed from `Accounts` at render time. If we later need historical net-worth deltas, those will be written to a separate history record (likely `private/net-worth-history.json`), not back into the user-edited xlsx.
 
-## Updating the sample
+## How it lands in a profile
 
-The sample xlsx is binary; changes land via normal commits. Keep the file small (≤ 1 MB) and obviously-fake — pruned from real data is fine, but scrub identifying details. No real account numbers, no real balances to a decimal that looks like someone's bank statement.
+Driven by the Coach during a coaching session (see `core/finances-template-setup.md`):
+
+1. `core/sample-data/Financial Template.xlsx` → `user-profiles/<name>/Financial Template.xlsx` (reference copy at the profile root, kept under that name so it's clearly not the live file)
+2. `core/sample-data/Financial Template.xlsx` → `user-profiles/<name>/private/Finances.xlsx` (the live working file)
+
+Both destinations are gitignored along with the rest of the user-profile directory.
+
+## Updating the template
+
+Binary file; changes land via normal commits. Keep it small (≤ 1 MB) and obviously demo — pruned from real data is fine, but scrub identifying details. No real account numbers, no real balances that look like a real bank statement.

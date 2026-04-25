@@ -126,35 +126,12 @@ else
   fi
 fi
 
-# --- Step 2.6: Seed with sample data so the first-run dashboard is functional ---
-# If the user's profile has no Finances.xlsx yet, copy the committed sample into
-# place and drop a .sample-data marker. The dashboard uses the marker to
-# default to the "Getting Started" view and show a sample-data banner. The
-# onboarding skill (/financial-check-in, State A) removes the marker once the
-# user completes Part 3 and has their own data.
-step "Seeding sample data (first-run only)"
-# Re-read which profile is active now (could be from config, detected, or just-created)
-active_profile="$(node -e 'try { const c = JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); process.stdout.write(c.profile || ""); } catch { process.stdout.write(""); }' "$CONFIG_FILE")"
-
-if [ -z "$active_profile" ]; then
-  warn "No active profile configured — skipping sample-data seed."
-else
-  user_xlsx="$PROFILES_DIR/$active_profile/private/Finances.xlsx"
-  sample_xlsx="$REPO_ROOT/core/sample-data/Finances.xlsx"
-  marker="$PROFILES_DIR/$active_profile/.sample-data"
-
-  if [ -f "$user_xlsx" ]; then
-    ok "Your spreadsheet is already in place — not touching it."
-  elif [ ! -f "$sample_xlsx" ]; then
-    warn "No sample xlsx at core/sample-data/Finances.xlsx — the dashboard will show the empty-state screen until you drop your own in."
-  else
-    mkdir -p "$(dirname "$user_xlsx")"
-    cp "$sample_xlsx" "$user_xlsx"
-    date -u +"%Y-%m-%dT%H:%M:%SZ" > "$marker"
-    ok "Copied sample data to user-profiles/$active_profile/private/Finances.xlsx"
-    ok "Wrote .sample-data marker — the dashboard will start on the Getting Started screen."
-  fi
-fi
+# --- Step 2.6: Spreadsheet is Coach-driven (no auto-seed) ---
+# Setup intentionally does NOT copy a template into the user's profile. The
+# Coach asks for consent during the Module Build Out flow and copies
+# `core/sample-data/Financial Template.xlsx` into the profile only on a yes.
+# See `core/finances-template-setup.md` for the consent + copy procedure.
+# Until that happens, the dashboard renders its onboarding empty state.
 
 # --- Step 3: Install dependencies ---
 step "Installing server dependencies"

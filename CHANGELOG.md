@@ -10,13 +10,47 @@ every edit here updates the public notes without a rebuild.
 
 ## [Unreleased]
 
+### Changed
+- **Spreadsheet placement is now Coach-driven.** `dashboard/setup.command`
+  no longer auto-seeds `private/Finances.xlsx`. The Coach asks for
+  consent during the Module Build Out flow, explains the local /
+  gitignored privacy posture, and copies the template into the profile
+  on a yes. Procedure: `core/finances-template-setup.md`.
+- **`core/sample-data/Finances.xlsx` renamed to
+  `core/sample-data/Financial Template.xlsx`** to make its role
+  unambiguous: it is a structural template, not the user's live file.
+  The Coach also drops a reference copy at
+  `user-profiles/<name>/Financial Template.xlsx` in addition to the
+  live `private/Finances.xlsx`.
+- **`Net Worth MoM` sheet retired from the template.** Net worth is
+  now aggregated at render time from the `Accounts` sheet. If we later
+  need historical net-worth snapshots, those will be written to a
+  separate history record (likely `private/net-worth-history.json`)
+  rather than back into the user-edited xlsx.
+
 ### Added
-- **Functional first-run experience with sample data.** Setup now seeds
-  new profiles from `core/sample-data/Finances.xlsx` (committed template),
-  so the dashboard lands on a fully-populated view instead of an empty
-  onboarding screen. A `.sample-data` marker file in the profile folder
-  tags the install as demo data; the `/financial-check-in` skill removes
-  it at Part 3 close when the user commits to their own data.
+- `core/module-memory.md` — per-module memory spec defining where
+  module state persists, the sub-topic schema, and the Coach's
+  read/write protocol at session boundaries.
+- `core/finances-template-setup.md` — Coach consent + copy procedure +
+  Accounts-sheet walkthrough. Runs as the first step of Module Build
+  Out, before any sub-topic teaching begins.
+- `modules/financial-strategy/topics/net-worth-tracking.md` — first
+  sub-topic content under the new flat-modules + sub-topics
+  convention. Reference / spec layer (definitions, traps, readiness,
+  memory schema). The conversational coaching script is queued as the
+  next task.
+
+### Removed
+- The auto-seed block in `dashboard/setup.command`. The `.sample-data`
+  marker is no longer written by setup; the Coach manages
+  template-vs-live state via module memory instead.
+
+### Previously (before this revision)
+- **Functional first-run experience with sample data.** Setup
+  previously seeded new profiles from `core/sample-data/Finances.xlsx`
+  on first install with a `.sample-data` marker. Replaced by the
+  Coach-driven flow above.
 - **"Getting Started" dashboard view** (`client/src/components/GettingStarted.jsx`).
   Selected by default when the server reports `isSampleData: true`.
   Explains that the user is looking at demo data, and points them into

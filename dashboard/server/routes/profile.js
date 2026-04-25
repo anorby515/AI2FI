@@ -23,11 +23,12 @@ const ARTIFACTS = {
 // knows whose data to render. Used instead of hardcoding a username on the
 // client side.
 //
-// `isSampleData` is true when dashboard/setup.command seeded the profile
-// from core/sample-data/ on first install (it writes a .sample-data marker
-// in the profile directory). The client keys on this to default to the
-// "Getting Started" view and show a sample-data banner. The marker is
-// torn down by the /financial-check-in onboarding skill at Part 3 close.
+// `isSampleData` is true when a `.sample-data` marker is present in the
+// profile directory. The auto-seed that historically wrote this marker
+// has been removed — template placement is now Coach-driven (see
+// core/finances-template-setup.md). The marker check is preserved for
+// legacy installs and as a hook the Coach can use if a "demo mode" is
+// reintroduced. Today, on a fresh install, this is always false.
 router.get('/', (_, res) => {
   const profile = resolveProfile();
   if (!profile) {

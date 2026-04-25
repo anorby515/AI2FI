@@ -56,12 +56,13 @@ Running list. Seeded from the flow above; add emergent items as they surface —
 - [x] Boot experience design (`core/boot-experience.md`)
 - [x] Onboarding flow (this file)
 - [x] Module memory spec (`core/module-memory.md`)
+- [x] Finances template setup procedure (`core/finances-template-setup.md`) — Coach-driven consent + copy to profile root + `private/`, plus Accounts-sheet walkthrough
 - [ ] Welcome-to-AI2FI.html landing page (post-download entry point)
-- [ ] Coach-guided dashboard build-out from `Finances.xlsx`
+- [ ] Net Worth historical snapshot mechanism (deferred — needed only when historical deltas matter; likely lives at `private/net-worth-history.json` or a system-managed sheet)
 
 **Modules — build-out**
 - [ ] Financial Strategy
-	- [ ] Net Worth Tracking *(in progress)*
+	- [ ] Net Worth Tracking — reference content drafted (`topics/net-worth-tracking.md`); next: build the Net Worth Coaching script (conversational walkthrough — how to think about net worth, why to track it, what the elements are)
 	- [ ] High Level Budget + Sankey viewer
 - [ ] Savings & Debt Strategy *(module not yet created)*
 	- [ ] Emergency

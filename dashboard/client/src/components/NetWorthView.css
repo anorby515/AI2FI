@@ -57,6 +57,20 @@
   align-content: start;
 }
 
+/* Pie chart on the left at a 2-col / 2-row footprint, 8 value boxes
+   filling the remaining 4 cols x 2 rows on the right. Total: 6 cols x 2 rows. */
+.nw__pie-with-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-auto-rows: 1fr;
+  gap: var(--gap);
+}
+.nw__pie-with-grid > .nw__pie-cell {
+  grid-column: span 2;
+  grid-row: span 2;
+  min-height: 400px;
+}
+
 .nw__composition-row {
   padding: 6px 0;
 }
@@ -90,4 +104,10 @@
 @media (max-width: 900px) {
   .nw__grid-split { grid-template-columns: 1fr; }
   .nw__grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .nw__pie-with-grid { grid-template-columns: repeat(2, 1fr); }
+  .nw__pie-with-grid > .nw__pie-cell {
+    grid-column: 1 / -1;
+    grid-row: span 1;
+    min-height: 320px;
+  }
 }

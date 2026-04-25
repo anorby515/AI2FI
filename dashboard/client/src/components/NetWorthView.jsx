@@ -143,39 +143,40 @@ export default function NetWorthView() {
         </div>
       </Card>
 
-      {/* Composition pie — current month */}
-      <Card>
-        <div className="nw__composition-title">Composition · current month</div>
-        <ResponsiveContainer width="100%" height={360}>
-          <PieChart>
-            <Pie
-              data={pieData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={140}
-              innerRadius={60}
-              paddingAngle={1}
-              label={({ name, value }) =>
-                totalAssets ? `${name} · ${(value / totalAssets * 100).toFixed(1)}%` : name
-              }
-            >
-              {pieData.map((slice) => (
-                <Cell key={slice.key} fill={slice.color} stroke="var(--surface)" strokeWidth={1} />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={{ background: 'var(--surface)', border: '1px solid var(--rule-2)', fontSize: 12 }}
-              formatter={(v, name) => [fmtUSDK(v), name]}
-            />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-          </PieChart>
-        </ResponsiveContainer>
-      </Card>
+      {/* Pie composition (2x2 footprint) + 8 value boxes (4 cols x 2 rows) on the right.
+          Row 1 of boxes — top-line: Cash | Debt | Debt Ratio | Assets
+          Row 2 of boxes — asset categories: Brokerage | RSUs | Retirement | Education */}
+      <div className="nw__pie-with-grid">
+        <Card className="nw__pie-cell">
+          <div className="nw__composition-title">Composition · current month</div>
+          <ResponsiveContainer width="100%" height={340}>
+            <PieChart>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={120}
+                innerRadius={60}
+                paddingAngle={1}
+                label={({ name, value }) =>
+                  totalAssets ? `${name} · ${(value / totalAssets * 100).toFixed(0)}%` : name
+                }
+              >
+                {pieData.map((slice) => (
+                  <Cell key={slice.key} fill={slice.color} stroke="var(--surface)" strokeWidth={1} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{ background: 'var(--surface)', border: '1px solid var(--rule-2)', fontSize: 12 }}
+                formatter={(v, name) => [fmtUSDK(v), name]}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
 
-      {/* 2x4 value grid: row 1 — top-line; row 2 — asset categories. */}
-      <div className="nw__grid-4">
         <Card><Stat label="Cash" value={fmtUSD(current?.cash_savings_cd)} /></Card>
         <Card><Stat label="Debt" value={fmtUSD(current?.debt)} tone="neg" /></Card>
         <Card>
@@ -187,8 +188,7 @@ export default function NetWorthView() {
           />
         </Card>
         <Card><Stat label="Assets" value={fmtUSD(current?.assets)} /></Card>
-      </div>
-      <div className="nw__grid-4">
+
         <Card><Stat label="Brokerage" value={fmtUSD(current?.brokerage)} /></Card>
         <Card><Stat label="RSUs" value={fmtUSD(current?.rsus)} /></Card>
         <Card><Stat label="Retirement" value={fmtUSD(current?.retirement)} /></Card>

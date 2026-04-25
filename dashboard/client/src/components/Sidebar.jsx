@@ -3,10 +3,13 @@ import { useState } from 'react';
 // Each entry: { key, label, children?: [...] }
 const BASE_NAV = [
   { key: 'welcome', label: 'Welcome' },
-  { key: 'strategy', label: 'Financial Strategy' },
+  {
+    key: 'strategy', label: 'Financial Strategy', children: [
+      { key: 'networth', label: 'Net Worth' },
+    ]
+  },
   {
     key: 'dashboard', label: 'Dashboard', children: [
-      { key: 'networth', label: 'Net Worth' },
       { key: 'goals', label: 'Goal Tracking' },
       { key: 'budget', label: 'Annual Budget (Sankey)' },
     ]

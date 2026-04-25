@@ -11,7 +11,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { resolveProfile, listProfileDirs, PROFILES_DIR } = require('../profile-resolver');
+const { resolveProfile, resolveSpreadsheet, listProfileDirs, PROFILES_DIR } = require('../profile-resolver');
 
 // Allow-list of artifact names that can be requested. Keeps the path-join safe
 // from `..` traversal and documents the contract.
@@ -19,30 +19,32 @@ const ARTIFACTS = {
   'financial-dashboard': 'financial-dashboard.md',
 };
 
-// GET /api/profile — returns the active profile's metadata so the client
-// knows whose data to render. Used instead of hardcoding a username on the
-// client side.
+// GET /api/profile — returns metadata about what the dashboard is rendering.
 //
-// `isSampleData` is true when a `.sample-data` marker is present in the
-// profile directory. The auto-seed that historically wrote this marker
-// has been removed — template placement is now Coach-driven (see
-// core/finances-template-setup.md). The marker check is preserved for
-// legacy installs and as a hook the Coach can use if a "demo mode" is
-// reintroduced. Today, on a fresh install, this is always false.
+// `isTemplate` is true whenever the dashboard is reading from the committed
+// `core/sample-data/Financial Template.xlsx` instead of the user's own
+// `private/Finances.xlsx`. The fallback fires either because no profile is
+// configured yet, or the profile exists but the user has not yet copied the
+// template into `private/`. The client uses `isTemplate` to render a sticky
+// banner across all views and to default the sidebar to "Getting Started".
+//
+// As soon as `private/Finances.xlsx` appears, the next request flips
+// `isTemplate` to false and the dashboard pivots to the user's data without
+// a server restart.
 router.get('/', (_, res) => {
-  const profile = resolveProfile();
-  if (!profile) {
+  const sheet = resolveSpreadsheet();
+  if (!sheet) {
+    // Neither the user file nor the template is readable — genuine error state.
     return res.status(404).json({
       noProfile: true,
       profiles: listProfileDirs(),
-      error: 'No user profile configured',
+      error: 'No spreadsheet available (template missing)',
     });
   }
-  const markerPath = path.join(profile.profileDir, '.sample-data');
   res.json({
-    name: profile.name,
-    hasSpreadsheet: profile.hasSpreadsheet(),
-    isSampleData: fs.existsSync(markerPath),
+    name: sheet.profile ? sheet.profile.name : null,
+    hasSpreadsheet: sheet.profile ? sheet.profile.hasSpreadsheet() : false,
+    isTemplate: sheet.isTemplate,
     profiles: listProfileDirs(),
   });
 });

@@ -47,11 +47,15 @@ The Coach opens with a short, plain-language pitch. No jargon. No salesmanship.
 
 Honor it without friction. Tell them:
 
-> "Totally fine. We can do everything in conversation for now. When you're ready, just say `set up my finances spreadsheet` and we'll come back here."
+> "Totally fine. We can do everything in conversation for now. When you're ready, just say `set up my finances spreadsheet` and we'll come back here. In the meantime the dashboard will keep showing the demo template, so you can browse what AI2FI looks like without anything being yours."
 
-Then proceed with the rest of the session in a no-spreadsheet mode — most teaching content does not require the spreadsheet, only the dashboard rendering does.
+Then proceed with the rest of the session in a no-spreadsheet mode — most teaching content does not require the spreadsheet, only the personalized dashboard does.
 
 Record the deferral in module memory under a sub-topic like `template-setup` so the next session knows where they left off.
+
+### About the dashboard while consent is pending
+
+Until the live `private/Finances.xlsx` exists, the dashboard automatically falls back to the committed demo template (`core/sample-data/Financial Template.xlsx`). It renders a loud "Demo template" banner across every view and pins a "Getting Started" entry to the top of the sidebar. The user is never confused about whose data they're looking at. As soon as Step 2 (below) completes, the next dashboard poll detects the new file and pivots automatically.
 
 ### If the user says yes
 

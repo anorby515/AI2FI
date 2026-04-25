@@ -93,7 +93,12 @@ export default function App() {
   }, []);
   useEffect(() => { fetchStatus(); }, [fetchStatus]);
 
-  // Active profile (for sample-data detection + Getting Started routing)
+  // Active profile (for template-fallback detection + Getting Started routing).
+  // `isTemplate: true` means the dashboard is reading from the committed
+  // `core/sample-data/Financial Template.xlsx` — either because no user
+  // profile is configured yet, or the profile exists but the user hasn't
+  // copied the template into private/ yet. Either way, drop the user on
+  // Getting Started so the demo-vs-real distinction is loud.
   const [profile, setProfile] = useState(null);
   useEffect(() => {
     fetch('/api/profile')
@@ -101,9 +106,7 @@ export default function App() {
       .then(data => {
         if (!data) return;
         setProfile(data);
-        // First-load routing: if the dashboard is running on sample data,
-        // drop the user on Getting Started instead of the generic Welcome.
-        if (data.isSampleData) setSidebarView('getting-started');
+        if (data.isTemplate) setSidebarView('getting-started');
       })
       .catch(() => {});
   }, []);
@@ -283,7 +286,7 @@ export default function App() {
   if (selectedSymbol) {
     return (
       <div className="app">
-        <Sidebar activeView={sidebarView} isSampleData={!!profile?.isSampleData} onViewChange={(v) => { setSidebarView(v); setSelectedSymbol(null); }} />
+        <Sidebar activeView={sidebarView} isTemplate={!!profile?.isTemplate} onViewChange={(v) => { setSidebarView(v); setSelectedSymbol(null); }} />
         <div className="app-body">
         <header className="app-header">
           <div className="header-filters">
@@ -332,7 +335,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Sidebar activeView={sidebarView} isSampleData={!!profile?.isSampleData} onViewChange={setSidebarView} />
+      <Sidebar activeView={sidebarView} isTemplate={!!profile?.isTemplate} onViewChange={setSidebarView} />
       <div className="app-body">
       <header className="app-header">
         <div className="header-filters">
@@ -361,11 +364,11 @@ export default function App() {
       </header>
       {(sidebarView === 'portfolio' || sidebarView === 'analysis') && statusBar}
 
-      {profile?.isSampleData && sidebarView !== 'getting-started' && (
+      {profile?.isTemplate && sidebarView !== 'getting-started' && (
         <div className="sample-data-banner">
           <span>
-            <strong>Sample data.</strong> This dashboard is populated from the committed template &mdash;
-            none of it is yours yet.
+            <strong>Demo template.</strong> The dashboard is reading from{' '}
+            <code>core/sample-data/Financial Template.xlsx</code> &mdash; none of this is your data yet.
           </span>
           <button className="sample-data-cta" onClick={() => setSidebarView('getting-started')}>
             Start onboarding &rarr;

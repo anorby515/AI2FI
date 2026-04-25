@@ -31,12 +31,13 @@ const BASE_NAV = [
   },
 ];
 
-export default function Sidebar({ activeView, onViewChange, isSampleData = false }) {
+export default function Sidebar({ activeView, onViewChange, isTemplate = false }) {
   const [expanded, setExpanded] = useState(false);
 
-  // Prepend "Getting Started" when the dashboard is running on sample data.
-  // Falls off the list once the onboarding skill clears the marker.
-  const nav = isSampleData
+  // Prepend "Getting Started" when the dashboard is reading from the demo
+  // template. Falls off the list as soon as the user's own private/Finances.xlsx
+  // appears and the next /api/profile poll flips isTemplate to false.
+  const nav = isTemplate
     ? [{ key: 'getting-started', label: 'Getting Started' }, ...BASE_NAV]
     : BASE_NAV;
 

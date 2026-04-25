@@ -57,6 +57,7 @@ Running list. Seeded from the flow above; add emergent items as they surface —
 - [x] Onboarding flow (this file)
 - [x] Module memory spec (`core/module-memory.md`)
 - [x] Finances template setup procedure (`core/finances-template-setup.md`) — Coach-driven consent + copy to profile root + `private/`, plus walkthrough of `Net Worth MoM`, `Brokerage Ledger`, `Accounts`, `TICKERS`
+- [x] Dashboard template-fallback pattern — `private/Finances.xlsx` first, fall back to `core/sample-data/Financial Template.xlsx`. Client banner + Getting Started default while reading the template; `/api/sync` refuses to run against it. Implemented in `server/profile-resolver.js → resolveSpreadsheet()`.
 - [ ] Welcome-to-AI2FI.html landing page (post-download entry point)
 
 **Modules — build-out**

@@ -10,6 +10,27 @@ every edit here updates the public notes without a rebuild.
 
 ## [Unreleased]
 
+### Added
+- **Dashboard template-fallback pattern.** The web app now reads
+  `user-profiles/<name>/private/Finances.xlsx` first and falls back to
+  the committed `core/sample-data/Financial Template.xlsx` when the
+  user's file doesn't exist yet. Result: a fresh clone renders a fully
+  functional dashboard immediately, and the moment the Coach copies
+  the template into the user's profile, the dashboard pivots to the
+  user's data on the next poll without a server restart. Implemented
+  in `server/profile-resolver.js → resolveSpreadsheet()`; every xlsx-
+  reading route uses it.
+- **`/api/profile.isTemplate` flag** (replaces the old `isSampleData`).
+  True whenever the dashboard is reading from the committed template.
+  The client uses it to render a sticky "Demo template" banner across
+  all views and to pin a "Getting Started" entry to the top of the
+  sidebar. Banner copy explicitly names the template path so the user
+  always knows whose data they're looking at.
+- **`/api/sync` write-guard.** Refuses to run when `isTemplate === true`
+  so the splits / quotes / benchmark caches don't get polluted with
+  template tickers. The user must copy the template into their profile
+  before sync becomes available.
+
 ### Changed
 - **Spreadsheet placement is now Coach-driven.** `dashboard/setup.command`
   no longer auto-seeds `private/Finances.xlsx`. The Coach asks for

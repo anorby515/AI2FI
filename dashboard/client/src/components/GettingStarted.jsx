@@ -1,7 +1,8 @@
 // GettingStarted — the landing view a fresh user sees when the dashboard is
-// seeded with sample data. It's selected by default when the server reports
-// `isSampleData: true`, and stays in the sidebar until the /financial-check-in
-// onboarding skill clears the .sample-data marker at Part 3 close.
+// reading from the committed demo template. Selected automatically when the
+// server reports `isTemplate: true`, and drops out of the sidebar as soon as
+// the user's own `private/Finances.xlsx` appears (the Coach copies it during
+// the consent step in core/finances-template-setup.md).
 //
 // Purpose: bridge the user from "I installed the dashboard" to "I'm talking
 // to Claude." The dashboard doesn't do onboarding itself — the boot experience
@@ -12,11 +13,11 @@ export default function GettingStarted({ profileName }) {
   return (
     <div className="getting-started">
       <div className="gs-card">
-        <div className="gs-chip">SAMPLE DATA</div>
+        <div className="gs-chip">DEMO TEMPLATE</div>
         <h1>Welcome to AI2FI</h1>
         <p className="gs-lede">
-          You're looking at a fully-functional dashboard powered by sample data, so you can
-          poke around and see what AI2FI looks like before you commit anything real.
+          You're looking at a fully-functional dashboard powered by the committed demo template, so
+          you can poke around and see what AI2FI looks like before you commit anything real.
           The real onboarding happens in Claude &mdash; that's where the coaching actually lives.
         </p>
 
@@ -39,17 +40,18 @@ export default function GettingStarted({ profileName }) {
             Takes about 30 minutes across one or more sittings. Nothing is uploaded &mdash; everything stays on your Mac.
           </li>
           <li>
-            <strong>Your real data replaces the sample.</strong>{' '}
-            When you finish Part&nbsp;3, Claude swaps the sample spreadsheet out for yours.
-            This screen goes away. The dashboard is yours.
+            <strong>Your real data replaces the demo.</strong>{' '}
+            When you consent during onboarding, Claude copies the template into your profile
+            at <code>user-profiles/{profileName || '<you>'}/private/Finances.xlsx</code>.
+            The dashboard auto-detects the new file on the next poll &mdash; this screen drops away,
+            the demo banner clears, and the dashboard is yours.
           </li>
         </ol>
 
         <div className="gs-callout">
           <strong>Where you are now:</strong> the dashboard is running at{' '}
-          <code>http://localhost:3001</code>, reading{' '}
-          <code>user-profiles/{profileName || '&lt;you&gt;'}/private/Finances.xlsx</code>{' '}
-          &mdash; which is a copy of the committed sample. Nothing here is your data yet.
+          <code>http://localhost:3001</code>, reading directly from{' '}
+          <code>core/sample-data/Financial Template.xlsx</code>. None of these numbers are yours yet.
         </div>
 
         <h2>Want to explore first?</h2>

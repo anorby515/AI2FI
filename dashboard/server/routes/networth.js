@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ExcelJS = require('exceljs');
-const { resolveProfile, noProfileResponse, noSpreadsheetResponse } = require('../profile-resolver');
+const { resolveSpreadsheet, noProfileResponse } = require('../profile-resolver');
 
 // Row mapping (1-indexed in Excel, matches the HTML dashboard)
 const ROW_MAP = {
@@ -66,11 +66,10 @@ async function parseNetWorth(spreadsheetPath) {
 
 // GET /api/networth
 router.get('/', async (req, res) => {
-  const profile = resolveProfile();
-  if (!profile) return res.status(404).json(noProfileResponse());
-  if (!profile.hasSpreadsheet()) return res.status(404).json(noSpreadsheetResponse(profile));
+  const sheet = resolveSpreadsheet();
+  if (!sheet) return res.status(404).json(noProfileResponse());
   try {
-    const data = await parseNetWorth(profile.spreadsheetPath);
+    const data = await parseNetWorth(sheet.path);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });

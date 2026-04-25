@@ -106,7 +106,16 @@ dashboard/
 
 ## Data source
 
-The server reads `user-profiles/andrew/private/Finances.xlsx` (one level up from `dashboard/`). That path is currently hardcoded in `server/index.js`, `server/routes/networth.js`, `server/routes/portfolio.js`, and `scripts/split-detector.js`. When we open this up beyond a single user, we'll replace those with a configurable profile path.
+The server reads from one of two places, in this order:
+
+1. **`user-profiles/<active-profile>/private/Finances.xlsx`** — the user's own data, once the Coach has copied the template into their profile (see `core/finances-template-setup.md`).
+2. **`core/sample-data/Financial Template.xlsx`** *(committed demo template)* — fallback when the user's file doesn't exist yet, so the dashboard renders meaningful demo data immediately on a fresh clone.
+
+The active profile is resolved by `server/profile-resolver.js` in this order: `AI2FI_PROFILE` env var → `.ai2fi-config` at the repo root → first non-`example` directory under `user-profiles/`.
+
+The user-vs-template selection lives in the same resolver (`resolveSpreadsheet()`), and every route that reads xlsx data goes through it. When the dashboard is on the demo template, `/api/profile` returns `isTemplate: true`; the client renders a sticky banner across all views and defaults the sidebar to "Getting Started." As soon as `private/Finances.xlsx` appears, the next poll flips `isTemplate` to false and the dashboard pivots — no server restart required.
+
+`/api/sync` refuses to run when `isTemplate` is true, to keep the demo template's tickers from polluting the splits/quotes/benchmark caches.
 
 ## Troubleshooting
 

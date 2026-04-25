@@ -4,7 +4,7 @@ const XLSX = require('xlsx');
 const path = require('path');
 const fs = require('fs');
 const cache = require('../cache');
-const { resolveProfile, noProfileResponse, noSpreadsheetResponse } = require('../profile-resolver');
+const { resolveSpreadsheet, noProfileResponse } = require('../profile-resolver');
 
 const IMPORT_FILE = path.join(__dirname, '../data/imported-lots.json');
 
@@ -153,22 +153,16 @@ function normalizeHoldings(holdings) {
 
 // GET /api/portfolio
 router.get('/', async (req, res) => {
-  const profile = resolveProfile();
-  if (!profile) {
+  const sheet = resolveSpreadsheet();
+  if (!sheet) {
     return res.status(404).json(noProfileResponse());
   }
-  if (!profile.hasSpreadsheet()) {
-    // Imported lots may still exist — return those even without a spreadsheet,
-    // so a user mid-onboarding can still see any CSV imports they've done.
-    const imported = loadImportedLots();
-    if (imported.length > 0) {
-      return res.json(normalizeHoldings(imported));
-    }
-    return res.status(404).json(noSpreadsheetResponse(profile));
-  }
   try {
-    const raw = parseSheet(profile.spreadsheetPath);
-    const imported = loadImportedLots();
+    const raw = parseSheet(sheet.path);
+    // Imported lots are user-specific (CSV uploads). When the dashboard is
+    // showing the demo template, surface only the template's own data so
+    // the user's imports don't visibly mix with demo numbers.
+    const imported = sheet.isTemplate ? [] : loadImportedLots();
     const combined = [...raw, ...imported];
     const data = normalizeHoldings(combined);
     res.json(data);

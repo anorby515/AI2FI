@@ -11,6 +11,15 @@
 //
 // This file deliberately avoids any Express or request coupling so it can be called
 // from the server entry point, from route handlers, and from tests alike.
+//
+// Spreadsheet resolution: routes should use `resolveSpreadsheet()` instead of
+// reading `profile.spreadsheetPath` directly. It implements the
+// user-file-first / template-fallback pattern: if the user has populated
+// `private/Finances.xlsx`, read that; otherwise fall back to the committed
+// `core/sample-data/Financial Template.xlsx` so the dashboard renders
+// meaningful demo data immediately. The `isTemplate` flag in the result
+// is the signal routes (and the client) use to render banners and refuse
+// destructive operations.
 
 const fs = require('fs');
 const path = require('path');
@@ -18,6 +27,7 @@ const path = require('path');
 const REPO_ROOT = path.join(__dirname, '../..');
 const PROFILES_DIR = path.join(REPO_ROOT, 'user-profiles');
 const CONFIG_FILE = path.join(REPO_ROOT, '.ai2fi-config');
+const TEMPLATE_PATH = path.join(REPO_ROOT, 'core', 'sample-data', 'Financial Template.xlsx');
 
 const EXCLUDED = new Set(['example', 'README.md']);
 
@@ -74,6 +84,28 @@ function resolveProfile() {
   return null;
 }
 
+// Resolve the spreadsheet a route should read from. Returns:
+//   { path, isTemplate, source, profile }
+// where `source` is 'profile' or 'template', `profile` is the resolved profile
+// object (may be null when only the template is available), and `isTemplate`
+// is true whenever the dashboard is reading from the committed template
+// rather than the user's own file. Routes use `isTemplate` to surface a
+// banner client-side and to refuse destructive operations like /api/sync.
+//
+// Returns null only when neither the user file nor the template is readable
+// — an error condition the routes should report as a 404.
+function resolveSpreadsheet() {
+  const profile = resolveProfile();
+  const userPath = profile && profile.spreadsheetPath;
+  if (userPath && fs.existsSync(userPath)) {
+    return { path: userPath, isTemplate: false, source: 'profile', profile };
+  }
+  if (fs.existsSync(TEMPLATE_PATH)) {
+    return { path: TEMPLATE_PATH, isTemplate: true, source: 'template', profile };
+  }
+  return null;
+}
+
 // Structured "no data yet" response shape used by routes. The client keys on
 // `noProfile` / `noSpreadsheet` to render an onboarding screen instead of an error.
 function noProfileResponse() {
@@ -96,10 +128,12 @@ function noSpreadsheetResponse(profile) {
 
 module.exports = {
   resolveProfile,
+  resolveSpreadsheet,
   listProfileDirs,
   buildProfile,
   noProfileResponse,
   noSpreadsheetResponse,
   REPO_ROOT,
   PROFILES_DIR,
+  TEMPLATE_PATH,
 };

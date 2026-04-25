@@ -22,7 +22,7 @@ app.use('/api/quotes', require('./routes/quotes'));
 app.use('/api/import/csv', require('./routes/csvImport'));
 app.use('/api/profile', require('./routes/profile'));
 
-const { resolveProfile, noProfileResponse, noSpreadsheetResponse } = require('./profile-resolver');
+const { resolveSpreadsheet, noProfileResponse } = require('./profile-resolver');
 
 // GET /api/status
 app.get('/api/status', (_, res) => {
@@ -49,13 +49,21 @@ app.post('/api/sync', async (_, res) => {
   const log = [];
   let errors = 0;
 
-  // Step 0: Preflight — profile + spreadsheet must exist before we hit Yahoo
-  const profile = resolveProfile();
-  if (!profile) {
-    return res.status(404).json({ log: ['No user profile configured — sync aborted'], errors: 1, aborted: true, ...noProfileResponse() });
+  // Step 0: Preflight — must have a real user spreadsheet before we hit Yahoo.
+  // Sync is intentionally refused while reading the demo template so the
+  // server's caches (splits, quotes, benchmarks) don't fill up with template
+  // tickers and overwrite the user's data when they later pivot.
+  const sheet = resolveSpreadsheet();
+  if (!sheet) {
+    return res.status(404).json({ log: ['No spreadsheet available — sync aborted'], errors: 1, aborted: true, ...noProfileResponse() });
   }
-  if (!profile.hasSpreadsheet()) {
-    return res.status(404).json({ log: [`Spreadsheet missing for profile "${profile.name}" — sync aborted`], errors: 1, aborted: true, ...noSpreadsheetResponse(profile) });
+  if (sheet.isTemplate) {
+    return res.status(400).json({
+      log: ['Sync is disabled while the dashboard is reading the demo template. Copy the template into your profile first (the Coach handles this during onboarding), then re-run sync.'],
+      errors: 1,
+      aborted: true,
+      isTemplate: true,
+    });
   }
 
   const available = await healthCheck();
@@ -66,7 +74,7 @@ app.post('/api/sync', async (_, res) => {
 
   // Step 1: Read spreadsheet to get all tickers
   const XLSX = require('xlsx');
-  const wb = XLSX.readFile(profile.spreadsheetPath, { cellDates: false });
+  const wb = XLSX.readFile(sheet.path, { cellDates: false });
   const ws = wb.Sheets['Brokerage Ledger'];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 

@@ -21,7 +21,7 @@ import './App.css';
 // Map sidebar keys to Coming Soon page titles
 const COMING_SOON_TITLES = {
   dashboard: 'Dashboard',
-  goals: 'Goal Tracking',
+  goals: 'Goals',
   budget: 'Annual Budget (Sankey)',
   retirement: 'Retirement',
   health: 'Health Savings',

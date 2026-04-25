@@ -5,12 +5,12 @@ const BASE_NAV = [
   { key: 'welcome', label: 'Welcome' },
   {
     key: 'strategy', label: 'Financial Strategy', children: [
+      { key: 'goals', label: 'Goals' },
       { key: 'networth', label: 'Net Worth' },
     ]
   },
   {
     key: 'dashboard', label: 'Dashboard', children: [
-      { key: 'goals', label: 'Goal Tracking' },
       { key: 'budget', label: 'Annual Budget (Sankey)' },
     ]
   },

@@ -11,6 +11,31 @@ every edit here updates the public notes without a rebuild.
 ## [Unreleased]
 
 ### Added
+- **Net Worth view: pie composition + 2x4 value grid.**
+  `dashboard/client/src/components/NetWorthView.jsx` now renders the
+  composition as a Recharts donut pie with percent labels, sized to a
+  2x2 footprint via `.nw__pie-with-grid` (6-col grid). Eight value
+  boxes flow to its right in 4 cols x 2 rows, in the requested order:
+  *Cash | Debt | Debt Ratio | Assets / Brokerage | RSUs | Retirement
+  | Education*. Hero card with line chart over selectable range
+  remains. Reflows below 900px to pie-on-top + 2-col box grid.
+- **Sidebar restructured to match the FOO-aligned module hierarchy.**
+  `dashboard/client/src/components/Sidebar.jsx`:
+  - `Financial Strategy` section now owns *Net Worth, Goals, Annual
+    Budget, Assets*.
+  - New `Cash & Debt` section owns *Emergency Savings,
+    Non-Discretionary Savings, High Interest Debt, Non-mortgage Debt,
+    Mortgage, Charitable Giving, Education Savings, Irregular
+    Expenses / Goals, Whatever You Want*.
+  - `Retirement (401k, IRA)` and `Investing (ETFs, Stocks, Crypto)`
+    are top-level leaves.
+  - `Getting Started` is now always visible (was conditional on
+    `isTemplate`).
+  - Removed nav: `Dashboard` parent, `Investing` previous children
+    (Portfolio / Analysis / Moat), `Debt` previous children, `Health
+    Savings`, `College Savings`. Implementations preserved in App.jsx
+    code paths but no nav button reaches them — easy to wire back in
+    later.
 - **Dashboard template-fallback pattern.** The web app now reads
   `user-profiles/<name>/private/Finances.xlsx` first and falls back to
   the committed `core/sample-data/Financial Template.xlsx` when the

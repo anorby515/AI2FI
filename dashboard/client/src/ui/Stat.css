@@ -1,0 +1,30 @@
+.ui-stat__label {
+  font-size: 11px;
+  color: var(--dim);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ui-stat__value {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.6px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.ui-stat__value--md { font-size: 22px; }
+.ui-stat__value--lg { font-size: 40px; letter-spacing: -1.2px; }
+
+.ui-stat__sub {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  margin-top: 5px;
+}
+
+.tone-pos { color: var(--pos); }
+.tone-neg { color: var(--neg); }
+.tone-neutral { color: inherit; }

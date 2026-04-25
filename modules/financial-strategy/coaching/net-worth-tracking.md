@@ -188,15 +188,44 @@ Three parts: hand off the action, residue check, memory write. The user knows th
 
 This is the load-bearing beat. Without it, the user has language and intent but no first move.
 
-Walk them through the next action concretely:
+**Before delivering the hand-off, resolve where the file actually lives.** Don't deliver a literal `<your-name>` placeholder — substitute the user's resolved profile name. Resolution order:
 
-> "Here's your action. Open `user-profiles/<your-name>/private/Finances.xlsx` and go to the `Net Worth MoM` sheet. Dates run across the top in row 2 — find the column for your cadence date, or add one if it's not there yet. Then fill in the rows for each category we discussed: cash & savings, brokerage, retirement, education, real assets, and debt. Save the file."
+1. Read `.ai2fi-config` at the repo root. If `{ "profile": "<name>" }` is present, that's the active profile.
+2. If no config, list non-`example` directories under `user-profiles/`. If exactly one exists, that's the profile. If multiple, ask which one.
+3. If no profile directory exists at all → the user hasn't run setup yet. Pause and route:
+   > "Looks like we haven't set up your profile yet. Before we drop in your numbers, we need a place to put them — takes about a minute. Want me to run the template setup now?"
+   On yes, run `core/finances-template-setup.md`. On return, resume here. On no, capture in memory under `current_state: not_yet` and end.
+
+Then check: does `user-profiles/<NAME>/private/Finances.xlsx` exist?
+
+- **Yes** → proceed to the hand-off prompt.
+- **No** → the profile exists but the template was never copied. Same routing as above — run template setup, then resume.
+
+The whole resolution should be silent in the conversation — a couple of file reads, no narration unless something is missing. The user only hears the routing prompt if there's actually a gap to fix.
+
+**Now deliver the hand-off**, with the resolved name substituted:
+
+> "Here's your action. Your spreadsheet lives at `user-profiles/<NAME>/private/Finances.xlsx`. Open it and go to the `Net Worth MoM` sheet — dates run across the top in row 2. Find the column for your cadence date, or add one if it isn't there. Then fill in the rows for cash & savings, brokerage, retirement, education, real assets, and debt. Save the file."
 >
 > "The dashboard reads that sheet directly. Refresh `localhost:3001` after saving and your first data point will show up on the chart."
 
-Then offer two paths:
+**Offer to open the file.** Most users won't navigate the file tree by hand — they'll appreciate the extra mile here:
 
-> "Two options. We can do the first column together right now — I'll walk you through each row, you tell me the number, I'll keep us moving. Takes about ten minutes. Or you can do it yourself before [cadence date] and I'll check in with you then."
+> "Want me to open it for you?"
+
+On yes, the Coach runs the right command for the user's platform:
+
+| Platform | Command |
+|---|---|
+| macOS | `open "user-profiles/<NAME>/private/Finances.xlsx"` |
+| Linux | `xdg-open "user-profiles/<NAME>/private/Finances.xlsx"` |
+| Windows | `start "" "user-profiles\<NAME>\private\Finances.xlsx"` |
+
+The file pops open in the user's default spreadsheet app — Excel, Numbers, LibreOffice, whatever they've got. They still have to do the entries; the friction of finding the file is gone.
+
+**Then offer two paths**:
+
+> "Two options. We can do the first column together right now — I'll walk you through each row, you tell me the number, I'll keep us moving. Takes about ten minutes. Or you can do it yourself before [cadence date] and I'll check in then."
 
 Wait for the choice.
 

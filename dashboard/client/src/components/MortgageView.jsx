@@ -459,26 +459,9 @@ export default function MortgageView() {
         <Card><Stat label="Interest Saved"     value={fmtUSD(interestSavedFromExtras)} tone={interestSavedFromExtras > 0 ? 'pos' : 'neutral'} /></Card>
         <Card><Stat label="Expected Payoff"    value={fmtPayoffDate(expectedPayoffIso)} /></Card>
 
-        {/* Row 3 — What If scenario */}
-        <div className="mv__stat-rowlabel">What If Scenarios</div>
-        <Card><Stat label="What If Interest Cost"  value={fmtUSD(wiTotalInterest)} /></Card>
-        <Card><Stat label="What If Interest Saved" value={fmtUSD(whatIfInterestSaved)} tone={whatIfInterestSaved > 0 ? 'pos' : 'neutral'} /></Card>
-        <Card><Stat label="What If Payoff"         value={fmtPayoffDate(wiPayoffIso)} /></Card>
-      </div>
-
-      {/* Balance Progress (left) | What If (right) */}
-      <div className="mv__split">
-        <Card>
-          <div className="mv__section-title">Progress</div>
-          <BalanceBar
-            principalPaid={data.principal_paid}
-            interestPaid={data.interest_paid}
-            remaining={remaining}
-          />
-        </Card>
-
-        <Card>
-          <div className="mv__section-title">What If</div>
+        {/* Row 3 — What If scenario. The first cell holds the entire What If
+            form so the inputs sit directly above the metrics they drive. */}
+        <Card className="mv__whatif-cell">
           <div className="mv__whatif-form">
             <div className="mv__whatif-radios">
               {SCENARIO_OPTIONS.map(o => (
@@ -494,17 +477,17 @@ export default function MortgageView() {
                 </label>
               ))}
             </div>
+            <input
+              type="range"
+              className="mv__whatif-slider"
+              min={0}
+              max={sliderMax}
+              step={sliderStep}
+              value={Math.min(scenarioAmount, sliderMax)}
+              onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
+              aria-label="Extra payment amount"
+            />
             <div className="mv__whatif-amount">
-              <input
-                type="range"
-                className="mv__whatif-slider"
-                min={0}
-                max={sliderMax}
-                step={sliderStep}
-                value={Math.min(scenarioAmount, sliderMax)}
-                onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
-                aria-label="Extra payment amount"
-              />
               <input
                 type="number"
                 className="mv__whatif-number"
@@ -519,7 +502,20 @@ export default function MortgageView() {
             </div>
           </div>
         </Card>
+        <Card><Stat label="What If Interest Cost"  value={fmtUSD(wiTotalInterest)} /></Card>
+        <Card><Stat label="What If Interest Saved" value={fmtUSD(whatIfInterestSaved)} tone={whatIfInterestSaved > 0 ? 'pos' : 'neutral'} /></Card>
+        <Card><Stat label="What If Payoff"         value={fmtPayoffDate(wiPayoffIso)} /></Card>
       </div>
+
+      {/* Progress — full width */}
+      <Card>
+        <div className="mv__section-title">Progress</div>
+        <BalanceBar
+          principalPaid={data.principal_paid}
+          interestPaid={data.interest_paid}
+          remaining={remaining}
+        />
+      </Card>
 
       {/* Projected Payoff chart — full width */}
       <Card>

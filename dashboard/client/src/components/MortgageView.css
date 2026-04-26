@@ -81,6 +81,12 @@
   flex-direction: column;
   gap: var(--gap-sm);
 }
+.mv__whatif-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  flex-wrap: wrap;
+}
 .mv__whatif-radios {
   display: flex;
   flex-wrap: wrap;
@@ -144,26 +150,30 @@
   border-radius: var(--r-pill);
   background: var(--card-hi);
 }
+/* Vertical-pill thumb — taller than wide so it reads as a slider handle
+   rather than a circular dot. */
 .mv__whatif-slider::-webkit-slider-thumb {
   appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
+  width: 10px;
+  height: 22px;
+  border-radius: var(--r-pill);
   background: var(--accent-2);
   border: 2px solid var(--bg);
-  margin-top: -6px;
-  cursor: pointer;
+  margin-top: -8px;
+  cursor: grab;
   box-shadow: 0 0 0 1px var(--rule-3);
 }
+.mv__whatif-slider::-webkit-slider-thumb:active { cursor: grabbing; }
 .mv__whatif-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
+  width: 10px;
+  height: 22px;
+  border-radius: var(--r-pill);
   background: var(--accent-2);
   border: 2px solid var(--bg);
-  cursor: pointer;
+  cursor: grab;
   box-shadow: 0 0 0 1px var(--rule-3);
 }
+.mv__whatif-slider::-moz-range-thumb:active { cursor: grabbing; }
 
 .mv__whatif-number {
   background: var(--card-hi);

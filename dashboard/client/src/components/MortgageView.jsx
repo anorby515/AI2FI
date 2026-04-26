@@ -463,31 +463,36 @@ export default function MortgageView() {
             form so the inputs sit directly above the metrics they drive. */}
         <Card className="mv__whatif-cell">
           <div className="mv__whatif-form">
-            <div className="mv__whatif-radios">
-              {SCENARIO_OPTIONS.map(o => (
-                <label key={o.value} className="mv__whatif-radio">
-                  <input
-                    type="radio"
-                    name="mv-whatif-type"
-                    value={o.value}
-                    checked={scenarioType === o.value}
-                    onChange={() => setScenarioType(o.value)}
-                  />
-                  <span>{o.label}</span>
-                </label>
-              ))}
+            <div className="mv__whatif-controls">
+              <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>
+                Reset
+              </button>
+              <div className="mv__whatif-radios">
+                {SCENARIO_OPTIONS.map(o => (
+                  <label key={o.value} className="mv__whatif-radio">
+                    <input
+                      type="radio"
+                      name="mv-whatif-type"
+                      value={o.value}
+                      checked={scenarioType === o.value}
+                      onChange={() => setScenarioType(o.value)}
+                    />
+                    <span>{o.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-            <input
-              type="range"
-              className="mv__whatif-slider"
-              min={0}
-              max={sliderMax}
-              step={sliderStep}
-              value={Math.min(scenarioAmount, sliderMax)}
-              onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
-              aria-label="Extra payment amount"
-            />
             <div className="mv__whatif-amount">
+              <input
+                type="range"
+                className="mv__whatif-slider"
+                min={0}
+                max={sliderMax}
+                step={sliderStep}
+                value={Math.min(scenarioAmount, sliderMax)}
+                onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
+                aria-label="Extra payment amount"
+              />
               <input
                 type="number"
                 className="mv__whatif-number"
@@ -496,9 +501,6 @@ export default function MortgageView() {
                 value={scenarioAmount}
                 onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
               />
-              <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>
-                Reset
-              </button>
             </div>
           </div>
         </Card>

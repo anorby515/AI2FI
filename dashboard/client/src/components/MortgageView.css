@@ -81,12 +81,6 @@
   flex-direction: column;
   gap: var(--gap-sm);
 }
-.mv__whatif-controls {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: var(--gap);
-}
 .mv__whatif-radios {
   display: flex;
   flex-direction: column;
@@ -125,12 +119,6 @@
   background: var(--accent-2);
 }
 
-.mv__whatif-amount {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--gap-sm);
-  align-items: center;
-}
 .mv__whatif-slider {
   appearance: none;
   width: 100%;
@@ -184,43 +172,6 @@
 }
 .mv__whatif-slider::-moz-range-thumb:active { cursor: grabbing; }
 
-.mv__whatif-number {
-  background: var(--card-hi);
-  border: 1px solid var(--rule-3);
-  border-radius: var(--r-btn);
-  color: var(--ink);
-  padding: 6px 8px;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
-  width: 100%;
-  min-width: 0;
-  text-align: right;
-}
-.mv__whatif-number:focus {
-  outline: none;
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 3px var(--accent-weak);
-}
-
-.mv__whatif-btn {
-  background: var(--accent-2);
-  color: var(--ink);
-  border: none;
-  border-radius: var(--r-btn);
-  padding: 6px 12px;
-  font-family: var(--font-sans);
-  font-weight: 600;
-  font-size: 12px;
-  cursor: pointer;
-  transition: opacity var(--t-fast);
-}
-.mv__whatif-btn:hover { opacity: 0.9; }
-.mv__whatif-btn--ghost {
-  background: var(--card-hi);
-  color: var(--ink-2);
-}
-
 .mv__loading,
 .mv__empty {
   padding: 80px 40px;
@@ -242,5 +193,4 @@
 
 @media (max-width: 1000px) {
   .mv__stat-grid              { grid-template-columns: 1fr 1fr; }
-  .mv__whatif-amount          { grid-template-columns: 1fr auto; }
 }

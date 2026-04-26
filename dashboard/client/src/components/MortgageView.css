@@ -172,6 +172,24 @@
 }
 .mv__whatif-slider::-moz-range-thumb:active { cursor: grabbing; }
 
+.mv__whatif-scale {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  gap: var(--gap);
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mv__whatif-scale-min { font-size: 11px; color: var(--ink-2); text-align: left; }
+.mv__whatif-scale-max { font-size: 11px; color: var(--ink-2); text-align: right; }
+.mv__whatif-scale-current {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-2);
+  text-align: center;
+}
+
 .mv__loading,
 .mv__empty {
   padding: 80px 40px;

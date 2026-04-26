@@ -30,18 +30,7 @@ Modules are flat — each top-level item below is a module. The nested entries a
 	- High Level Budget (default is Annual)
 		- Sankey diagram viewer
 2. **Savings & Debt Strategy** *(module)*
-	- Emergency
-	- Non-discretionary Savings
-		- Health Savings Account
-		- Planned Expenses
-		- Unplanned Expenses
-	- Debt Reduction
-		- High Interest Debt
-	- Discretionary Savings & Debt
-		- Charitable Giving
-		- Non-Mortgage Debts
-		- Irregular Expense / Goals Funds (Travel, New Car, …)
-		- Mortgage Paydown
+	- Mortgage Paydown
 	- Whatever You Want
 3. **Investing** *(module)*
 	- Retirement (401k, IRAs)
@@ -72,16 +61,11 @@ The current sidebar tree is the source of truth. Items checked are content-compl
 
 - [ ] Financial Strategy
 	- [x] **Net Worth** — complete. `topics/net-worth-tracking.md` (reference), `coaching/net-worth-tracking.md` (script). Two dog-food passes; "numbers belong in the file" privacy posture locked in. View ported to Nocturne primitives.
-	- [ ] **Goals** — surfaced under Financial Strategy in the new sidebar. No content yet. Likely belongs as a sub-topic of Part 3 goal-setting (`parts/part-3-goal-setting.md`) — decide whether it's its own coaching script or a wrapper around the Part 3 flow.
 	- [ ] **Annual Budget** — was queued as "High Level Budget + Sankey viewer." Pattern: `topics/annual-budget.md` (reference) + `coaching/annual-budget.md` (script). Defer Sankey render until the data shape is settled.
-	- [ ] **Assets** — new. The asset side of net worth at higher fidelity than the rolled-up `Net Worth MoM` — likely covers homes, vehicles, business equity, anything beyond financial accounts. Out of scope until Net Worth has been used a few cycles.
-- [ ] Cash & Debt *(replaces the prior "Savings & Debt Strategy" module name; covers FOO steps 4, 5, 7, 8, 11, 13b, 13c, 14)*
-	- [ ] Emergency Savings (FOO 4 / 7)
-	- [ ] Non-Discretionary Savings (HSA — FOO 8; planned and unplanned expenses)
-	- [ ] High Interest Debt (FOO 5)
-	- [ ] Non-mortgage Debt (FOO 11)
+	- 
+- [ ] Cash & Debt 
 	- [ ] Mortgage (FOO 13b)
-	- [ ] Charitable Giving
+	- [ ] Trade off Calculator
 	- [ ] Education Savings (FOO 10)
 	- [ ] Irregular Expenses / Goals (FOO 13c)
 	- [ ] Whatever You Want (FOO 14)

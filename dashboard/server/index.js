@@ -19,6 +19,7 @@ app.use('/api/benchmark', require('./routes/benchmark'));
 app.use('/api/moat', require('./routes/moat'));
 app.use('/api/networth', require('./routes/networth'));
 app.use('/api/mortgage', require('./routes/mortgage'));
+app.use('/api/education-savings', require('./routes/education-savings'));
 app.use('/api/quotes', require('./routes/quotes'));
 app.use('/api/import/csv', require('./routes/csvImport'));
 app.use('/api/profile', require('./routes/profile'));

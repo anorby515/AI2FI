@@ -12,6 +12,7 @@ import Sidebar from './components/Sidebar';
 import NetWorthView from './components/NetWorthView';
 import MortgageView from './components/MortgageView';
 import CollegeView from './components/CollegeView';
+import EducationSavingsView from './components/EducationSavingsView';
 import ComingSoon from './components/ComingSoon';
 import Welcome from './components/Welcome';
 import FinancialStrategy from './components/FinancialStrategy';
@@ -378,6 +379,7 @@ export default function App() {
         {sidebarView === 'networth' && <NetWorthView />}
         {sidebarView === 'debt-mortgage' && <MortgageView />}
         {sidebarView === 'college' && <CollegeView />}
+        {sidebarView === 'education-savings' && <EducationSavingsView />}
 
         {sidebarView === 'portfolio' && (<>
           <Dashboard
@@ -431,7 +433,7 @@ export default function App() {
           )}
         </>)}
 
-        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'portfolio', 'debt-mortgage'].includes(sidebarView) && (
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'portfolio', 'debt-mortgage', 'education-savings'].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

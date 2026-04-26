@@ -120,6 +120,27 @@ function monthsBetweenIso(aIso, bIso) {
   return Math.max(0, (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()));
 }
 
+// Most recent debt value from the Net Worth MoM tab. Returns
+// { value, date } or null if the tab/row/column is missing. The Net Worth
+// route uses the same convention: row 3 is the debt total, dates start at
+// column C (col 3) on row 2.
+function readLatestDebtFromNetWorth(wb) {
+  const ws = wb.getWorksheet('Net Worth MoM');
+  if (!ws) return null;
+  const dateRow = ws.getRow(2);
+  const debtRow = ws.getRow(3);
+  let latest = null;
+  const maxCol = ws.columnCount;
+  for (let col = 3; col <= maxCol; col++) {
+    const dateRaw = unwrap(dateRow.getCell(col).value);
+    const debtRaw = unwrap(debtRow.getCell(col).value);
+    const date = parseDate(dateRaw);
+    const debt = typeof debtRaw === 'number' ? debtRaw : null;
+    if (date && debt != null) latest = { date, value: debt };
+  }
+  return latest;
+}
+
 async function parseMortgage(spreadsheetPath) {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(spreadsheetPath);
@@ -150,22 +171,47 @@ async function parseMortgage(spreadsheetPath) {
   let currentBalance = Number(fields.current_balance);
   let principalPaid  = Number(fields.principal_paid);
   let interestPaid   = Number(fields.interest_paid);
+  let balanceSource  = 'mortgage_tab';
 
-  // If the user only supplies loan terms (the common case — see the "Mortgage"
-  // tab in Finances.xlsx), derive the running totals by amortizing from
-  // origination_date to today. This is exact for a loan with no extra
-  // payments; if the user has been making extras, they can add the
-  // current_balance / principal_paid / interest_paid fields to override.
-  const havePastTotals = [currentBalance, principalPaid, interestPaid].every(Number.isFinite);
-  if (!havePastTotals && Number.isFinite(originalPrincipal) && Number.isFinite(interestRate) && Number.isFinite(monthlyPayment) && originationDate) {
-    if (!asOfDate) asOfDate = new Date().toISOString().slice(0, 10);
-    const elapsed = monthsBetweenIso(originationDate, asOfDate);
-    const totals = amortizeForward(originalPrincipal, interestRate / 12, monthlyPayment, elapsed);
-    currentBalance = totals.balance;
-    principalPaid  = totals.cumulativePrincipal;
-    interestPaid   = totals.cumulativeInterest;
+  // Resolution order for current_balance:
+  //   1. Explicit `Current Balance` row in the Mortgage tab (if user added one).
+  //   2. Most recent `debt` value from the Net Worth MoM tab — this reflects
+  //      actual extra principal payments the user has made.
+  //   3. Standard amortization from origination_date to today (no extras).
+  if (!Number.isFinite(currentBalance)) {
+    const latestDebt = readLatestDebtFromNetWorth(wb);
+    if (latestDebt && Number.isFinite(latestDebt.value)) {
+      currentBalance = Math.abs(latestDebt.value);
+      asOfDate = asOfDate || latestDebt.date;
+      balanceSource = 'net_worth_tab';
+    }
   }
+
   if (!asOfDate) asOfDate = new Date().toISOString().slice(0, 10);
+
+  // Derive principal_paid and interest_paid from whatever current_balance we
+  // ended up with. If current_balance came from amortization (case 3 above),
+  // we use the cumulatives the same simulation produced. Otherwise we treat
+  // (original − current) as principal paid and estimate interest via a
+  // time-weighted average-balance approximation.
+  if (Number.isFinite(originalPrincipal) && Number.isFinite(interestRate) && Number.isFinite(monthlyPayment) && originationDate) {
+    const elapsed = monthsBetweenIso(originationDate, asOfDate);
+    if (!Number.isFinite(currentBalance)) {
+      const totals = amortizeForward(originalPrincipal, interestRate / 12, monthlyPayment, elapsed);
+      currentBalance = totals.balance;
+      if (!Number.isFinite(principalPaid)) principalPaid = totals.cumulativePrincipal;
+      if (!Number.isFinite(interestPaid))  interestPaid  = totals.cumulativeInterest;
+      balanceSource = 'amortized';
+    } else {
+      if (!Number.isFinite(principalPaid)) principalPaid = Math.max(0, originalPrincipal - currentBalance);
+      if (!Number.isFinite(interestPaid)) {
+        // Average-balance × rate × time. Underestimates slightly when extras
+        // were front-loaded, but close enough for the dashboard.
+        const avgBalance = (originalPrincipal + currentBalance) / 2;
+        interestPaid = avgBalance * (interestRate / 12) * elapsed;
+      }
+    }
+  }
 
   const out = {
     property:           fields.property ?? null,
@@ -178,6 +224,7 @@ async function parseMortgage(spreadsheetPath) {
     principal_paid:     Number.isFinite(principalPaid) ? principalPaid : null,
     interest_paid:      Number.isFinite(interestPaid) ? interestPaid : null,
     as_of_date:         asOfDate,
+    balance_source:     balanceSource,
   };
   return out;
 }

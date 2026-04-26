@@ -455,7 +455,7 @@ export default function MortgageView() {
         <Card><Stat label="Original Payoff"    value={fmtPayoffDate(originalPayoffIso)} /></Card>
 
         {/* Row 2 — Current trajectory (expected) */}
-        <Card><Stat label="Current Balance"    value={`−${fmtUSD(remaining)}`} tone="neg" /></Card>
+        <Card><Stat label="Current Balance"    value={fmtUSD(remaining)} /></Card>
         <Card><Stat label="Interest Cost"      value={fmtUSD(expectedTotalInterest)} /></Card>
         <Card><Stat label="Interest Saved"     value={fmtUSD(interestSavedFromExtras)} tone={interestSavedFromExtras > 0 ? 'pos' : 'neutral'} /></Card>
         <Card><Stat label="Expected Payoff"    value={fmtPayoffDate(expectedPayoffIso)} /></Card>

@@ -122,8 +122,14 @@ function projectAllStudents(students, annualRatePct) {
     state.set(s.name, { balance: s.current_balance ?? 0, projection: proj });
   }
 
+  // Compare by YYYY-MM rather than full ISO. The data seam sits on the 1st of
+  // the month while college_start_date can be mid-month (e.g. Aug 15); a
+  // full-date comparison would skip the start month's first-semester draw.
+  const ymOf = (iso) => iso.slice(0, 7);
+
   for (let i = 1; i <= totalMonths; i++) {
     const date = addMonthsISO(globalStart, i);
+    const ym = ymOf(date);
     const monthIdx = Number(date.split('-')[1]); // 1..12
     const isSemesterMonth = monthIdx === 1 || monthIdx === 8;
 
@@ -132,7 +138,7 @@ function projectAllStudents(students, annualRatePct) {
     let freedPool = 0;
     let recipient = null;
     for (const s of order) {
-      if (date >= s.graduation_date) {
+      if (ym > ymOf(s.graduation_date)) {
         freedPool += (s.monthly_contribution || 0);
       } else if (!recipient) {
         recipient = s.name;
@@ -141,8 +147,8 @@ function projectAllStudents(students, annualRatePct) {
 
     for (const s of meta) {
       if (!s.seamDate || !s.graduation_date) continue;
-      if (date <= s.seamDate) continue;
-      if (date > s.graduation_date) continue;
+      if (ym <= ymOf(s.seamDate)) continue;
+      if (ym > ymOf(s.graduation_date)) continue;
 
       const st = state.get(s.name);
       st.balance = st.balance * (1 + r);
@@ -150,8 +156,8 @@ function projectAllStudents(students, annualRatePct) {
       st.balance += (s.monthly_contribution || 0) + inherited;
 
       if (s.college_start_date
-          && date >= s.college_start_date
-          && date < s.graduation_date
+          && ym >= ymOf(s.college_start_date)
+          && ym < ymOf(s.graduation_date)
           && isSemesterMonth) {
         st.balance -= (s.estimated_tuition || 0) / 2;
       }
@@ -164,7 +170,10 @@ function projectAllStudents(students, annualRatePct) {
     const projection = st ? st.projection : [];
     let projected_at_start = s.current_balance;
     if (s.college_start_date) {
-      const prior = projection.filter(p => p.date <= s.college_start_date);
+      const startYm = s.college_start_date.slice(0, 7);
+      // Last point strictly BEFORE the start month, so we capture the balance
+      // entering freshman year before the first semester draw is applied.
+      const prior = projection.filter(p => p.date.slice(0, 7) < startYm);
       if (prior.length) projected_at_start = prior[prior.length - 1].balance;
     }
     const end_balance = projection.length

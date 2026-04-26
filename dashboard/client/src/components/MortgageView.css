@@ -82,15 +82,15 @@
   gap: var(--gap-sm);
 }
 .mv__whatif-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
   align-items: center;
-  gap: var(--gap-sm);
-  flex-wrap: wrap;
+  gap: var(--gap);
 }
 .mv__whatif-radios {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px var(--gap);
+  flex-direction: column;
+  gap: 6px;
   font-size: 12px;
 }
 .mv__whatif-radio {
@@ -134,42 +134,51 @@
 .mv__whatif-slider {
   appearance: none;
   width: 100%;
-  height: 6px;
+  height: 8px;
   border-radius: var(--r-pill);
-  background: var(--card-hi);
+  background: linear-gradient(
+    to right,
+    var(--accent-2) var(--mv-slider-fill, 0%),
+    var(--card-hi)   var(--mv-slider-fill, 0%)
+  );
   outline: none;
   cursor: pointer;
 }
 .mv__whatif-slider::-webkit-slider-runnable-track {
-  height: 6px;
+  height: 8px;
   border-radius: var(--r-pill);
-  background: var(--card-hi);
+  background: transparent;
 }
 .mv__whatif-slider::-moz-range-track {
-  height: 6px;
+  height: 8px;
   border-radius: var(--r-pill);
-  background: var(--card-hi);
+  background: transparent;
+}
+.mv__whatif-slider::-moz-range-progress {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--accent-2);
 }
 /* Vertical-pill thumb — taller than wide so it reads as a slider handle
    rather than a circular dot. */
 .mv__whatif-slider::-webkit-slider-thumb {
   appearance: none;
-  width: 10px;
-  height: 22px;
+  width: 14px;
+  height: 28px;
   border-radius: var(--r-pill);
-  background: var(--accent-2);
-  border: 2px solid var(--bg);
-  margin-top: -8px;
+  background: var(--ink);
+  border: 2px solid var(--accent-2);
+  margin-top: -10px;
   cursor: grab;
   box-shadow: 0 0 0 1px var(--rule-3);
 }
 .mv__whatif-slider::-webkit-slider-thumb:active { cursor: grabbing; }
 .mv__whatif-slider::-moz-range-thumb {
-  width: 10px;
-  height: 22px;
+  width: 14px;
+  height: 28px;
   border-radius: var(--r-pill);
-  background: var(--accent-2);
-  border: 2px solid var(--bg);
+  background: var(--ink);
+  border: 2px solid var(--accent-2);
   cursor: grab;
   box-shadow: 0 0 0 1px var(--rule-3);
 }

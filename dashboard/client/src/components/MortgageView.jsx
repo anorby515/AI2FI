@@ -461,13 +461,78 @@ export default function MortgageView() {
         <Card><Stat label="Expected Payoff"    value={fmtPayoffDate(expectedPayoffIso)} /></Card>
 
         {/* Row 3 — What If scenario */}
-        <Card />
+        <Card className="mv__stat-rowlabel">What If Scenarios</Card>
         <Card><Stat label="What If Interest Cost"  value={fmtUSD(wiTotalInterest)} /></Card>
         <Card><Stat label="What If Interest Saved" value={fmtUSD(whatIfInterestSaved)} tone={whatIfInterestSaved > 0 ? 'pos' : 'neutral'} /></Card>
         <Card><Stat label="What If Payoff"         value={fmtPayoffDate(wiPayoffIso)} /></Card>
       </div>
 
-      {/* Projected Payoff chart — full width, no side legend */}
+      {/* Balance Progress (left) | What If (right) */}
+      <div className="mv__split">
+        <Card>
+          <div className="mv__section-title">Balance Progress</div>
+          <div className="mv__balance-row">
+            <BalanceBar
+              principalPaid={data.principal_paid}
+              interestPaid={data.interest_paid}
+              remaining={remaining}
+            />
+            <div className="mv__balance-side">
+              <div className="mv__balance-side-label">Original Principal</div>
+              <div className="mv__balance-side-value">{fmtUSD(data.original_principal)}</div>
+              <div className="mv__balance-side-label">Projected Interest</div>
+              <div className="mv__balance-side-value">{fmtUSD(expectedTotalInterest)}</div>
+              <div className="mv__balance-side-label mv__balance-side-strong">Estimated Cost</div>
+              <div className="mv__balance-side-value mv__balance-side-strong">{fmtUSD(estimatedCost)}</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="mv__section-title">What If</div>
+          <div className="mv__whatif-form">
+            <div className="mv__whatif-radios">
+              {SCENARIO_OPTIONS.map(o => (
+                <label key={o.value} className="mv__whatif-radio">
+                  <input
+                    type="radio"
+                    name="mv-whatif-type"
+                    value={o.value}
+                    checked={scenarioType === o.value}
+                    onChange={() => setScenarioType(o.value)}
+                  />
+                  <span>{o.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mv__whatif-amount">
+              <input
+                type="range"
+                className="mv__whatif-slider"
+                min={0}
+                max={sliderMax}
+                step={sliderStep}
+                value={Math.min(scenarioAmount, sliderMax)}
+                onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
+                aria-label="Extra payment amount"
+              />
+              <input
+                type="number"
+                className="mv__whatif-number"
+                min={0}
+                step={sliderStep}
+                value={scenarioAmount}
+                onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
+              />
+              <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>
+                Reset
+              </button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Projected Payoff chart — full width */}
       <Card>
         <div className="mv__section-title">Projected Payoff</div>
         <ProjectionChart
@@ -475,70 +540,6 @@ export default function MortgageView() {
           todayDate={todayDate}
           payoffDate={whatIfActive ? wiPayoffIso : expectedPayoffIso}
         />
-      </Card>
-
-      {/* Balance Progress */}
-      <Card>
-        <div className="mv__section-title">Balance Progress</div>
-        <div className="mv__balance-row">
-          <BalanceBar
-            principalPaid={data.principal_paid}
-            interestPaid={data.interest_paid}
-            remaining={remaining}
-          />
-          <div className="mv__balance-side">
-            <div className="mv__balance-side-label">Original Principal</div>
-            <div className="mv__balance-side-value">{fmtUSD(data.original_principal)}</div>
-            <div className="mv__balance-side-label">Projected Interest</div>
-            <div className="mv__balance-side-value">{fmtUSD(expectedTotalInterest)}</div>
-            <div className="mv__balance-side-label mv__balance-side-strong">Estimated Cost</div>
-            <div className="mv__balance-side-value mv__balance-side-strong">{fmtUSD(estimatedCost)}</div>
-          </div>
-        </div>
-      </Card>
-
-      {/* What If — section header matches Balance Progress */}
-      <Card>
-        <div className="mv__section-title">What If</div>
-        <div className="mv__whatif-form">
-          <div className="mv__whatif-radios">
-            {SCENARIO_OPTIONS.map(o => (
-              <label key={o.value} className="mv__whatif-radio">
-                <input
-                  type="radio"
-                  name="mv-whatif-type"
-                  value={o.value}
-                  checked={scenarioType === o.value}
-                  onChange={() => setScenarioType(o.value)}
-                />
-                <span>{o.label}</span>
-              </label>
-            ))}
-          </div>
-          <div className="mv__whatif-amount">
-            <input
-              type="range"
-              className="mv__whatif-slider"
-              min={0}
-              max={sliderMax}
-              step={sliderStep}
-              value={Math.min(scenarioAmount, sliderMax)}
-              onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
-              aria-label="Extra payment amount"
-            />
-            <input
-              type="number"
-              className="mv__whatif-number"
-              min={0}
-              step={sliderStep}
-              value={scenarioAmount}
-              onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
-            />
-            <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>
-              Reset
-            </button>
-          </div>
-        </div>
       </Card>
     </div>
   );

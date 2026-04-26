@@ -20,6 +20,22 @@
   grid-template-columns: repeat(4, 1fr);
   gap: var(--gap);
 }
+.mv__stat-rowlabel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-2);
+  letter-spacing: 0.2px;
+}
+
+.mv__split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+  align-items: stretch;
+}
 
 /* ── Progress section ───────────────────────────────────────────── */
 
@@ -241,4 +257,5 @@
   .mv__stat-grid              { grid-template-columns: 1fr 1fr; }
   .mv__balance-row            { grid-template-columns: 1fr; }
   .mv__whatif-amount          { grid-template-columns: 1fr; }
+  .mv__split                  { grid-template-columns: 1fr; }
 }

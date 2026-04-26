@@ -484,6 +484,11 @@ export default function MortgageView() {
               style={{ '--mv-slider-fill': `${(Math.min(scenarioAmount, sliderMax) / sliderMax) * 100}%` }}
               aria-label="Extra payment amount"
             />
+            <div className="mv__whatif-scale">
+              <span className="mv__whatif-scale-min">$0</span>
+              <span className="mv__whatif-scale-current">{fmtUSD(scenarioAmount)}</span>
+              <span className="mv__whatif-scale-max">{fmtUSDK(sliderMax)}</span>
+            </div>
           </div>
         </Card>
         <Card><Stat label="What If Interest Cost"  value={fmtUSD(wiTotalInterest)} /></Card>

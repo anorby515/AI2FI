@@ -431,7 +431,7 @@ export default function MortgageView() {
   // monthly payment (already a meaningful prepayment); lump-sum caps at the
   // current balance so the user can simulate paying it off entirely.
   const sliderMax = scenarioType === 'extra-each'
-    ? Math.max(500, Math.round(data.monthly_payment))
+    ? Math.max(500, Math.round(data.monthly_payment * 3))
     : Math.max(1000, Math.round(data.current_balance));
   const sliderStep = scenarioType === 'extra-each' ? 25 : 1000;
 

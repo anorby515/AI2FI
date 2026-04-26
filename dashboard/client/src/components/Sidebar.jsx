@@ -14,10 +14,7 @@ const BASE_NAV = [
   },
   {
     key: 'cash-debt', label: 'Cash & Debt', children: [
-      { key: 'emergency-savings', label: 'Emergency Savings' },
-      { key: 'non-discretionary-savings', label: 'Non-Discretionary Savings' },
-      { key: 'debt-high', label: 'High Interest Debt' },
-      { key: 'debt-non-mortgage', label: 'Non-mortgage Debt' },
+      { key: 'tradeoff-calculator', label: 'Trade-off Calculator' },
       { key: 'debt-mortgage', label: 'Mortgage' },
       { key: 'charitable-giving', label: 'Charitable Giving' },
       { key: 'education-savings', label: 'Education Savings' },

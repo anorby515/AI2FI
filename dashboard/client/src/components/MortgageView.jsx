@@ -462,6 +462,7 @@ export default function MortgageView() {
         {/* Row 3 — What If scenario. The first cell holds the entire What If
             form so the inputs sit directly above the metrics they drive. */}
         <Card className="mv__whatif-cell">
+          <div className="mv__section-title">What If Scenario</div>
           <div className="mv__whatif-form">
             <div className="mv__whatif-controls">
               <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>
@@ -491,6 +492,7 @@ export default function MortgageView() {
                 step={sliderStep}
                 value={Math.min(scenarioAmount, sliderMax)}
                 onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
+                style={{ '--mv-slider-fill': `${(Math.min(scenarioAmount, sliderMax) / sliderMax) * 100}%` }}
                 aria-label="Extra payment amount"
               />
               <input

@@ -353,7 +353,6 @@ const SCENARIO_OPTIONS = [
 export default function MortgageView() {
   const [data, setData] = useState(null);
   const [errorBody, setErrorBody] = useState(null);
-  const [tab, setTab] = useState('progress');
 
   const [scenarioType, setScenarioType] = useState('extra-each');
   const [scenarioInput, setScenarioInput] = useState('0.00');
@@ -410,168 +409,72 @@ export default function MortgageView() {
     setScenario({ type: 'extra-each', amount: 0 });
   }
 
+  // What If is "active" when the user has a non-zero scenario applied. When
+  // amount === 0, the dashed What If line would exactly overlap the solid
+  // Expected line, so we skip it to keep the chart clean.
+  const whatIfActive = (scenario.amount || 0) > 0;
+
+  const chartSeries = [
+    // Muted "Original" pair — paints first so the brighter lines sit on top.
+    { name: 'Original Interest Cost',    color: 'var(--accent-2)', muted: true,
+      data: original.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
+    { name: 'Original Principal Payoff', color: 'var(--accent)',   muted: true,
+      data: original.map(p => ({ date: p.date, y: p.balance })) },
+    { name: 'Expected Interest Cost',    color: 'var(--accent-2)',
+      data: expected.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
+    { name: 'Expected Principal Payoff', color: 'var(--accent)',
+      data: expected.map(p => ({ date: p.date, y: p.balance })) },
+  ];
+  if (whatIfActive && whatIf) {
+    chartSeries.push(
+      { name: 'What If Interest Cost',     color: 'var(--accent-2)', dashed: true,
+        data: whatIf.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
+      { name: 'What If Principal Payoff',  color: 'var(--accent)',   dashed: true,
+        data: whatIf.map(p => ({ date: p.date, y: p.balance })) },
+    );
+  }
+
+  // Top-row Expected Payoff and bottom Principal Payoff card — when no
+  // scenario is active, both show the expected date so they read as the
+  // same thing the chart's bold green line points at.
+  const principalPayoffIso = whatIfActive ? wiPayoffIso : expectedPayoffIso;
+
   return (
     <div className="mv">
+      {/* Page header — property name only */}
+      <div className="mv__page-header">{data.property || 'Mortgage'}</div>
+
       {/* Scoreboard — four flat cards modeled after NetWorth's value grid */}
       <div className="mv__head-grid">
-        <Card>
-          <div className="mv__head-name">{data.property || 'Mortgage'}</div>
-          <div className="mv__head-edit">Edit Loan and Payment Terms</div>
-        </Card>
-        <Card><Stat label="Payment"       value={fmtUSD(data.monthly_payment)} /></Card>
-        <Card><Stat label="Interest Rate" value={fmtPct(data.interest_rate)} /></Card>
         <Card><Stat label="Current Balance" value={`−${fmtUSD(remaining)}`} tone="neg" /></Card>
+        <Card><Stat label="Payment"         value={fmtUSD(data.monthly_payment)} /></Card>
+        <Card><Stat label="Interest Rate"   value={fmtPct(data.interest_rate)} /></Card>
+        <Card><Stat label="Expected Payoff" value={fmtPayoffDate(expectedPayoffIso)} /></Card>
       </div>
 
-      {/* Tabs */}
-      <div className="mv__tabs">
-        <button
-          className={`mv__tab ${tab === 'progress' ? 'is-active' : ''}`}
-          onClick={() => setTab('progress')}
-        >Progress</button>
-        <button
-          className={`mv__tab ${tab === 'whatif' ? 'is-active' : ''}`}
-          onClick={() => setTab('whatif')}
-        >What If</button>
-      </div>
-
-      {tab === 'progress' && (
-        <>
-          <Card>
-            <div className="mv__section-title">Balance Progress</div>
-            <div className="mv__balance-row">
-              <BalanceBar
-                principalPaid={data.principal_paid}
-                interestPaid={data.interest_paid}
-                remaining={remaining}
-              />
-              <div className="mv__balance-side">
-                <div className="mv__balance-side-label">Original Principal</div>
-                <div className="mv__balance-side-value">{fmtUSD(data.original_principal)}</div>
-                <div className="mv__balance-side-label">Projected Interest</div>
-                <div className="mv__balance-side-value">{fmtUSD(expectedTotalInterest)}</div>
-                <div className="mv__balance-side-label mv__balance-side-strong">Estimated Cost</div>
-                <div className="mv__balance-side-value mv__balance-side-strong">{fmtUSD(estimatedCost)}</div>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="mv__section-title">Projected Payoff</div>
-            <div className="mv__chart-row">
-              <ProjectionChart
-                series={[
-                  // Muted lines first so the bold "expected" pair paints on top.
-                  { name: 'Original Interest Cost',    color: 'var(--accent-2)', muted: true,
-                    data: original.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
-                  { name: 'Original Principal Payoff', color: 'var(--accent)',   muted: true,
-                    data: original.map(p => ({ date: p.date, y: p.balance })) },
-                  { name: 'Expected Interest Cost',    color: 'var(--accent-2)',
-                    data: expected.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
-                  { name: 'Expected Principal Payoff', color: 'var(--accent)',
-                    data: expected.map(p => ({ date: p.date, y: p.balance })) },
-                ]}
-                todayDate={todayDate}
-                payoffDate={expectedPayoffIso}
-              />
-              <div className="mv__legend">
-                <LegendItem
-                  selected
-                  color="var(--accent)"
-                  label="Expected Principal Payoff"
-                  value={fmtPayoffDate(expectedPayoffIso)}
-                />
-                <LegendItem
-                  color="var(--accent-2)"
-                  label="Expected Interest Cost"
-                  value={fmtUSD(expectedTotalInterest)}
-                />
-                <LegendItem
-                  color="var(--accent)"
-                  muted
-                  label="Original Principal Payoff"
-                  value={fmtPayoffDate(originalPayoffIso)}
-                />
-                <LegendItem
-                  color="var(--accent-2)"
-                  muted
-                  label="Original Interest Cost"
-                  value={fmtUSD(originalTotalInterest)}
-                />
-              </div>
-            </div>
-          </Card>
-        </>
-      )}
-
-      {tab === 'whatif' && (
-        <>
-          <Card>
-            <div className="mv__whatif-row">
-              <span className="mv__whatif-label">What if I…</span>
-              <select
-                className="mv__whatif-select"
-                value={scenarioType}
-                onChange={(e) => setScenarioType(e.target.value)}
-              >
-                {SCENARIO_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-              <input
-                className="mv__whatif-input"
-                type="number"
-                step="100"
-                min="0"
-                value={scenarioInput}
-                onChange={(e) => setScenarioInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') applyScenario(); }}
-              />
-              <button className="mv__whatif-btn" onClick={applyScenario}>Calculate</button>
-              <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>Reset</button>
-            </div>
-          </Card>
-
-          <div className="mv__whatif-summary">
-            <Card className="mv__whatif-summary-card">
-              <div className="mv__whatif-summary-label">Interest Savings</div>
-              <div className="mv__whatif-summary-value">{fmtUSD(Math.max(0, interestSavings))}</div>
-            </Card>
-            <Card className="mv__whatif-summary-card">
-              <div className="mv__whatif-summary-label">Time Savings</div>
-              <div className="mv__whatif-summary-value">
-                {monthsSaved > 0
-                  ? `${Math.floor(monthsSaved / 12)} years ${monthsSaved % 12} months`
-                  : '—'}
-              </div>
-            </Card>
-          </div>
-
-          <Card>
-            <div className="mv__whatif-extra-line">
-              <strong>{fmtUSD(scenario.amount || 0)}</strong>
-              {' '}
-              {scenario.type === 'extra-each' ? 'extra per payment' : 'one-time extra'}
-            </div>
-          </Card>
-
-          <Card>
-            <div className="mv__chart-row">
-              <ProjectionChart
-                series={[
-                  { name: 'Expected Interest Cost',    color: 'var(--accent-2)', muted: true,
-                    data: expected.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
-                  { name: 'Expected Principal Payoff', color: 'var(--accent)',   muted: true,
-                    data: expected.map(p => ({ date: p.date, y: p.balance })) },
-                  { name: 'What If Interest Cost',     color: 'var(--accent-2)', dashed: true,
-                    data: whatIf.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
-                  { name: 'What If Principal Payoff',  color: 'var(--accent)',   dashed: true,
-                    data: whatIf.map(p => ({ date: p.date, y: p.balance })) },
-                ]}
-                todayDate={todayDate}
-                payoffDate={wiPayoffIso}
-              />
-              <div className="mv__legend">
+      {/* Projected Payoff chart */}
+      <Card>
+        <div className="mv__section-title">Projected Payoff</div>
+        <div className="mv__chart-row">
+          <ProjectionChart
+            series={chartSeries}
+            todayDate={todayDate}
+            payoffDate={principalPayoffIso}
+          />
+          <div className="mv__legend">
+            <LegendItem
+              selected
+              color="var(--accent)"
+              label="Expected Principal Payoff"
+              value={fmtPayoffDate(expectedPayoffIso)}
+            />
+            <LegendItem
+              color="var(--accent-2)"
+              label="Expected Interest Cost"
+              value={fmtUSD(expectedTotalInterest)}
+            />
+            {whatIfActive && (
+              <>
                 <LegendItem
                   dashed
                   color="var(--accent)"
@@ -584,22 +487,91 @@ export default function MortgageView() {
                   label="What If Interest Cost"
                   value={fmtUSD(wiTotalInterest)}
                 />
-                <LegendItem
-                  selected
-                  color="var(--accent)"
-                  label="Expected Principal Payoff"
-                  value={fmtPayoffDate(expectedPayoffIso)}
-                />
-                <LegendItem
-                  color="var(--accent-2)"
-                  label="Expected Interest Cost"
-                  value={fmtUSD(expectedTotalInterest)}
-                />
-              </div>
-            </div>
-          </Card>
-        </>
-      )}
+              </>
+            )}
+            <LegendItem
+              color="var(--accent)"
+              muted
+              label="Original Principal Payoff"
+              value={fmtPayoffDate(originalPayoffIso)}
+            />
+            <LegendItem
+              color="var(--accent-2)"
+              muted
+              label="Original Interest Cost"
+              value={fmtUSD(originalTotalInterest)}
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* Balance Progress */}
+      <Card>
+        <div className="mv__section-title">Balance Progress</div>
+        <div className="mv__balance-row">
+          <BalanceBar
+            principalPaid={data.principal_paid}
+            interestPaid={data.interest_paid}
+            remaining={remaining}
+          />
+          <div className="mv__balance-side">
+            <div className="mv__balance-side-label">Original Principal</div>
+            <div className="mv__balance-side-value">{fmtUSD(data.original_principal)}</div>
+            <div className="mv__balance-side-label">Projected Interest</div>
+            <div className="mv__balance-side-value">{fmtUSD(expectedTotalInterest)}</div>
+            <div className="mv__balance-side-label mv__balance-side-strong">Estimated Cost</div>
+            <div className="mv__balance-side-value mv__balance-side-strong">{fmtUSD(estimatedCost)}</div>
+          </div>
+        </div>
+      </Card>
+
+      {/* What If form */}
+      <Card>
+        <div className="mv__whatif-row">
+          <span className="mv__whatif-label">What if I…</span>
+          <select
+            className="mv__whatif-select"
+            value={scenarioType}
+            onChange={(e) => setScenarioType(e.target.value)}
+          >
+            {SCENARIO_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <input
+            className="mv__whatif-input"
+            type="number"
+            step="100"
+            min="0"
+            value={scenarioInput}
+            onChange={(e) => setScenarioInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') applyScenario(); }}
+          />
+          <button className="mv__whatif-btn" onClick={applyScenario}>Calculate</button>
+          <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>Reset</button>
+        </div>
+      </Card>
+
+      {/* Savings row — always visible; mirrors Expected Payoff at $0 */}
+      <div className="mv__head-grid mv__head-grid--two">
+        <Card>
+          <Stat
+            label="Principal Payoff"
+            value={fmtPayoffDate(principalPayoffIso)}
+            sub={whatIfActive && monthsSaved > 0
+              ? `${Math.floor(monthsSaved / 12)} yrs ${monthsSaved % 12} mo earlier`
+              : null}
+            subTone="pos"
+          />
+        </Card>
+        <Card>
+          <Stat
+            label="Interest Savings"
+            value={fmtUSD(whatIfActive ? Math.max(0, interestSavings) : 0)}
+            tone={whatIfActive && interestSavings > 0 ? 'pos' : 'neutral'}
+          />
+        </Card>
+      </div>
     </div>
   );
 }

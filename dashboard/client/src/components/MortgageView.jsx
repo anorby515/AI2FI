@@ -399,11 +399,6 @@ export default function MortgageView() {
   const wiPayoffIso = whatIf?.[whatIf.length - 1]?.date;
   const wiTotalInterest = whatIf?.[whatIf.length - 1]?.cumulativeInterest;
 
-  function resetScenario() {
-    setScenarioType('extra-each');
-    setScenarioAmount(0);
-  }
-
   // Whether to draw the dashed What If lines on the chart. When amount is 0
   // they would exactly overlap the solid Expected pair, so skip them to keep
   // the chart clean.
@@ -464,46 +459,31 @@ export default function MortgageView() {
         <Card className="mv__whatif-cell">
           <div className="mv__section-title">What If Scenario</div>
           <div className="mv__whatif-form">
-            <div className="mv__whatif-controls">
-              <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>
-                Reset
-              </button>
-              <div className="mv__whatif-radios">
-                {SCENARIO_OPTIONS.map(o => (
-                  <label key={o.value} className="mv__whatif-radio">
-                    <input
-                      type="radio"
-                      name="mv-whatif-type"
-                      value={o.value}
-                      checked={scenarioType === o.value}
-                      onChange={() => setScenarioType(o.value)}
-                    />
-                    <span>{o.label}</span>
-                  </label>
-                ))}
-              </div>
+            <div className="mv__whatif-radios">
+              {SCENARIO_OPTIONS.map(o => (
+                <label key={o.value} className="mv__whatif-radio">
+                  <input
+                    type="radio"
+                    name="mv-whatif-type"
+                    value={o.value}
+                    checked={scenarioType === o.value}
+                    onChange={() => setScenarioType(o.value)}
+                  />
+                  <span>{o.label}</span>
+                </label>
+              ))}
             </div>
-            <div className="mv__whatif-amount">
-              <input
-                type="range"
-                className="mv__whatif-slider"
-                min={0}
-                max={sliderMax}
-                step={sliderStep}
-                value={Math.min(scenarioAmount, sliderMax)}
-                onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
-                style={{ '--mv-slider-fill': `${(Math.min(scenarioAmount, sliderMax) / sliderMax) * 100}%` }}
-                aria-label="Extra payment amount"
-              />
-              <input
-                type="number"
-                className="mv__whatif-number"
-                min={0}
-                step={sliderStep}
-                value={scenarioAmount}
-                onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
-              />
-            </div>
+            <input
+              type="range"
+              className="mv__whatif-slider"
+              min={0}
+              max={sliderMax}
+              step={sliderStep}
+              value={Math.min(scenarioAmount, sliderMax)}
+              onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
+              style={{ '--mv-slider-fill': `${(Math.min(scenarioAmount, sliderMax) / sliderMax) * 100}%` }}
+              aria-label="Extra payment amount"
+            />
           </div>
         </Card>
         <Card><Stat label="What If Interest Cost"  value={fmtUSD(wiTotalInterest)} /></Card>

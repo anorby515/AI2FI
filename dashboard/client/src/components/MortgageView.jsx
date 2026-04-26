@@ -199,6 +199,7 @@ function ProjectionChart({ series, todayDate, payoffDate, height = 380 }) {
   const pad = { t: 24, r: 24, b: 36, l: 64 };
   const plotW = width - pad.l - pad.r;
   const plotH = height - pad.t - pad.b;
+  const glowId = 'mv-chart-glow';
 
   const allPoints = series.flatMap(s => s.data);
   if (!allPoints.length) return null;
@@ -237,6 +238,12 @@ function ProjectionChart({ series, todayDate, payoffDate, height = 380 }) {
 
   return (
     <svg className="mv__svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+      <defs>
+        <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" />
+        </filter>
+      </defs>
+
       {/* Y-axis grid + labels */}
       <g className="mv__svg-grid">
         {yTicks.map((t, i) => (
@@ -270,20 +277,38 @@ function ProjectionChart({ series, todayDate, payoffDate, height = 380 }) {
         </g>
       )}
 
-      {/* Series */}
-      {series.map((s, i) => (
-        <path
-          key={i}
-          d={linePath(s.data)}
-          fill="none"
-          stroke={s.color}
-          strokeWidth={s.strokeWidth || 2}
-          strokeDasharray={s.dashed ? '6 5' : undefined}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          opacity={s.opacity ?? 1}
-        />
-      ))}
+      {/* Series — each line gets a soft blur underlay (matches NetWorth).
+          `muted` series skip the glow and ride at lower opacity so the
+          bold "expected" line reads as primary. */}
+      {series.map((s, i) => {
+        const dash = s.dashed ? '6 5' : undefined;
+        return (
+          <g key={i} opacity={s.muted ? 0.35 : 1}>
+            {!s.muted && (
+              <path
+                d={linePath(s.data)}
+                fill="none"
+                stroke={s.color}
+                strokeWidth="5"
+                strokeDasharray={dash}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                opacity="0.35"
+                filter={`url(#${glowId})`}
+              />
+            )}
+            <path
+              d={linePath(s.data)}
+              fill="none"
+              stroke={s.color}
+              strokeWidth="2"
+              strokeDasharray={dash}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -331,9 +356,9 @@ export default function MortgageView() {
   const [tab, setTab] = useState('progress');
 
   const [scenarioType, setScenarioType] = useState('extra-each');
-  const [scenarioInput, setScenarioInput] = useState('2000.00');
+  const [scenarioInput, setScenarioInput] = useState('0.00');
   // Applied scenario (the chart updates only when the user clicks Calculate).
-  const [scenario, setScenario] = useState({ type: 'extra-each', amount: 2000 });
+  const [scenario, setScenario] = useState({ type: 'extra-each', amount: 0 });
 
   useEffect(() => {
     fetch('/api/mortgage')
@@ -381,31 +406,22 @@ export default function MortgageView() {
   }
   function resetScenario() {
     setScenarioType('extra-each');
-    setScenarioInput('2000.00');
-    setScenario({ type: 'extra-each', amount: 2000 });
+    setScenarioInput('0.00');
+    setScenario({ type: 'extra-each', amount: 0 });
   }
 
   return (
     <div className="mv">
-      {/* Header card — same on both tabs */}
-      <Card variant="grad" className="mv__head">
-        <div>
-          <div className="mv__head-title">{data.property || 'Mortgage'}</div>
+      {/* Scoreboard — four flat cards modeled after NetWorth's value grid */}
+      <div className="mv__head-grid">
+        <Card>
+          <div className="mv__head-name">{data.property || 'Mortgage'}</div>
           <div className="mv__head-edit">Edit Loan and Payment Terms</div>
-        </div>
-        <div>
-          <div className="mv__head-stat-label">Payment</div>
-          <div className="mv__head-stat-value">{fmtUSD(data.monthly_payment)}</div>
-        </div>
-        <div>
-          <div className="mv__head-stat-label">Interest Rate</div>
-          <div className="mv__head-stat-value">{fmtPct(data.interest_rate)}</div>
-        </div>
-        <div className="mv__head-balance">
-          <div className="mv__head-stat-label">Online Balance</div>
-          <div className="mv__head-stat-value">−{fmtUSD(remaining)}</div>
-        </div>
-      </Card>
+        </Card>
+        <Card><Stat label="Payment"       value={fmtUSD(data.monthly_payment)} /></Card>
+        <Card><Stat label="Interest Rate" value={fmtPct(data.interest_rate)} /></Card>
+        <Card><Stat label="Online Balance" value={`−${fmtUSD(remaining)}`} tone="neg" /></Card>
+      </div>
 
       {/* Tabs */}
       <div className="mv__tabs">
@@ -413,7 +429,6 @@ export default function MortgageView() {
           className={`mv__tab ${tab === 'progress' ? 'is-active' : ''}`}
           onClick={() => setTab('progress')}
         >Progress</button>
-        <button className="mv__tab is-disabled" disabled title="Not implemented">Payments</button>
         <button
           className={`mv__tab ${tab === 'whatif' ? 'is-active' : ''}`}
           onClick={() => setTab('whatif')}
@@ -446,14 +461,14 @@ export default function MortgageView() {
             <div className="mv__chart-row">
               <ProjectionChart
                 series={[
-                  // Order matters for stacking: thin lines first, bold lines on top.
-                  { name: 'Original Interest Cost',  color: '#7986cb', strokeWidth: 2,
+                  // Muted lines first so the bold "expected" pair paints on top.
+                  { name: 'Original Interest Cost',    color: 'var(--accent-2)', muted: true,
                     data: original.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
-                  { name: 'Original Principal Payoff', color: '#3a7a55', strokeWidth: 2,
+                  { name: 'Original Principal Payoff', color: 'var(--accent)',   muted: true,
                     data: original.map(p => ({ date: p.date, y: p.balance })) },
-                  { name: 'Expected Interest Cost',   color: 'var(--accent-2)', strokeWidth: 4,
+                  { name: 'Expected Interest Cost',    color: 'var(--accent-2)',
                     data: expected.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
-                  { name: 'Expected Principal Payoff', color: 'var(--accent)',  strokeWidth: 4,
+                  { name: 'Expected Principal Payoff', color: 'var(--accent)',
                     data: expected.map(p => ({ date: p.date, y: p.balance })) },
                 ]}
                 todayDate={todayDate}
@@ -472,12 +487,14 @@ export default function MortgageView() {
                   value={fmtUSD(expectedTotalInterest)}
                 />
                 <LegendItem
-                  color="#3a7a55"
+                  color="var(--accent)"
+                  muted
                   label="Original Principal Payoff"
                   value={fmtPayoffDate(originalPayoffIso)}
                 />
                 <LegendItem
-                  color="#7986cb"
+                  color="var(--accent-2)"
+                  muted
                   label="Original Interest Cost"
                   value={fmtUSD(originalTotalInterest)}
                 />
@@ -542,14 +559,14 @@ export default function MortgageView() {
             <div className="mv__chart-row">
               <ProjectionChart
                 series={[
-                  { name: 'What If Interest Cost',     color: 'var(--accent-2)', strokeWidth: 3, dashed: true,
-                    data: whatIf.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
-                  { name: 'What If Principal Payoff',  color: 'var(--accent)',  strokeWidth: 3, dashed: true,
-                    data: whatIf.map(p => ({ date: p.date, y: p.balance })) },
-                  { name: 'Expected Interest Cost',    color: 'var(--accent-2)', strokeWidth: 4,
+                  { name: 'Expected Interest Cost',    color: 'var(--accent-2)', muted: true,
                     data: expected.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
-                  { name: 'Expected Principal Payoff', color: 'var(--accent)',  strokeWidth: 4,
+                  { name: 'Expected Principal Payoff', color: 'var(--accent)',   muted: true,
                     data: expected.map(p => ({ date: p.date, y: p.balance })) },
+                  { name: 'What If Interest Cost',     color: 'var(--accent-2)', dashed: true,
+                    data: whatIf.map(p => ({ date: p.date, y: p.cumulativeInterest })) },
+                  { name: 'What If Principal Payoff',  color: 'var(--accent)',   dashed: true,
+                    data: whatIf.map(p => ({ date: p.date, y: p.balance })) },
                 ]}
                 todayDate={todayDate}
                 payoffDate={wiPayoffIso}
@@ -587,9 +604,9 @@ export default function MortgageView() {
   );
 }
 
-function LegendItem({ color, label, value, selected = false, dashed = false }) {
+function LegendItem({ color, label, value, selected = false, dashed = false, muted = false }) {
   return (
-    <div className={`mv__legend-item ${selected ? 'is-selected' : ''}`}>
+    <div className={`mv__legend-item ${selected ? 'is-selected' : ''} ${muted ? 'is-muted' : ''}`}>
       <div
         className={`mv__legend-dot ${dashed ? 'mv__legend-dot--dashed' : ''}`}
         style={{ background: color, color }}

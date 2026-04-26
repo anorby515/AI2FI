@@ -420,7 +420,7 @@ export default function MortgageView() {
         </Card>
         <Card><Stat label="Payment"       value={fmtUSD(data.monthly_payment)} /></Card>
         <Card><Stat label="Interest Rate" value={fmtPct(data.interest_rate)} /></Card>
-        <Card><Stat label="Online Balance" value={`−${fmtUSD(remaining)}`} tone="neg" /></Card>
+        <Card><Stat label="Current Balance" value={`−${fmtUSD(remaining)}`} tone="neg" /></Card>
       </div>
 
       {/* Tabs */}

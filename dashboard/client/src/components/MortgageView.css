@@ -20,23 +20,9 @@
   grid-template-columns: repeat(4, 1fr);
   gap: var(--gap);
 }
-.mv__stat-rowlabel {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 0 var(--pad);
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--accent-2);
-  letter-spacing: -0.2px;
-}
-
-.mv__split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--gap);
-  align-items: stretch;
-}
+/* Row 3 col 1 holds the entire What If form; tighter padding so the
+   stacked controls don't push the row 3 cells taller than necessary. */
+.mv__whatif-cell { padding: 14px var(--pad); }
 
 /* ── Progress section ───────────────────────────────────────────── */
 
@@ -93,12 +79,13 @@
 .mv__whatif-form {
   display: flex;
   flex-direction: column;
-  gap: var(--gap);
+  gap: var(--gap-sm);
 }
 .mv__whatif-radios {
   display: flex;
-  gap: var(--gap-lg);
   flex-wrap: wrap;
+  gap: 6px var(--gap);
+  font-size: 12px;
 }
 .mv__whatif-radio {
   display: inline-flex;
@@ -134,8 +121,8 @@
 
 .mv__whatif-amount {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: var(--gap);
+  grid-template-columns: 1fr auto;
+  gap: var(--gap-sm);
   align-items: center;
 }
 .mv__whatif-slider {
@@ -183,11 +170,12 @@
   border: 1px solid var(--rule-3);
   border-radius: var(--r-btn);
   color: var(--ink);
-  padding: 8px 10px;
+  padding: 6px 8px;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 14px;
-  width: 140px;
+  font-size: 13px;
+  width: 100%;
+  min-width: 0;
   text-align: right;
 }
 .mv__whatif-number:focus {
@@ -201,10 +189,10 @@
   color: var(--ink);
   border: none;
   border-radius: var(--r-btn);
-  padding: 8px 16px;
+  padding: 6px 12px;
   font-family: var(--font-sans);
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: opacity var(--t-fast);
 }
@@ -235,6 +223,5 @@
 
 @media (max-width: 1000px) {
   .mv__stat-grid              { grid-template-columns: 1fr 1fr; }
-  .mv__whatif-amount          { grid-template-columns: 1fr; }
-  .mv__split                  { grid-template-columns: 1fr; }
+  .mv__whatif-amount          { grid-template-columns: 1fr auto; }
 }

@@ -52,16 +52,19 @@ async function parseEducationSavings(spreadsheetPath) {
 
   // Layout (verified against the user's template):
   //   Row 1: optional milestone markers in random columns — ignored.
-  //   Row 2: header. B=Child, C=Estimated Tuition, D=College Start Date,
-  //          E=Monthly Contribution, F..onwards = monthly date headers
-  //          for the running balance time series.
+  //   Row 2: header. B=Child, C=Estimated Tuition per Year, D=Remaining
+  //          Tuition, E=College Start Date, F=Monthly Contribution,
+  //          G..onwards = monthly date headers for the running balance
+  //          time series. Tuition values are stored as negatives in the
+  //          template (treated as outflows); we surface them as positive
+  //          magnitudes for display.
   //   Rows 3+: one student per row.
   const headerRow = ws.getRow(2);
   const maxCol = ws.columnCount;
 
-  // Build the date axis from row 2 starting at col F (6).
+  // Build the date axis from row 2 starting at col G (7).
   const dateAxis = [];
-  for (let col = 6; col <= maxCol; col++) {
+  for (let col = 7; col <= maxCol; col++) {
     const raw = unwrap(headerRow.getCell(col).value);
     const iso = parseDate(raw);
     dateAxis.push({ col, date: iso });
@@ -72,12 +75,14 @@ async function parseEducationSavings(spreadsheetPath) {
     if (rowNum < 3) return;
     const name = unwrap(row.getCell(2).value);
     if (!name || typeof name !== 'string') return;
-    const tuitionRaw = unwrap(row.getCell(3).value);
-    const startRaw   = unwrap(row.getCell(4).value);
-    const monthlyRaw = unwrap(row.getCell(5).value);
+    const tuitionRaw   = unwrap(row.getCell(3).value);
+    const remainingRaw = unwrap(row.getCell(4).value);
+    const startRaw     = unwrap(row.getCell(5).value);
+    const monthlyRaw   = unwrap(row.getCell(6).value);
 
-    const tuition = typeof tuitionRaw === 'number' ? Math.abs(tuitionRaw) : null;
-    const monthly = typeof monthlyRaw === 'number' ? monthlyRaw : null;
+    const tuition   = typeof tuitionRaw   === 'number' ? Math.abs(tuitionRaw)   : null;
+    const remaining = typeof remainingRaw === 'number' ? Math.abs(remainingRaw) : null;
+    const monthly   = typeof monthlyRaw   === 'number' ? monthlyRaw : null;
     const collegeStart = parseDate(startRaw);
 
     // Balance history — only include cells with a real numeric value AND a
@@ -96,6 +101,7 @@ async function parseEducationSavings(spreadsheetPath) {
     students.push({
       name,
       estimated_tuition: tuition,
+      remaining_tuition: remaining,
       college_start_date: collegeStart,
       monthly_contribution: monthly,
       current_balance: currentBalance,

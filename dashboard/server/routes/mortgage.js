@@ -58,11 +58,17 @@ function unwrap(val) {
 }
 
 function findMortgageWorksheet(wb) {
-  for (const name of TAB_NAME_CANDIDATES) {
-    const ws = wb.getWorksheet(name);
-    if (ws) return ws;
-  }
-  return null;
+  // Case-insensitive + whitespace-tolerant match against any sheet in the
+  // workbook. ExcelJS's getWorksheet() is exact-match, which trips on common
+  // human typos like "mortgage " or "MORTGAGE".
+  const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const candidates = new Set(TAB_NAME_CANDIDATES.map(norm));
+  let match = null;
+  wb.eachSheet((ws) => {
+    if (match) return;
+    if (candidates.has(norm(ws.name))) match = ws;
+  });
+  return match;
 }
 
 // Walk the worksheet looking for `label, value` pairs. The labels can sit
@@ -195,6 +201,42 @@ router.get('/', async (_req, res) => {
       });
     }
     res.json({ ...data, isTemplate: !!sheet.isTemplate });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/mortgage/debug — diagnostic for "why isn't my Mortgage tab being
+// found?" Returns the resolved spreadsheet path, every sheet name in the
+// workbook, and (if a Mortgage-ish sheet was matched) the raw contents of
+// columns A/B/C row by row so the user can spot label typos.
+router.get('/debug', async (_req, res) => {
+  const sheet = resolveSpreadsheet();
+  if (!sheet) return res.status(404).json(noProfileResponse());
+  try {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(sheet.path);
+    const sheets = [];
+    wb.eachSheet(ws => sheets.push(ws.name));
+    const ws = findMortgageWorksheet(wb);
+    const rows = [];
+    if (ws) {
+      ws.eachRow((row, rowNum) => {
+        rows.push({
+          row: rowNum,
+          A: unwrap(row.getCell(1).value),
+          B: unwrap(row.getCell(2).value),
+          C: unwrap(row.getCell(3).value),
+        });
+      });
+    }
+    res.json({
+      spreadsheetPath: sheet.path,
+      isTemplate: !!sheet.isTemplate,
+      sheets,
+      matchedSheet: ws ? ws.name : null,
+      rows,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

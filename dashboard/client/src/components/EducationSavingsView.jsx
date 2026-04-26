@@ -322,7 +322,7 @@ export default function EducationSavingsView() {
                       <input
                         type="range"
                         className="es__slider"
-                        min="-500"
+                        min={-baseMonthly}
                         max="500"
                         step="25"
                         value={delta}

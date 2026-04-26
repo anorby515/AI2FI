@@ -58,6 +58,49 @@
 .es__pos { color: var(--pos); }
 .es__neg { color: var(--neg); }
 
+.es__slider-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  min-width: 180px;
+}
+.es__slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--rule-3);
+  border-radius: var(--r-pill);
+  outline: none;
+  cursor: pointer;
+}
+.es__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+.es__slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+.es__slider-val {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  min-width: 56px;
+  text-align: right;
+  color: var(--ink-2);
+}
+
 .es__forecast-control {
   display: flex;
   align-items: center;

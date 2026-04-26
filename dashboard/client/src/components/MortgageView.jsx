@@ -346,8 +346,8 @@ function BalanceBar({ principalPaid, interestPaid, remaining }) {
 // ── Main component ──────────────────────────────────────────────────
 
 const SCENARIO_OPTIONS = [
-  { value: 'extra-each', label: 'pay extra each payment' },
-  { value: 'lump-sum',   label: 'pay extra one time' },
+  { value: 'extra-each', label: 'Pay Extra Each Payment' },
+  { value: 'lump-sum',   label: 'Pay Extra One Time' },
 ];
 
 export default function MortgageView() {
@@ -355,9 +355,12 @@ export default function MortgageView() {
   const [errorBody, setErrorBody] = useState(null);
 
   const [scenarioType, setScenarioType] = useState('extra-each');
-  const [scenarioInput, setScenarioInput] = useState('0.00');
-  // Applied scenario (the chart updates only when the user clicks Calculate).
-  const [scenario, setScenario] = useState({ type: 'extra-each', amount: 0 });
+  const [scenarioAmount, setScenarioAmount] = useState(0);
+  // Derived — the chart and the What If row read from this every render.
+  const scenario = useMemo(
+    () => ({ type: scenarioType, amount: scenarioAmount }),
+    [scenarioType, scenarioAmount],
+  );
 
   useEffect(() => {
     fetch('/api/mortgage')
@@ -397,20 +400,15 @@ export default function MortgageView() {
   const wiPayoffIso = whatIf?.[whatIf.length - 1]?.date;
   const wiTotalInterest = whatIf?.[whatIf.length - 1]?.cumulativeInterest;
 
-  function applyScenario() {
-    const n = parseFloat(scenarioInput);
-    setScenario({ type: scenarioType, amount: Number.isFinite(n) ? n : 0 });
-  }
   function resetScenario() {
     setScenarioType('extra-each');
-    setScenarioInput('0.00');
-    setScenario({ type: 'extra-each', amount: 0 });
+    setScenarioAmount(0);
   }
 
-  // What If is "active" when the user has a non-zero scenario applied. When
-  // amount === 0, the dashed What If line would exactly overlap the solid
-  // Expected line, so we skip it to keep the chart clean.
-  const whatIfActive = (scenario.amount || 0) > 0;
+  // Whether to draw the dashed What If lines on the chart. When amount is 0
+  // they would exactly overlap the solid Expected pair, so skip them to keep
+  // the chart clean.
+  const whatIfActive = scenarioAmount > 0;
 
   const chartSeries = [
     // Muted "Original" pair — paints first so the brighter lines sit on top.
@@ -432,75 +430,51 @@ export default function MortgageView() {
     );
   }
 
-  // Top-row Expected Payoff and bottom Principal Payoff card — when no
-  // scenario is active, both show the expected date so they read as the
-  // same thing the chart's bold green line points at.
-  const principalPayoffIso = whatIfActive ? wiPayoffIso : expectedPayoffIso;
+  const interestSavedFromExtras = Math.max(0, originalTotalInterest - expectedTotalInterest);
+  const whatIfInterestSaved     = Math.max(0, expectedTotalInterest - (wiTotalInterest ?? expectedTotalInterest));
+
+  // Slider range depends on scenario type. Extra-per-payment caps at 1× the
+  // monthly payment (already a meaningful prepayment); lump-sum caps at the
+  // current balance so the user can simulate paying it off entirely.
+  const sliderMax = scenarioType === 'extra-each'
+    ? Math.max(500, Math.round(data.monthly_payment))
+    : Math.max(1000, Math.round(data.current_balance));
+  const sliderStep = scenarioType === 'extra-each' ? 25 : 1000;
 
   return (
     <div className="mv">
       {/* Page header — property name only */}
       <div className="mv__page-header">{data.property || 'Mortgage'}</div>
 
-      {/* Scoreboard — four flat cards modeled after NetWorth's value grid */}
-      <div className="mv__head-grid">
-        <Card><Stat label="Current Balance" value={`−${fmtUSD(remaining)}`} tone="neg" /></Card>
-        <Card><Stat label="Payment"         value={fmtUSD(data.monthly_payment)} /></Card>
-        <Card><Stat label="Interest Rate"   value={fmtPct(data.interest_rate)} /></Card>
-        <Card><Stat label="Expected Payoff" value={fmtPayoffDate(expectedPayoffIso)} /></Card>
+      {/* Scoreboard — three rows of four cards */}
+      <div className="mv__stat-grid">
+        {/* Row 1 — Original loan terms */}
+        <Card><Stat label="Original Principal" value={fmtUSD(data.original_principal)} /></Card>
+        <Card><Stat label="Payment"            value={fmtUSD(data.monthly_payment)} /></Card>
+        <Card><Stat label="Interest Rate"      value={fmtPct(data.interest_rate)} /></Card>
+        <Card><Stat label="Original Payoff"    value={fmtPayoffDate(originalPayoffIso)} /></Card>
+
+        {/* Row 2 — Current trajectory (expected) */}
+        <Card><Stat label="Current Balance"    value={`−${fmtUSD(remaining)}`} tone="neg" /></Card>
+        <Card><Stat label="Interest Cost"      value={fmtUSD(expectedTotalInterest)} /></Card>
+        <Card><Stat label="Interest Saved"     value={fmtUSD(interestSavedFromExtras)} tone={interestSavedFromExtras > 0 ? 'pos' : 'neutral'} /></Card>
+        <Card><Stat label="Expected Payoff"    value={fmtPayoffDate(expectedPayoffIso)} /></Card>
+
+        {/* Row 3 — What If scenario */}
+        <Card />
+        <Card><Stat label="What If Interest Cost"  value={fmtUSD(wiTotalInterest)} /></Card>
+        <Card><Stat label="What If Interest Saved" value={fmtUSD(whatIfInterestSaved)} tone={whatIfInterestSaved > 0 ? 'pos' : 'neutral'} /></Card>
+        <Card><Stat label="What If Payoff"         value={fmtPayoffDate(wiPayoffIso)} /></Card>
       </div>
 
-      {/* Projected Payoff chart */}
+      {/* Projected Payoff chart — full width, no side legend */}
       <Card>
         <div className="mv__section-title">Projected Payoff</div>
-        <div className="mv__chart-row">
-          <ProjectionChart
-            series={chartSeries}
-            todayDate={todayDate}
-            payoffDate={principalPayoffIso}
-          />
-          <div className="mv__legend">
-            <LegendItem
-              selected
-              color="var(--accent)"
-              label="Expected Principal Payoff"
-              value={fmtPayoffDate(expectedPayoffIso)}
-            />
-            <LegendItem
-              color="var(--accent-2)"
-              label="Expected Interest Cost"
-              value={fmtUSD(expectedTotalInterest)}
-            />
-            {whatIfActive && (
-              <>
-                <LegendItem
-                  dashed
-                  color="var(--accent)"
-                  label="What If Principal Payoff"
-                  value={fmtPayoffDate(wiPayoffIso)}
-                />
-                <LegendItem
-                  dashed
-                  color="var(--accent-2)"
-                  label="What If Interest Cost"
-                  value={fmtUSD(wiTotalInterest)}
-                />
-              </>
-            )}
-            <LegendItem
-              color="var(--accent)"
-              muted
-              label="Original Principal Payoff"
-              value={fmtPayoffDate(originalPayoffIso)}
-            />
-            <LegendItem
-              color="var(--accent-2)"
-              muted
-              label="Original Interest Cost"
-              value={fmtUSD(originalTotalInterest)}
-            />
-          </div>
-        </div>
+        <ProjectionChart
+          series={chartSeries}
+          todayDate={todayDate}
+          payoffDate={whatIfActive ? wiPayoffIso : expectedPayoffIso}
+        />
       </Card>
 
       {/* Balance Progress */}
@@ -523,50 +497,53 @@ export default function MortgageView() {
         </div>
       </Card>
 
-      {/* What If form */}
+      {/* What If — section header matches Balance Progress */}
       <Card>
-        <div className="mv__whatif-row">
-          <span className="mv__whatif-label">What if I…</span>
-          <select
-            className="mv__whatif-select"
-            value={scenarioType}
-            onChange={(e) => setScenarioType(e.target.value)}
-          >
+        <div className="mv__section-title">What If</div>
+        <div className="mv__whatif-form">
+          <div className="mv__whatif-radios">
             {SCENARIO_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <label key={o.value} className="mv__whatif-radio">
+                <input
+                  type="radio"
+                  name="mv-whatif-type"
+                  value={o.value}
+                  checked={scenarioType === o.value}
+                  onChange={() => setScenarioType(o.value)}
+                />
+                <span>{o.label}</span>
+              </label>
             ))}
-          </select>
-          <input
-            className="mv__whatif-input"
-            type="number"
-            step="100"
-            min="0"
-            value={scenarioInput}
-            onChange={(e) => setScenarioInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') applyScenario(); }}
-          />
-          <button className="mv__whatif-btn" onClick={applyScenario}>Calculate</button>
-          <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>Reset</button>
+          </div>
+          <div className="mv__whatif-amount">
+            <input
+              type="range"
+              className="mv__whatif-slider"
+              min={0}
+              max={sliderMax}
+              step={sliderStep}
+              value={Math.min(scenarioAmount, sliderMax)}
+              onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
+              aria-label="Extra payment amount"
+            />
+            <input
+              type="number"
+              className="mv__whatif-number"
+              min={0}
+              step={sliderStep}
+              value={scenarioAmount}
+              onChange={(e) => setScenarioAmount(parseFloat(e.target.value) || 0)}
+            />
+            <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>
+              Reset
+            </button>
+          </div>
         </div>
       </Card>
     </div>
   );
 }
 
-function LegendItem({ color, label, value, selected = false, dashed = false, muted = false }) {
-  return (
-    <div className={`mv__legend-item ${selected ? 'is-selected' : ''} ${muted ? 'is-muted' : ''}`}>
-      <div
-        className={`mv__legend-dot ${dashed ? 'mv__legend-dot--dashed' : ''}`}
-        style={{ background: color, color }}
-      />
-      <div>
-        <div className="mv__legend-label">{label}</div>
-        <div className="mv__legend-value">{value}</div>
-      </div>
-    </div>
-  );
-}
 
 function MortgageEmpty({ body }) {
   const isMissingTab = body?.error && /No Mortgage tab/i.test(body.error);

@@ -15,13 +15,10 @@
   padding: var(--pad-lg) 0 0;
 }
 
-.mv__head-grid {
+.mv__stat-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--gap);
-}
-.mv__head-grid--two {
-  grid-template-columns: repeat(2, 1fr);
 }
 
 /* ── Progress section ───────────────────────────────────────────── */
@@ -95,83 +92,114 @@
 }
 .mv__balance-side-strong { font-weight: 700; font-size: 14px; }
 
-/* ── Projected payoff chart ─────────────────────────────────────── */
-
-.mv__chart-row {
-  display: grid;
-  grid-template-columns: 3fr 1fr;
-  gap: var(--gap-lg);
-}
-
-.mv__legend {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 6px 4px;
-}
-.mv__legend-item {
-  display: grid;
-  grid-template-columns: 14px 1fr;
-  gap: 10px;
-  align-items: start;
-  padding: 10px;
-  border-radius: var(--r-chip);
-  border: 1px solid transparent;
-}
-.mv__legend-item.is-selected {
-  border-color: var(--accent-2);
-  background: var(--card-hi);
-}
-.mv__legend-item.is-muted { opacity: 0.55; }
-.mv__legend-dot {
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  margin-top: 4px;
-}
-.mv__legend-dot--dashed {
-  background: transparent !important;
-  border: 2px dashed currentColor;
-}
-.mv__legend-label { font-size: 12px; font-weight: 600; }
-.mv__legend-value {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 14px;
-  color: var(--ink);
-}
-
 /* ── What If form ─────────────────────────────────────────────── */
 
-.mv__whatif-row {
+.mv__whatif-form {
   display: flex;
-  gap: var(--gap-sm);
-  align-items: center;
-  padding: 12px var(--pad);
+  flex-direction: column;
+  gap: var(--gap);
+}
+.mv__whatif-radios {
+  display: flex;
+  gap: var(--gap-lg);
   flex-wrap: wrap;
 }
-.mv__whatif-label {
+.mv__whatif-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
-  color: var(--ink-2);
-  margin-right: 4px;
+  color: var(--ink);
+  cursor: pointer;
 }
-.mv__whatif-select,
-.mv__whatif-input {
+.mv__whatif-radio input[type="radio"] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--rule-3);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  transition: border-color var(--t-fast);
+}
+.mv__whatif-radio input[type="radio"]:hover { border-color: var(--ink-2); }
+.mv__whatif-radio input[type="radio"]:checked {
+  border-color: var(--accent-2);
+}
+.mv__whatif-radio input[type="radio"]:checked::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-2);
+}
+
+.mv__whatif-amount {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--gap);
+  align-items: center;
+}
+.mv__whatif-slider {
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--card-hi);
+  outline: none;
+  cursor: pointer;
+}
+.mv__whatif-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--card-hi);
+}
+.mv__whatif-slider::-moz-range-track {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--card-hi);
+}
+.mv__whatif-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  border: 2px solid var(--bg);
+  margin-top: -6px;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--rule-3);
+}
+.mv__whatif-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  border: 2px solid var(--bg);
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--rule-3);
+}
+
+.mv__whatif-number {
   background: var(--card-hi);
   border: 1px solid var(--rule-3);
   border-radius: var(--r-btn);
   color: var(--ink);
   padding: 8px 10px;
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 14px;
-  min-width: 200px;
+  width: 140px;
+  text-align: right;
 }
-.mv__whatif-input { min-width: 140px; text-align: right; }
-.mv__whatif-input:focus,
-.mv__whatif-select:focus {
+.mv__whatif-number:focus {
   outline: none;
   border-color: var(--accent-2);
   box-shadow: 0 0 0 3px var(--accent-weak);
 }
+
 .mv__whatif-btn {
   background: var(--accent-2);
   color: var(--ink);
@@ -210,8 +238,7 @@
 .mv__svg-marker-text { fill: var(--ink-2); font-size: 11px; font-family: var(--font-sans); }
 
 @media (max-width: 1000px) {
-  .mv__head-grid              { grid-template-columns: 1fr 1fr; }
-  .mv__head-grid--two         { grid-template-columns: 1fr; }
+  .mv__stat-grid              { grid-template-columns: 1fr 1fr; }
   .mv__balance-row            { grid-template-columns: 1fr; }
-  .mv__chart-row              { grid-template-columns: 1fr; }
+  .mv__whatif-amount          { grid-template-columns: 1fr; }
 }

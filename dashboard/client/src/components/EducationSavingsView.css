@@ -55,6 +55,52 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+.es__pos { color: var(--pos); }
+.es__neg { color: var(--neg); }
+
+.es__forecast-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+.es__forecast-label {
+  font-size: 12px;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.es__forecast-input-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  background: var(--card-hi);
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+}
+.es__forecast-input {
+  width: 60px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  text-align: right;
+  -moz-appearance: textfield;
+}
+.es__forecast-input::-webkit-outer-spin-button,
+.es__forecast-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.es__forecast-suffix {
+  color: var(--ink-2);
+  font-size: 14px;
+}
 
 .es__chart-header {
   display: flex;

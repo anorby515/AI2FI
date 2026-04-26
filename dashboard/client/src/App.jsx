@@ -21,17 +21,13 @@ import './App.css';
 
 // Map sidebar keys to Coming Soon page titles
 const COMING_SOON_TITLES = {
-  goals: 'Goals',
   budget: 'Annual Budget',
-  assets: 'Assets',
   'cash-debt': 'Cash & Debt',
   'tradeoff-calculator': 'Trade-off Calculator',
-  'charitable-giving': 'Charitable Giving',
-  'education-savings': 'Education Savings',
-  'irregular-expenses': 'Irregular Expenses / Goals',
-  'whatever-you-want': 'Whatever You Want',
+  'investment-portfolio': 'Investment Portfolio',
   retirement: 'Retirement (401k, IRA)',
-  investing: 'Investing (ETFs, Stocks, Crypto)',
+  'education-savings': 'Education Savings',
+  brokerage: 'Brokerage (ETFs, Stocks, Crypto)',
 };
 
 const PORTFOLIO_TABS = ['Holdings', 'Closed', 'Harvest'];

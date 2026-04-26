@@ -396,8 +396,6 @@ export default function MortgageView() {
   // What-if specific
   const wiPayoffIso = whatIf?.[whatIf.length - 1]?.date;
   const wiTotalInterest = whatIf?.[whatIf.length - 1]?.cumulativeInterest;
-  const interestSavings = expectedTotalInterest - (wiTotalInterest ?? expectedTotalInterest);
-  const monthsSaved = monthsBetween(wiPayoffIso, expectedPayoffIso);
 
   function applyScenario() {
     const n = parseFloat(scenarioInput);
@@ -551,27 +549,6 @@ export default function MortgageView() {
           <button className="mv__whatif-btn mv__whatif-btn--ghost" onClick={resetScenario}>Reset</button>
         </div>
       </Card>
-
-      {/* Savings row — always visible; mirrors Expected Payoff at $0 */}
-      <div className="mv__head-grid mv__head-grid--two">
-        <Card>
-          <Stat
-            label="Principal Payoff"
-            value={fmtPayoffDate(principalPayoffIso)}
-            sub={whatIfActive && monthsSaved > 0
-              ? `${Math.floor(monthsSaved / 12)} yrs ${monthsSaved % 12} mo earlier`
-              : null}
-            subTone="pos"
-          />
-        </Card>
-        <Card>
-          <Stat
-            label="Interest Savings"
-            value={fmtUSD(whatIfActive ? Math.max(0, interestSavings) : 0)}
-            tone={whatIfActive && interestSavings > 0 ? 'pos' : 'neutral'}
-          />
-        </Card>
-      </div>
     </div>
   );
 }
@@ -589,13 +566,6 @@ function LegendItem({ color, label, value, selected = false, dashed = false, mut
       </div>
     </div>
   );
-}
-
-function monthsBetween(earlierIso, laterIso) {
-  if (!earlierIso || !laterIso) return 0;
-  const a = new Date(earlierIso + 'T00:00:00');
-  const b = new Date(laterIso + 'T00:00:00');
-  return Math.max(0, (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()));
 }
 
 function MortgageEmpty({ body }) {

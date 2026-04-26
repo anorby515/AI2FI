@@ -48,6 +48,25 @@ function monthsBetween(isoA, isoB) {
   return (by - ay) * 12 + (bm - am);
 }
 
+// Compute graduation as the (semestersRemaining)-th Aug/Jan on or after the
+// later of seam and college_start, plus 5 months (~May graduation). This
+// matters for students already mid-college: we should only charge tuition
+// for semesters they haven't already paid, not all 8 from college_start.
+function deriveGraduationDate(seamDate, collegeStart, semestersRemaining) {
+  if (!collegeStart || semestersRemaining <= 0) return seamDate;
+  const walk = collegeStart > seamDate ? collegeStart : seamDate;
+  let count = 0;
+  for (let i = 0; i < 240; i++) {
+    const d = addMonthsISO(walk, i);
+    const m = Number(d.split('-')[1]);
+    if (m === 1 || m === 8) {
+      count++;
+      if (count === semestersRemaining) return addMonthsISO(d, 5);
+    }
+  }
+  return walk;
+}
+
 // Project all students together so that, when an older sibling graduates,
 // their monthly contribution can be redirected to the next still-enrolled
 // sibling. Each month, in order:
@@ -55,15 +74,20 @@ function monthsBetween(isoA, isoB) {
 //   2. add own contribution + any inherited contributions from already-
 //      graduated siblings (the youngest pre-grad sibling absorbs the pool)
 //   3. if the student is currently in college (between college_start and
-//      graduation = start + COLLEGE_YEARS), and the calendar month is Aug
-//      or Jan, subtract one half of estimated_tuition (a semester payment)
-// Graduation is approximated as college_start + 48 months, which covers the
-// 8 expected Aug/Jan semesters. Contributions continue through that month.
+//      graduation), and the calendar month is Aug or Jan, subtract one
+//      half of estimated_tuition (a semester payment)
+// Each student's graduation date is derived from remaining_tuition rather
+// than college_start + 48 months, so a junior with two years left only
+// gets four more tuition draws instead of eight.
 function projectAllStudents(students, annualRatePct) {
   const meta = students.map(s => {
     const seamDate = s.history?.length ? s.history[s.history.length - 1].date : null;
-    const graduation_date = s.college_start_date
-      ? addMonthsISO(s.college_start_date, COLLEGE_YEARS * 12)
+    let semestersRemaining = COLLEGE_YEARS * 2;
+    if (s.remaining_tuition != null && s.estimated_tuition && s.estimated_tuition > 0) {
+      semestersRemaining = Math.max(0, Math.round(s.remaining_tuition / (s.estimated_tuition / 2)));
+    }
+    const graduation_date = (seamDate && s.college_start_date)
+      ? deriveGraduationDate(seamDate, s.college_start_date, semestersRemaining)
       : null;
     return { ...s, seamDate, graduation_date };
   });

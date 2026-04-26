@@ -327,7 +327,7 @@ const SCENARIO_OPTIONS = [
 
 export default function MortgageView() {
   const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const [errorBody, setErrorBody] = useState(null);
   const [tab, setTab] = useState('progress');
 
   const [scenarioType, setScenarioType] = useState('extra-each');
@@ -338,14 +338,15 @@ export default function MortgageView() {
   useEffect(() => {
     fetch('/api/mortgage')
       .then(async (r) => {
+        const body = await r.json().catch(() => ({}));
         if (!r.ok) {
-          const body = await r.json().catch(() => ({}));
-          throw new Error(body.error || `Mortgage data unavailable (${r.status})`);
+          setErrorBody({ status: r.status, ...body });
+          return null;
         }
-        return r.json();
+        return body;
       })
-      .then(setData)
-      .catch((e) => setError(e.message));
+      .then((body) => { if (body) setData(body); })
+      .catch((e) => setErrorBody({ status: 0, error: e.message }));
   }, []);
 
   const expected = useMemo(() => data && buildExpectedTrajectory(data), [data]);
@@ -355,7 +356,7 @@ export default function MortgageView() {
     [data, scenario]
   );
 
-  if (error) return <div className="mv__empty">{error}</div>;
+  if (errorBody) return <MortgageEmpty body={errorBody} />;
   if (!data || !expected || !original) return <div className="mv__loading">Loading mortgage…</div>;
 
   // Top-line numbers
@@ -606,4 +607,30 @@ function monthsBetween(earlierIso, laterIso) {
   const a = new Date(earlierIso + 'T00:00:00');
   const b = new Date(laterIso + 'T00:00:00');
   return Math.max(0, (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()));
+}
+
+function MortgageEmpty({ body }) {
+  const isMissingTab = body?.error && /No Mortgage tab/i.test(body.error);
+  return (
+    <div className="mv__empty">
+      <div style={{ marginBottom: 12, fontSize: 14 }}>
+        {body.error || `Mortgage data unavailable (HTTP ${body.status}).`}
+      </div>
+      {isMissingTab && (
+        <>
+          {body.spreadsheetPath && (
+            <div style={{ fontSize: 12, marginBottom: 12 }}>
+              Spreadsheet: <code>{body.spreadsheetPath}</code>
+            </div>
+          )}
+          {Array.isArray(body.availableTabs) && body.availableTabs.length > 0 && (
+            <div style={{ fontSize: 12, marginBottom: 12 }}>
+              Tabs found: {body.availableTabs.map(t => <code key={t} style={{ marginRight: 6 }}>{t}</code>)}
+            </div>
+          )}
+          {body.hint && <div style={{ fontSize: 12 }}>{body.hint}</div>}
+        </>
+      )}
+    </div>
+  );
 }

@@ -391,7 +391,6 @@ export default function MortgageView() {
   const originalPayoffIso = original[original.length - 1].date;
   const expectedTotalInterest = expected[expected.length - 1].cumulativeInterest;
   const originalTotalInterest = original[original.length - 1].cumulativeInterest;
-  const estimatedCost = data.original_principal + expectedTotalInterest;
   const remaining = data.current_balance;
 
   const todayDate = data.as_of_date;
@@ -470,22 +469,12 @@ export default function MortgageView() {
       {/* Balance Progress (left) | What If (right) */}
       <div className="mv__split">
         <Card>
-          <div className="mv__section-title">Balance Progress</div>
-          <div className="mv__balance-row">
-            <BalanceBar
-              principalPaid={data.principal_paid}
-              interestPaid={data.interest_paid}
-              remaining={remaining}
-            />
-            <div className="mv__balance-side">
-              <div className="mv__balance-side-label">Original Principal</div>
-              <div className="mv__balance-side-value">{fmtUSD(data.original_principal)}</div>
-              <div className="mv__balance-side-label">Projected Interest</div>
-              <div className="mv__balance-side-value">{fmtUSD(expectedTotalInterest)}</div>
-              <div className="mv__balance-side-label mv__balance-side-strong">Estimated Cost</div>
-              <div className="mv__balance-side-value mv__balance-side-strong">{fmtUSD(estimatedCost)}</div>
-            </div>
-          </div>
+          <div className="mv__section-title">Progress</div>
+          <BalanceBar
+            principalPaid={data.principal_paid}
+            interestPaid={data.interest_paid}
+            remaining={remaining}
+          />
         </Card>
 
         <Card>

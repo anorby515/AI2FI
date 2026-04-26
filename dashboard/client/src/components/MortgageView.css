@@ -47,12 +47,6 @@
   letter-spacing: 0.2px;
 }
 
-.mv__balance-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--gap-lg);
-  align-items: start;
-}
 .mv__balance-bar-wrap {
   position: relative;
   padding-top: 36px;
@@ -92,21 +86,6 @@
   margin: 0 auto 4px;
 }
 .mv__balance-tag-bottom { display: flex; flex-direction: column-reverse; align-items: center; }
-
-.mv__balance-side {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  row-gap: 6px;
-  column-gap: 24px;
-  font-size: 13px;
-}
-.mv__balance-side-label { color: var(--ink-2); }
-.mv__balance-side-value {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-.mv__balance-side-strong { font-weight: 700; font-size: 14px; }
 
 /* ── What If form ─────────────────────────────────────────────── */
 
@@ -255,7 +234,6 @@
 
 @media (max-width: 1000px) {
   .mv__stat-grid              { grid-template-columns: 1fr 1fr; }
-  .mv__balance-row            { grid-template-columns: 1fr; }
   .mv__whatif-amount          { grid-template-columns: 1fr; }
   .mv__split                  { grid-template-columns: 1fr; }
 }

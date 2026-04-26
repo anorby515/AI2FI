@@ -460,7 +460,7 @@ export default function MortgageView() {
         <Card><Stat label="Expected Payoff"    value={fmtPayoffDate(expectedPayoffIso)} /></Card>
 
         {/* Row 3 — What If scenario */}
-        <Card className="mv__stat-rowlabel">What If Scenarios</Card>
+        <div className="mv__stat-rowlabel">What If Scenarios</div>
         <Card><Stat label="What If Interest Cost"  value={fmtUSD(wiTotalInterest)} /></Card>
         <Card><Stat label="What If Interest Saved" value={fmtUSD(whatIfInterestSaved)} tone={whatIfInterestSaved > 0 ? 'pos' : 'neutral'} /></Card>
         <Card><Stat label="What If Payoff"         value={fmtPayoffDate(wiPayoffIso)} /></Card>

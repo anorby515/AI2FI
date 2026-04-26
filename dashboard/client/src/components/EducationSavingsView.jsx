@@ -179,6 +179,9 @@ export default function EducationSavingsView() {
   const [errorBody, setErrorBody] = useState(null);
   const [selected, setSelected] = useState(ALL);
   const [rateInput, setRateInput] = useState(String(DEFAULT_RATE_PCT));
+  // Per-student "what-if" delta applied on top of the spreadsheet's monthly
+  // contribution. Keyed by student name; value in dollars (-500..+500, step 25).
+  const [contribDelta, setContribDelta] = useState({});
 
   useEffect(() => {
     fetch('/api/education-savings')
@@ -199,8 +202,12 @@ export default function EducationSavingsView() {
   // through graduation and bakes in the semesterly tuition draws.
   const forecasts = useMemo(() => {
     if (!data?.students?.length) return [];
-    return projectAllStudents(data.students, ratePctSafe);
-  }, [data, ratePctSafe]);
+    const adjusted = data.students.map(s => ({
+      ...s,
+      monthly_contribution: (s.monthly_contribution || 0) + (contribDelta[s.name] || 0),
+    }));
+    return projectAllStudents(adjusted, ratePctSafe);
+  }, [data, ratePctSafe, contribDelta]);
 
   // Pivot per-student histories AND projections into a single
   // { date, [name]: balance, [name__proj]: projected } row set so Recharts
@@ -282,6 +289,7 @@ export default function EducationSavingsView() {
               <th>Student</th>
               <th className="es__num">Current Balance</th>
               <th className="es__num">Monthly Contribution</th>
+              <th>Adjust Monthly</th>
               <th>College Start Date</th>
               <th className="es__num">Annual Tuition</th>
               <th className="es__num">Remaining Tuition</th>
@@ -292,11 +300,33 @@ export default function EducationSavingsView() {
           <tbody>
             {forecasts.map(s => {
               const tone = s.end_balance == null ? '' : s.end_balance >= 0 ? 'es__pos' : 'es__neg';
+              const delta = contribDelta[s.name] || 0;
+              const baseMonthly = (s.monthly_contribution || 0) - delta;
+              const deltaTone = delta > 0 ? 'es__pos' : delta < 0 ? 'es__neg' : '';
               return (
                 <tr key={s.name}>
                   <td>{s.name}</td>
                   <td className="es__num">{fmtUSD(s.current_balance)}</td>
-                  <td className="es__num">{fmtUSD(s.monthly_contribution)}</td>
+                  <td className="es__num">{fmtUSD(baseMonthly)}</td>
+                  <td>
+                    <div className="es__slider-cell">
+                      <input
+                        type="range"
+                        className="es__slider"
+                        min="-500"
+                        max="500"
+                        step="25"
+                        value={delta}
+                        onChange={(e) => setContribDelta(prev => ({
+                          ...prev,
+                          [s.name]: Number(e.target.value),
+                        }))}
+                      />
+                      <span className={`es__slider-val ${deltaTone}`}>
+                        {fmtUSDSigned(delta)}
+                      </span>
+                    </div>
+                  </td>
                   <td>{fmtDate(s.college_start_date)}</td>
                   <td className="es__num">{fmtUSD(s.estimated_tuition)}</td>
                   <td className="es__num">{fmtUSD(s.remaining_tuition)}</td>

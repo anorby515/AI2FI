@@ -8,6 +8,7 @@ import './EducationSavingsView.css';
 const ALL = '__all__';
 const DEFAULT_RATE_PCT = 6;
 const PROJ_SUFFIX = '__proj';
+const COLLEGE_YEARS = 4;
 
 // Series colors keyed off design tokens. Recharts forwards `stroke` to the
 // underlying SVG attribute, which accepts `var(...)` references.
@@ -47,26 +48,106 @@ function monthsBetween(isoA, isoB) {
   return (by - ay) * 12 + (bm - am);
 }
 
-// Project a single student's balance monthly from the seam (last actual point)
-// up to their college start date. Returns [] if the start date is on/before
-// the seam, or if we don't have a current balance to project from.
-function projectBalances(student, annualRatePct) {
-  if (!student.history?.length) return [];
-  if (!student.college_start_date) return [];
-  const seamDate = student.history[student.history.length - 1].date;
-  const seamBal = student.current_balance;
-  if (seamBal == null) return [];
-  const nMonths = monthsBetween(seamDate, student.college_start_date);
-  if (nMonths <= 0) return [];
-  const r = (annualRatePct / 100) / 12;
-  const monthly = student.monthly_contribution || 0;
-  const out = [{ date: seamDate, balance: seamBal }];
-  let bal = seamBal;
-  for (let i = 1; i <= nMonths; i++) {
-    bal = bal * (1 + r) + monthly;
-    out.push({ date: addMonthsISO(seamDate, i), balance: bal });
+// Project all students together so that, when an older sibling graduates,
+// their monthly contribution can be redirected to the next still-enrolled
+// sibling. Each month, in order:
+//   1. apply growth at the supplied annual rate
+//   2. add own contribution + any inherited contributions from already-
+//      graduated siblings (the youngest pre-grad sibling absorbs the pool)
+//   3. if the student is currently in college (between college_start and
+//      graduation = start + COLLEGE_YEARS), and the calendar month is Aug
+//      or Jan, subtract one half of estimated_tuition (a semester payment)
+// Graduation is approximated as college_start + 48 months, which covers the
+// 8 expected Aug/Jan semesters. Contributions continue through that month.
+function projectAllStudents(students, annualRatePct) {
+  const meta = students.map(s => {
+    const seamDate = s.history?.length ? s.history[s.history.length - 1].date : null;
+    const graduation_date = s.college_start_date
+      ? addMonthsISO(s.college_start_date, COLLEGE_YEARS * 12)
+      : null;
+    return { ...s, seamDate, graduation_date };
+  });
+
+  // Inheritance order: by college start date ascending.
+  const order = meta
+    .filter(s => s.college_start_date)
+    .sort((a, b) => a.college_start_date.localeCompare(b.college_start_date));
+
+  const seams = meta.map(s => s.seamDate).filter(Boolean).sort();
+  const grads = meta.map(s => s.graduation_date).filter(Boolean).sort();
+  if (!seams.length || !grads.length) {
+    return meta.map(s => ({
+      ...s,
+      projection: [],
+      projected_at_start: s.current_balance,
+      end_balance: s.current_balance,
+    }));
   }
-  return out;
+  const globalStart = seams[0];
+  const globalEnd = grads[grads.length - 1];
+  const totalMonths = monthsBetween(globalStart, globalEnd);
+  const r = (annualRatePct / 100) / 12;
+
+  // Per-student running state. Seed with seam point for chart continuity.
+  const state = new Map();
+  for (const s of meta) {
+    const proj = [];
+    if (s.seamDate && s.current_balance != null) {
+      proj.push({ date: s.seamDate, balance: s.current_balance });
+    }
+    state.set(s.name, { balance: s.current_balance ?? 0, projection: proj });
+  }
+
+  for (let i = 1; i <= totalMonths; i++) {
+    const date = addMonthsISO(globalStart, i);
+    const monthIdx = Number(date.split('-')[1]); // 1..12
+    const isSemesterMonth = monthIdx === 1 || monthIdx === 8;
+
+    // At this date, freed pool = sum of own contributions of already-graduated
+    // siblings; recipient = first non-graduated sibling in order.
+    let freedPool = 0;
+    let recipient = null;
+    for (const s of order) {
+      if (date >= s.graduation_date) {
+        freedPool += (s.monthly_contribution || 0);
+      } else if (!recipient) {
+        recipient = s.name;
+      }
+    }
+
+    for (const s of meta) {
+      if (!s.seamDate || !s.graduation_date) continue;
+      if (date <= s.seamDate) continue;
+      if (date > s.graduation_date) continue;
+
+      const st = state.get(s.name);
+      st.balance = st.balance * (1 + r);
+      const inherited = (s.name === recipient) ? freedPool : 0;
+      st.balance += (s.monthly_contribution || 0) + inherited;
+
+      if (s.college_start_date
+          && date >= s.college_start_date
+          && date < s.graduation_date
+          && isSemesterMonth) {
+        st.balance -= (s.estimated_tuition || 0) / 2;
+      }
+      st.projection.push({ date, balance: st.balance });
+    }
+  }
+
+  return meta.map(s => {
+    const st = state.get(s.name);
+    const projection = st ? st.projection : [];
+    let projected_at_start = s.current_balance;
+    if (s.college_start_date) {
+      const prior = projection.filter(p => p.date <= s.college_start_date);
+      if (prior.length) projected_at_start = prior[prior.length - 1].balance;
+    }
+    const end_balance = projection.length
+      ? projection[projection.length - 1].balance
+      : s.current_balance;
+    return { ...s, projection, projected_at_start, end_balance };
+  });
 }
 
 export default function EducationSavingsView() {
@@ -89,21 +170,12 @@ export default function EducationSavingsView() {
   const ratePct = Number.parseFloat(rateInput);
   const ratePctSafe = Number.isFinite(ratePct) ? ratePct : DEFAULT_RATE_PCT;
 
-  // Project per-student forecasts and surface a per-student summary used by
-  // both the table (Projected at Start / Gap) and the chart (dashed lines).
+  // Project all students together so sibling contributions can roll forward
+  // after each graduation. The chart's dashed projection runs from the seam
+  // through graduation and bakes in the semesterly tuition draws.
   const forecasts = useMemo(() => {
     if (!data?.students?.length) return [];
-    return data.students.map(s => {
-      const projection = projectBalances(s, ratePctSafe);
-      const projectedAtStart = projection.length
-        ? projection[projection.length - 1].balance
-        : s.current_balance;
-      const remaining = s.remaining_tuition;
-      const gap = (projectedAtStart != null && remaining != null)
-        ? projectedAtStart - remaining
-        : null;
-      return { ...s, projection, projected_at_start: projectedAtStart, gap };
-    });
+    return projectAllStudents(data.students, ratePctSafe);
   }, [data, ratePctSafe]);
 
   // Pivot per-student histories AND projections into a single
@@ -190,12 +262,12 @@ export default function EducationSavingsView() {
               <th className="es__num">Annual Tuition</th>
               <th className="es__num">Remaining Tuition</th>
               <th className="es__num">Projected at Start</th>
-              <th className="es__num">Gap</th>
+              <th className="es__num">Projected at Graduation</th>
             </tr>
           </thead>
           <tbody>
             {forecasts.map(s => {
-              const tone = s.gap == null ? '' : s.gap >= 0 ? 'es__pos' : 'es__neg';
+              const tone = s.end_balance == null ? '' : s.end_balance >= 0 ? 'es__pos' : 'es__neg';
               return (
                 <tr key={s.name}>
                   <td>{s.name}</td>
@@ -205,7 +277,7 @@ export default function EducationSavingsView() {
                   <td className="es__num">{fmtUSD(s.estimated_tuition)}</td>
                   <td className="es__num">{fmtUSD(s.remaining_tuition)}</td>
                   <td className="es__num">{fmtUSD(s.projected_at_start)}</td>
-                  <td className={`es__num ${tone}`}>{fmtUSDSigned(s.gap)}</td>
+                  <td className={`es__num ${tone}`}>{fmtUSDSigned(s.end_balance)}</td>
                 </tr>
               );
             })}

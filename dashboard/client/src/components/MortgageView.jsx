@@ -469,7 +469,7 @@ export default function MortgageView() {
       {/* Balance Progress (left) | What If (right) */}
       <div className="mv__split">
         <Card>
-          <div className="mv__section-title">Balance Progress</div>
+          <div className="mv__section-title">Progress</div>
           <BalanceBar
             principalPaid={data.principal_paid}
             interestPaid={data.interest_paid}

@@ -6,24 +6,22 @@ const BASE_NAV = [
   { key: 'getting-started', label: 'Getting Started' },
   {
     key: 'strategy', label: 'Financial Strategy', children: [
-      { key: 'networth', label: 'Net Worth' },
-      { key: 'goals', label: 'Goals' },
       { key: 'budget', label: 'Annual Budget' },
-      { key: 'assets', label: 'Assets' },
     ]
   },
   {
     key: 'cash-debt', label: 'Cash & Debt', children: [
-      { key: 'tradeoff-calculator', label: 'Trade-off Calculator' },
       { key: 'debt-mortgage', label: 'Mortgage' },
-      { key: 'charitable-giving', label: 'Charitable Giving' },
-      { key: 'education-savings', label: 'Education Savings' },
-      { key: 'irregular-expenses', label: 'Irregular Expenses / Goals' },
-      { key: 'whatever-you-want', label: 'Whatever You Want' },
+      { key: 'tradeoff-calculator', label: 'Trade-off Calculator' },
     ]
   },
-  { key: 'retirement', label: 'Retirement (401k, IRA)' },
-  { key: 'investing', label: 'Investing (ETFs, Stocks, Crypto)' },
+  {
+    key: 'investment-portfolio', label: 'Investment Portfolio', children: [
+      { key: 'retirement', label: 'Retirement (401k, IRA)' },
+      { key: 'education-savings', label: 'Education Savings' },
+      { key: 'brokerage', label: 'Brokerage (ETFs, Stocks, Crypto)' },
+    ]
+  },
 ];
 
 export default function Sidebar({ activeView, onViewChange, isTemplate = false }) {

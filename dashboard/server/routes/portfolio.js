@@ -34,8 +34,36 @@ function formatDate(val) {
   return null;
 }
 
+// Build a map of "Account Type" -> "Account Type Group" from the Lookup Tables sheet.
+// Returns an empty Map if the sheet or expected columns are missing — callers fall
+// back to leaving the group blank, so unknown account types still flow through.
+function parseLookupTables(wb) {
+  const ws = wb.Sheets['Lookup Tables'];
+  if (!ws) return new Map();
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    if (rows[i] && rows[i].some(c => c === 'Account Type')) { headerIdx = i; break; }
+  }
+  if (headerIdx < 0) return new Map();
+  const headers = rows[headerIdx];
+  const typeIdx = headers.indexOf('Account Type');
+  const groupIdx = headers.indexOf('Account Type Group');
+  if (typeIdx < 0 || groupIdx < 0) return new Map();
+  const map = new Map();
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r) continue;
+    const t = r[typeIdx];
+    const g = r[groupIdx];
+    if (t && g) map.set(String(t).trim(), String(g).trim());
+  }
+  return map;
+}
+
 function parseSheet(spreadsheetPath) {
   const wb = XLSX.readFile(spreadsheetPath, { cellDates: false });
+  const groupByType = parseLookupTables(wb);
   const ws = wb.Sheets['Brokerage Ledger'];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 
@@ -58,8 +86,10 @@ function parseSheet(spreadsheetPath) {
     if (isNaN(costBasis) || isNaN(sharesBought)) continue;
 
     const dateAcq = formatDate(row[colIdx['Date Acquired']]);
+    const accountType = row[colIdx['Account Type']] || '';
     holdings.push({
-      account: row[colIdx['Account Type']] || '',
+      account: accountType,
+      accountTypeGroup: groupByType.get(String(accountType).trim()) || '',
       owner: row[colIdx['Owner']] || '',
       transaction: row[colIdx['Transaction']] || '',
       symbol,

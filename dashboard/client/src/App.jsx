@@ -25,10 +25,18 @@ const COMING_SOON_TITLES = {
   budget: 'Annual Budget',
   'cash-debt': 'Cash & Debt',
   'tradeoff-calculator': 'Trade-off Calculator',
-  'investment-portfolio': 'Investment Portfolio',
-  retirement: 'Retirement (401k, IRA)',
   'education-savings': 'Education Savings',
-  brokerage: 'Brokerage (ETFs, Stocks, Crypto)',
+};
+
+// Sidebar keys that route to the portfolio screens. The parent
+// (`investment-portfolio`) shows the aggregate; each child filters by
+// `accountTypeGroup` from the spreadsheet's Lookup Tables tab.
+const PORTFOLIO_VIEW_KEYS = ['investment-portfolio', 'retirement', 'brokerage', 'hsa', 'esa'];
+const PORTFOLIO_GROUP_BY_VIEW = {
+  retirement: 'Retirement',
+  brokerage: 'Brokerage',
+  hsa: 'HSA',
+  esa: 'ESA',
 };
 
 const PORTFOLIO_TABS = ['Holdings', 'Closed', 'Harvest'];
@@ -77,6 +85,16 @@ export default function App() {
     });
   }
   function clearAccounts() { setSelectedAccounts(new Set()); }
+
+  // Switching sidebar views also clears chip selections — owner/account
+  // chips are scoped to the active group, so a Roth IRA selection on the
+  // Retirement tab shouldn't carry over to Brokerage.
+  function handleSidebarChange(v) {
+    setSidebarView(v);
+    setSelectedSymbol(null);
+    setSelectedOwners(new Set());
+    setSelectedAccounts(new Set());
+  }
 
   // API status tracking
   const [apiStatus, setApiStatus] = useState(null);
@@ -171,27 +189,44 @@ export default function App() {
 
   const { lots: allLots, openLots: rawOpenLots, closedLots: rawClosedLots, positions: rawPositions, allPositions: rawAllPositions, quotes, loading, error, emptyState } = usePortfolio();
 
-  // Derive owners and accounts dynamically from data
-  const OWNERS = useMemo(() => [...new Set(allLots.map(l => l.owner).filter(Boolean))].sort(), [allLots]);
-  const ACCOUNTS = useMemo(() => [...new Set(allLots.map(l => l.account).filter(Boolean))].sort(), [allLots]);
+  // Active portfolio sub-view (parent = aggregate, children filter by group).
+  const isPortfolioView = PORTFOLIO_VIEW_KEYS.includes(sidebarView);
+  const portfolioGroup = PORTFOLIO_GROUP_BY_VIEW[sidebarView] || null;
+
+  // Apply the broad-group filter first; everything downstream (owner/account
+  // chips, aggregations) operates on this pre-filtered set so chips only show
+  // values that exist within the active group.
+  const groupAllLots = useMemo(() => (
+    portfolioGroup ? allLots.filter(l => l.accountTypeGroup === portfolioGroup) : allLots
+  ), [allLots, portfolioGroup]);
+  const groupOpenLots = useMemo(() => (
+    portfolioGroup ? rawOpenLots.filter(l => l.accountTypeGroup === portfolioGroup) : rawOpenLots
+  ), [rawOpenLots, portfolioGroup]);
+  const groupClosedLots = useMemo(() => (
+    portfolioGroup ? rawClosedLots.filter(l => l.accountTypeGroup === portfolioGroup) : rawClosedLots
+  ), [rawClosedLots, portfolioGroup]);
+
+  // Derive owners and accounts dynamically from the group-filtered data
+  const OWNERS = useMemo(() => [...new Set(groupAllLots.map(l => l.owner).filter(Boolean))].sort(), [groupAllLots]);
+  const ACCOUNTS = useMemo(() => [...new Set(groupAllLots.map(l => l.account).filter(Boolean))].sort(), [groupAllLots]);
 
   // Apply owner + account filters at the lot level BEFORE aggregation
   const allOwnersSelected = selectedOwners.size === 0;
   const allSelected = selectedAccounts.size === 0;
 
   const openLots = useMemo(() => {
-    let lots = rawOpenLots;
+    let lots = groupOpenLots;
     if (!allOwnersSelected) lots = lots.filter(l => selectedOwners.has(l.owner));
     if (!allSelected) lots = lots.filter(l => selectedAccounts.has(l.account));
     return lots;
-  }, [rawOpenLots, selectedOwners, allOwnersSelected, selectedAccounts, allSelected]);
+  }, [groupOpenLots, selectedOwners, allOwnersSelected, selectedAccounts, allSelected]);
 
   const closedLots = useMemo(() => {
-    let lots = rawClosedLots;
+    let lots = groupClosedLots;
     if (!allOwnersSelected) lots = lots.filter(l => selectedOwners.has(l.owner));
     if (!allSelected) lots = lots.filter(l => selectedAccounts.has(l.account));
     return lots;
-  }, [rawClosedLots, selectedOwners, allOwnersSelected, selectedAccounts, allSelected]);
+  }, [groupClosedLots, selectedOwners, allOwnersSelected, selectedAccounts, allSelected]);
 
   const positions = useMemo(() => {
     return aggregateOpenBySymbol(openLots.map(l => ({ ...l, transaction: 'Open' })));
@@ -282,7 +317,7 @@ export default function App() {
   if (selectedSymbol) {
     return (
       <div className="app">
-        <Sidebar activeView={sidebarView} isTemplate={!!profile?.isTemplate} onViewChange={(v) => { setSidebarView(v); setSelectedSymbol(null); }} />
+        <Sidebar activeView={sidebarView} isTemplate={!!profile?.isTemplate} onViewChange={handleSidebarChange} />
         <div className="app-body">
         <header className="app-header">
           <div className="header-filters">
@@ -331,11 +366,11 @@ export default function App() {
 
   return (
     <div className="app">
-      <Sidebar activeView={sidebarView} isTemplate={!!profile?.isTemplate} onViewChange={setSidebarView} />
+      <Sidebar activeView={sidebarView} isTemplate={!!profile?.isTemplate} onViewChange={handleSidebarChange} />
       <div className="app-body">
       <header className="app-header">
         <div className="header-filters">
-          {sidebarView === 'portfolio' && (<>
+          {isPortfolioView && (<>
           <div className="filter-group">
             <button className={`tab ${allOwnersSelected ? 'active' : ''}`} onClick={clearOwners}>All</button>
             {OWNERS.map(o => (
@@ -358,7 +393,7 @@ export default function App() {
           </>)}
         </div>
       </header>
-      {(sidebarView === 'portfolio' || sidebarView === 'analysis') && statusBar}
+      {isPortfolioView && statusBar}
 
       {profile?.isTemplate && sidebarView !== 'getting-started' && (
         <div className="sample-data-banner">
@@ -381,7 +416,7 @@ export default function App() {
         {sidebarView === 'college' && <CollegeView />}
         {sidebarView === 'education-savings' && <EducationSavingsView />}
 
-        {sidebarView === 'portfolio' && (<>
+        {isPortfolioView && (<>
           <Dashboard
             positions={positions}
             openLots={openLots}
@@ -433,7 +468,7 @@ export default function App() {
           )}
         </>)}
 
-        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'portfolio', 'debt-mortgage', 'education-savings'].includes(sidebarView) && (
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

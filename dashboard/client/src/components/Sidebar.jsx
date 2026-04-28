@@ -20,6 +20,8 @@ const BASE_NAV = [
     key: 'investment-portfolio', label: 'Investment Portfolio', children: [
       { key: 'retirement', label: 'Retirement (401k, IRA)' },
       { key: 'brokerage', label: 'Brokerage (ETFs, Stocks, Crypto)' },
+      { key: 'hsa', label: 'HSA' },
+      { key: 'esa', label: 'ESA (529, Coverdell)' },
     ]
   },
 ];

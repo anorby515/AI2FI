@@ -15,10 +15,10 @@ const BASE_NAV = [
       { key: 'tradeoff-calculator', label: 'Trade-off Calculator' },
     ]
   },
+  { key: 'education-savings', label: 'Education Savings' },
   {
     key: 'investment-portfolio', label: 'Investment Portfolio', children: [
       { key: 'retirement', label: 'Retirement (401k, IRA)' },
-      { key: 'education-savings', label: 'Education Savings' },
       { key: 'brokerage', label: 'Brokerage (ETFs, Stocks, Crypto)' },
     ]
   },

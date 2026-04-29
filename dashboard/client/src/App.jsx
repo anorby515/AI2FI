@@ -13,6 +13,7 @@ import NetWorthView from './components/NetWorthView';
 import MortgageView from './components/MortgageView';
 import CollegeView from './components/CollegeView';
 import EducationSavingsView from './components/EducationSavingsView';
+import AnnualBudget from './components/AnnualBudget';
 import ComingSoon from './components/ComingSoon';
 import Welcome from './components/Welcome';
 import FinancialStrategy from './components/FinancialStrategy';
@@ -22,7 +23,6 @@ import './App.css';
 
 // Map sidebar keys to Coming Soon page titles
 const COMING_SOON_TITLES = {
-  budget: 'Annual Budget',
   'cash-debt': 'Cash & Debt',
   'tradeoff-calculator': 'Trade-off Calculator',
   'education-savings': 'Education Savings',
@@ -415,6 +415,7 @@ export default function App() {
         {sidebarView === 'debt-mortgage' && <MortgageView />}
         {sidebarView === 'college' && <CollegeView />}
         {sidebarView === 'education-savings' && <EducationSavingsView />}
+        {sidebarView === 'budget' && <AnnualBudget />}
 
         {isPortfolioView && (<>
           <Dashboard
@@ -468,7 +469,7 @@ export default function App() {
           )}
         </>)}
 
-        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

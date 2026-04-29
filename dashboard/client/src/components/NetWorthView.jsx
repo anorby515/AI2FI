@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Card, Stat, Segment, Chart } from '../ui';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Card, Stat, Segment, Chart, Button } from '../ui';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './NetWorthView.css';
 
@@ -56,12 +56,14 @@ export default function NetWorthView() {
   const [data, setData] = useState([]);
   const [range, setRange] = useState('1Y');
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     fetch('/api/networth')
       .then(r => r.json())
       .then(d => { if (Array.isArray(d)) setData(d); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => { reload(); }, [reload]);
 
   // Range filter
   const rangeFiltered = useMemo(() => {
@@ -110,7 +112,10 @@ export default function NetWorthView() {
           <div className="nw__title">Net Worth</div>
           <div className="nw__subtitle">{current?.date}</div>
         </div>
-        <Segment options={RANGE_OPTIONS} value={range} onChange={setRange} mono />
+        <div className="nw__head-right">
+          <Segment options={RANGE_OPTIONS} value={range} onChange={setRange} mono />
+          <Button variant="ghost" onClick={reload}>Reload from sheet</Button>
+        </div>
       </div>
 
       <Card variant="grad" className="nw__hero">

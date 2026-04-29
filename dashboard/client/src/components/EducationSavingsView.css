@@ -6,6 +6,14 @@
   padding: var(--pad);
 }
 
+.es__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+
 .es__page-header {
   font-size: 28px;
   color: var(--ink);

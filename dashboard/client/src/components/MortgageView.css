@@ -7,12 +7,20 @@
   gap: var(--gap);
 }
 
+.mv__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: var(--pad-lg) 0 0;
+  flex-wrap: wrap;
+}
+
 .mv__page-header {
   font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.6px;
   color: var(--ink);
-  padding: var(--pad-lg) 0 0;
 }
 
 .mv__stat-grid {

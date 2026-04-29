@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Card, Stat } from '../ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Card, Stat, Button } from '../ui';
 import './MortgageView.css';
 
 /**
@@ -362,7 +362,8 @@ export default function MortgageView() {
     [scenarioType, scenarioAmount],
   );
 
-  useEffect(() => {
+  const reload = useCallback(() => {
+    setErrorBody(null);
     fetch('/api/mortgage')
       .then(async (r) => {
         const body = await r.json().catch(() => ({}));
@@ -375,6 +376,8 @@ export default function MortgageView() {
       .then((body) => { if (body) setData(body); })
       .catch((e) => setErrorBody({ status: 0, error: e.message }));
   }, []);
+
+  useEffect(() => { reload(); }, [reload]);
 
   const expected = useMemo(() => data && buildExpectedTrajectory(data), [data]);
   const original = useMemo(() => data && buildOriginalTrajectory(data), [data]);
@@ -438,7 +441,10 @@ export default function MortgageView() {
   return (
     <div className="mv">
       {/* Page header — property name only */}
-      <div className="mv__page-header">{data.property || 'Mortgage'}</div>
+      <div className="mv__head">
+        <div className="mv__page-header">{data.property || 'Mortgage'}</div>
+        <Button variant="ghost" onClick={reload}>Reload from sheet</Button>
+      </div>
 
       {/* Scoreboard — three rows of four cards */}
       <div className="mv__stat-grid">

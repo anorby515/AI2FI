@@ -397,8 +397,6 @@ export default function App() {
         </div>
         <RestartButton />
       </header>
-      {isPortfolioView && statusBar}
-
       {profile?.isTemplate && sidebarView !== 'getting-started' && (
         <div className="sample-data-banner">
           <span>
@@ -410,6 +408,8 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {isPortfolioView && statusBar}
 
       <main>
         {sidebarView === 'getting-started' && <GettingStarted profileName={profile?.name} />}

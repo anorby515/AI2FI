@@ -39,6 +39,7 @@ app.use('/api/budget', require('./routes/budget'));
 app.use('/api/quotes', require('./routes/quotes'));
 app.use('/api/import/csv', require('./routes/csvImport'));
 app.use('/api/profile', require('./routes/profile'));
+app.use('/api/reboot', require('./routes/reboot'));
 
 const { resolveSpreadsheet, noProfileResponse } = require('./profile-resolver');
 

@@ -10,6 +10,7 @@ const BASE_NAV = [
       { key: 'debt-mortgage', label: 'Mortgage Payoff' },
     ]
   },
+  { key: 'reboot', label: 'Reboot AI2FI' },
   {
     key: 'investing', label: 'Investing', children: [
       { key: 'retirement', label: 'Retirement (401ks, IRAs)' },

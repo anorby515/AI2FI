@@ -23,6 +23,30 @@
   flex-wrap: wrap;
 }
 
+.ab__tab-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.ab__tab-input input {
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 5px 8px;
+  width: 140px;
+}
+
+.ab__tab-input input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .ab__title {
   font-size: 24px;
   font-weight: 700;

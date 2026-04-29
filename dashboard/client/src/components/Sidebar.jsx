@@ -2,26 +2,28 @@ import { useState } from 'react';
 
 // Each entry: { key, label, children?: [...] }
 const BASE_NAV = [
-  { key: 'welcome', label: 'Welcome' },
-  { key: 'getting-started', label: 'Getting Started' },
   {
-    key: 'strategy', label: 'Financial Strategy', children: [
+    key: 'getting-started', label: 'Getting Started', children: [
+      { key: 'strategy', label: 'Financial Strategy' },
+      { key: 'networth', label: 'Net Worth' },
       { key: 'budget', label: 'Annual Budget' },
+      { key: 'debt-mortgage', label: 'Mortgage Payoff' },
     ]
   },
   {
-    key: 'cash-debt', label: 'Cash & Debt', children: [
-      { key: 'debt-mortgage', label: 'Mortgage' },
-      { key: 'tradeoff-calculator', label: 'Trade-off Calculator' },
-    ]
-  },
-  { key: 'education-savings', label: 'Education Savings' },
-  {
-    key: 'investment-portfolio', label: 'Investment Portfolio', children: [
-      { key: 'retirement', label: 'Retirement (401k, IRA)' },
+    key: 'investing', label: 'Investing', children: [
+      { key: 'retirement', label: 'Retirement (401ks, IRAs)' },
+      { key: 'education-savings', label: 'Education Savings' },
       { key: 'brokerage', label: 'Brokerage (ETFs, Stocks, Crypto)' },
       { key: 'hsa', label: 'HSA' },
       { key: 'esa', label: 'ESA (529, Coverdell)' },
+    ]
+  },
+  {
+    key: 'tools', label: 'Tools', children: [
+      { key: 'tradeoff-calculator', label: 'Trade-Off Calculator' },
+      { key: 'moat-analysis', label: 'Moat Analysis' },
+      { key: 'loan-calculator', label: 'Loan Calculator' },
     ]
   },
 ];

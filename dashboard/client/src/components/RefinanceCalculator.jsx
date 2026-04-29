@@ -119,6 +119,44 @@ function amortizeSchedule(balance, annualRate, monthlyPayment, maxMonths) {
   return { cumI, bals };
 }
 
+// Discount the refi cash-flow stream at `annualRate` and return the NPV.
+// t=0 flow:  cashOut received − upfrontCost paid.
+// monthly:   oldPmt (while old loan would have been outstanding) − newPmt
+//            (while new loan is outstanding). The difference between those
+//            two windows is the term-extension penalty.
+function npvAtRate(annualRate, p) {
+  const dM = annualRate / MONTHS_IN_YEAR;
+  let pv = (p.cash || 0) - (p.upfrontCost || 0);
+  for (let mi = 1; mi <= p.horizon; mi++) {
+    const oldOut = (mi <= p.oldMonths) ? p.oldPmt : 0;
+    const newOut = (mi <= p.newMonths) ? p.newPmt : 0;
+    const cf = oldOut - newOut;
+    pv += dM === 0 ? cf : cf / Math.pow(1 + dM, mi);
+  }
+  return pv;
+}
+
+// IRR — the discount rate at which the refi's NPV is exactly zero. This is
+// the rate-agnostic "fair price of capital" for the refi: if your real
+// opportunity cost is below the IRR, refi creates value; if above, it
+// destroys value. Bisection over a wide bracket; returns null if NPV never
+// changes sign in the bracket (typical when monthly savings are ≤ 0).
+function irr(p) {
+  const lo0 = -0.40, hi0 = 1.00;
+  let lo = lo0, hi = hi0;
+  let nLo = npvAtRate(lo, p);
+  let nHi = npvAtRate(hi, p);
+  if (!Number.isFinite(nLo) || !Number.isFinite(nHi)) return null;
+  if (nLo * nHi > 0) return null;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    const nMid = npvAtRate(mid, p);
+    if (Math.abs(nMid) < 0.01) return mid;
+    if (nMid * nLo < 0) { hi = mid; nHi = nMid; } else { lo = mid; nLo = nMid; }
+  }
+  return (lo + hi) / 2;
+}
+
 // Number input that renders a $/% chrome and parses on blur/change.
 function NumberField({ label, value, onChange, prefix, suffix, step = 1, min, hint }) {
   return (
@@ -297,24 +335,34 @@ export default function RefinanceCalculator() {
       ? addMonths(data.as_of_date, trueBreakEvenMonths)
       : null;
 
-    // NPV of the refi: discount the monthly cash-flow advantage stream and
-    // subtract upfront costs. Cash flow at month mi:
-    //   + oldPmt (if mi ≤ curMonthsLeft, you'd have been paying it)
-    //   − newPmt (if mi ≤ newTerm, you actually pay it)
-    // t=0 cash flow: cashOut received − upfrontCost paid.
-    // Discount rate is the user's opportunity cost of capital (default 5%).
-    let npv = null;
-    if (newPmt != null) {
-      const dMonthly = (Number.isFinite(discountRatePct) ? discountRatePct : 0) / 100 / MONTHS_IN_YEAR;
-      let pv = cash - upfrontCost;
-      for (let mi = 1; mi <= horizonMonths; mi++) {
-        const oldOut = (mi <= curMonthsLeft) ? curPmt : 0;
-        const newOut = (mi <= newTerm) ? newPmt : 0;
-        const cf = oldOut - newOut;
-        pv += cf / Math.pow(1 + dMonthly, mi);
-      }
-      npv = pv;
-    }
+    // Cash-flow stream parameters used by NPV / IRR / sensitivity. Same
+    // stream every time — only the discount rate varies. NPV at 0% is the
+    // nominal Lifetime Net Savings; raising the rate penalizes late-stage
+    // negative flows (the term-extension drag) more than near-term savings.
+    const cfParams = {
+      cash, upfrontCost,
+      oldPmt: curPmt, newPmt: newPmt || 0,
+      oldMonths: Number.isFinite(curMonthsLeft) ? curMonthsLeft : 0,
+      newMonths: newTerm,
+      horizon: horizonMonths,
+    };
+
+    const npv = newPmt != null
+      ? npvAtRate((Number.isFinite(discountRatePct) ? discountRatePct : 0) / 100, cfParams)
+      : null;
+
+    // IRR — the rate at which NPV crosses zero. If your real opportunity
+    // cost of capital is below this, refinancing creates value; above it,
+    // it destroys value. Skip when there's no monthly savings — the curve
+    // is monotonic with no zero crossing.
+    const irrAnnual = (newPmt != null && monthlySavings > 0) ? irr(cfParams) : null;
+
+    // Sensitivity strip — NPV at a fixed ladder of discount rates so the
+    // user can see how fragile the answer is to the rate assumption.
+    const sensitivityRates = [0, 2, 4, 6, 8, 10];
+    const sensitivity = newPmt != null
+      ? sensitivityRates.map(rPct => ({ rPct, npv: npvAtRate(rPct / 100, cfParams) }))
+      : null;
 
     return {
       curBalance, curRate, curPmt, curMonthsLeft, curRemainingInterest, curPayoffIso,
@@ -323,7 +371,7 @@ export default function RefinanceCalculator() {
       breakEvenMonths, breakEvenIso,
       trueBreakEvenMonths, trueBreakEvenIso,
       lifetimeInterestDelta, lifetimeNetSavings,
-      npv, effectiveAPR,
+      npv, irrAnnual, sensitivity, effectiveAPR,
       oldSched, newSched, horizonMonths,
     };
   }, [data, newPrincipal, newRatePct, newTermYears, closingCosts, rollIntoLoan, cashOut, pointsPct, discountRatePct]);
@@ -530,6 +578,39 @@ export default function RefinanceCalculator() {
           </div>
 
           <div className={`rc__verdict rc__verdict--${verdictTone}`}>{verdictLabel}</div>
+
+          {/* DCF: IRR + NPV sensitivity across discount rates. IRR is the
+              rate-agnostic verdict; the strip shows how the NPV answer
+              moves with the rate assumption (NPV at 0% = Lifetime Net
+              Savings; NPV at IRR = 0). */}
+          <div className="rc__dcf">
+            <div className="rc__dcf-irr">
+              <div className="rc__dcf-irr-label">IRR (break-even discount rate)</div>
+              <div className={`rc__dcf-irr-value tone-${m.irrAnnual == null ? 'neutral' : m.irrAnnual > 0 ? 'pos' : 'neg'}`}>
+                {m.irrAnnual == null ? '—' : fmtPct(m.irrAnnual)}
+              </div>
+              <div className="rc__dcf-irr-sub">
+                {m.irrAnnual == null
+                  ? 'no zero-crossing — refi can\'t break even'
+                  : `refi creates value if your alt. earns < ${fmtPct(m.irrAnnual)}`}
+              </div>
+            </div>
+            {m.sensitivity && (
+              <div className="rc__dcf-sens">
+                <div className="rc__dcf-sens-title">NPV by discount rate</div>
+                <div className="rc__dcf-sens-row">
+                  {m.sensitivity.map(s => (
+                    <div key={s.rPct} className="rc__dcf-sens-cell">
+                      <div className="rc__dcf-sens-rate">{s.rPct}%</div>
+                      <div className={`rc__dcf-sens-val tone-${s.npv > 0 ? 'pos' : s.npv < 0 ? 'neg' : 'neutral'}`}>
+                        {fmtUSD0(s.npv)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </Card>
       </div>
 

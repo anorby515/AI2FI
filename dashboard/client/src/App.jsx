@@ -23,9 +23,11 @@ import './App.css';
 
 // Map sidebar keys to Coming Soon page titles
 const COMING_SOON_TITLES = {
-  'cash-debt': 'Cash & Debt',
-  'tradeoff-calculator': 'Trade-off Calculator',
-  'education-savings': 'Education Savings',
+  investing: 'Investing',
+  tools: 'Tools',
+  'tradeoff-calculator': 'Trade-Off Calculator',
+  'moat-analysis': 'Moat Analysis',
+  'loan-calculator': 'Loan Calculator',
 };
 
 // Sidebar keys that route to the portfolio screens. The parent
@@ -44,7 +46,7 @@ const PORTFOLIO_TABS = ['Holdings', 'Closed', 'Harvest'];
 const LOT_FILTERS = ['All', 'Open', 'Closed'];
 
 export default function App() {
-  const [sidebarView, setSidebarView] = useState('welcome');
+  const [sidebarView, setSidebarView] = useState('getting-started');
   const [view, setView] = useState('Holdings');
   const [selectedSymbol, setSelectedSymbol] = useState(null);
   const [selectedOwners, setSelectedOwners] = useState(new Set());

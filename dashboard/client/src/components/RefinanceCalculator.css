@@ -48,6 +48,30 @@
   gap: var(--gap);
 }
 
+/* New Loan Summary — 3-col × 4-row table, with delta rows visually
+   subordinated to the headline value above them. */
+.rc__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: var(--gap);
+  row-gap: var(--gap-sm);
+}
+.rc__summary-grid > :nth-child(3n+1):nth-child(-n+3),
+.rc__summary-grid > :nth-child(3n+2):nth-child(-n+3),
+.rc__summary-grid > :nth-child(3n+3):nth-child(-n+3) { /* row 1 — already styled by Stat */ }
+/* Visually pair each delta (rows 2 & 4) with the headline immediately
+   above it: smaller value, dimmer label, no top spacing. */
+.rc__summary-grid > :nth-child(n+4):nth-child(-n+6) .ui-stat__value,
+.rc__summary-grid > :nth-child(n+10):nth-child(-n+12) .ui-stat__value {
+  font-size: 18px;
+}
+.rc__summary-grid > :nth-child(n+4):nth-child(-n+6),
+.rc__summary-grid > :nth-child(n+10):nth-child(-n+12) {
+  margin-top: -4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--rule);
+}
+
 .rc__split {
   display: grid;
   grid-template-columns: 1fr 1fr;

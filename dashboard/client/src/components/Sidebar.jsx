@@ -2,28 +2,30 @@ import { useState } from 'react';
 
 // Each entry: { key, label, children?: [...] }
 const BASE_NAV = [
+  { key: 'welcome', label: 'Welcome' },
+  { key: 'getting-started', label: 'Getting Started' },
+  { key: 'reboot', label: 'Reboot AI2FI' },
   {
     key: 'strategy', label: 'Financial Strategy', children: [
       { key: 'networth', label: 'Net Worth' },
       { key: 'budget', label: 'Annual Budget' },
+      { key: 'education-savings', label: 'Educational Savings' },
       { key: 'debt-mortgage', label: 'Mortgage Payoff' },
     ]
   },
-  { key: 'education-savings', label: 'Education Savings Forecast' },
-  { key: 'reboot', label: 'Reboot AI2FI' },
   {
-    key: 'investing', label: 'Portfolio Analysis', children: [
+    key: 'investing', label: 'Investing', children: [
       { key: 'hsa', label: 'HSA' },
-      { key: 'retirement', label: 'Retirement (401ks, IRAs)' },
-      { key: 'esa', label: 'ESA (529, Coverdell)' },
-      { key: 'brokerage', label: 'Brokerage (ETFs, Stocks, Crypto)' },
+      { key: 'retirement', label: 'Retirement' },
+      { key: 'esa', label: 'ESA' },
+      { key: 'brokerage', label: 'Brokerage' },
     ]
   },
   {
     key: 'tools', label: 'Tools', children: [
-      { key: 'tradeoff-calculator', label: 'Trade-Off Calculator' },
       { key: 'moat-analysis', label: 'Moat Analysis' },
       { key: 'sankey-diagram', label: 'Sankey Diagram' },
+      { key: 'tradeoff-calculator', label: 'Trade-off Analysis' },
     ]
   },
 ];

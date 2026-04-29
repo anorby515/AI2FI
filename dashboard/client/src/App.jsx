@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePortfolio, useBenchmark } from './hooks/usePortfolio';
 import { DEFAULT_TAX_RATES, aggregateOpenBySymbol, aggregateAllBySymbol } from './utils/calculations';
 import Dashboard from './components/Dashboard';
@@ -55,14 +55,9 @@ export default function App() {
   const [detailSortBy, setDetailSortBy] = useState('dateAcquired');
   const [detailSortDir, setDetailSortDir] = useState('asc');
 
-  // Tax rate settings (LT/ST as decimals)
-  const [taxRates, setTaxRates] = useState(DEFAULT_TAX_RATES);
-  const [showTaxSettings, setShowTaxSettings] = useState(false);
-
-  // CSV import state
-  const [csvImporting, setCsvImporting] = useState(false);
-  const [csvStatus, setCsvStatus] = useState(null); // { count, error }
-  const csvInputRef = useRef(null);
+  // Tax rates (LT/ST as decimals) — used by closed-lot G/L estimates downstream;
+  // the in-app editor was removed from the status bar but the values still flow.
+  const taxRates = DEFAULT_TAX_RATES;
 
   function toggleDetailSort(col) {
     if (detailSortBy === col) setDetailSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -155,40 +150,6 @@ export default function App() {
     } catch { alert('Sync failed — server error'); } finally { setSyncing(false); }
   }
 
-  // CSV import handler
-  async function handleCsvFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCsvImporting(true);
-    setCsvStatus(null);
-    try {
-      const text = await file.text();
-      const res = await fetch('/api/import/csv', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ csv: text }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setCsvStatus({ error: data.error });
-      } else {
-        setCsvStatus({ count: data.count });
-        window.location.reload();
-      }
-    } catch (err) {
-      setCsvStatus({ error: err.message });
-    } finally {
-      setCsvImporting(false);
-      if (csvInputRef.current) csvInputRef.current.value = '';
-    }
-  }
-
-  async function handleClearCsv() {
-    if (!confirm('Remove all CSV-imported lots?')) return;
-    await fetch('/api/import/csv', { method: 'DELETE' });
-    window.location.reload();
-  }
-
   const { lots: allLots, openLots: rawOpenLots, closedLots: rawClosedLots, positions: rawPositions, allPositions: rawAllPositions, quotes, loading, error, emptyState, refetch: reloadPortfolio } = usePortfolio();
 
   // Active portfolio sub-view (parent = aggregate, children filter by group).
@@ -243,76 +204,21 @@ export default function App() {
   if (emptyState) return <OnboardingEmptyState info={emptyState} />;
   if (error) return <div className="error-screen">Error: {error}<br />Make sure the server is running at localhost:3001</div>;
 
-  const hasImported = openLots.some(l => l.account === 'Imported') || closedLots.some(l => l.account === 'Imported');
-
   const statusBar = (
     <div className="status-bar">
       <div className="status-info">
-        {apiStatus && (<>
-          {yahooAvailable != null && <span className={`status-dot ${yahooAvailable ? 'green' : 'red'}`} />}
-          <span className="status-item">Yahoo: <strong>{yahooAvailable == null ? 'Unknown' : yahooAvailable ? 'Available' : 'Unavailable'}</strong></span>
-          <button className="check-btn" onClick={handleCheckYahoo} disabled={checking}>{checking ? '...' : 'Check'}</button>
-          <span className="status-item">API: <strong>{apiStatus.successful ?? 0}</strong> ok / <strong>{apiStatus.attempted ?? 0}</strong> attempted</span>
+        {apiStatus && (
           <span className="status-item">Last sync: <strong>{apiStatus.lastSync ? new Date(apiStatus.lastSync).toLocaleString() : 'Never'}</strong></span>
-        </>)}
-
-        {/* Tax rate settings */}
-        <span className="status-separator" />
-        <button className="check-btn" onClick={() => setShowTaxSettings(s => !s)}>
-          Tax Rates {showTaxSettings ? '▲' : '▼'}
-        </button>
-        {showTaxSettings && (
-          <span className="tax-rate-inputs">
-            <label>LT
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max="100"
-                value={(taxRates.lt * 100).toFixed(1)}
-                onChange={e => setTaxRates(r => ({ ...r, lt: parseFloat(e.target.value) / 100 || 0 }))}
-              />%
-            </label>
-            <label>ST
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max="100"
-                value={(taxRates.st * 100).toFixed(1)}
-                onChange={e => setTaxRates(r => ({ ...r, st: parseFloat(e.target.value) / 100 || 0 }))}
-              />%
-            </label>
-          </span>
         )}
-
-        {/* CSV import */}
-        <span className="status-separator" />
-        <label className="csv-import-label">
-          <input
-            ref={csvInputRef}
-            type="file"
-            accept=".csv"
-            style={{ display: 'none' }}
-            onChange={handleCsvFile}
-          />
-          <button
-            className="check-btn"
-            onClick={() => csvInputRef.current?.click()}
-            disabled={csvImporting}
-          >
-            {csvImporting ? 'Importing...' : 'Import CSV'}
-          </button>
-        </label>
-        {hasImported && (
-          <button className="check-btn warn-btn" onClick={handleClearCsv}>Clear CSV</button>
-        )}
-        {csvStatus?.count != null && <span className="status-item positive">Imported {csvStatus.count} lots</span>}
-        {csvStatus?.error && <span className="status-item negative">{csvStatus.error}</span>}
       </div>
-      <button className="sync-btn" onClick={handleSync} disabled={syncing}>
-        {syncing ? 'Syncing...' : 'Sync'}
-      </button>
+      <div className="status-actions">
+        {yahooAvailable != null && <span className={`status-dot ${yahooAvailable ? 'green' : 'red'}`} />}
+        <span className="status-item">Yahoo: <strong>{yahooAvailable == null ? 'Unknown' : yahooAvailable ? 'Available' : 'Unavailable'}</strong></span>
+        <button className="check-btn" onClick={handleCheckYahoo} disabled={checking}>{checking ? '...' : 'Check'}</button>
+        <button className="sync-btn" onClick={handleSync} disabled={syncing}>
+          {syncing ? 'Syncing...' : 'Sync'}
+        </button>
+      </div>
     </div>
   );
 

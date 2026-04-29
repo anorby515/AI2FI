@@ -4,7 +4,6 @@ import { useState } from 'react';
 const BASE_NAV = [
   { key: 'welcome', label: 'Welcome' },
   { key: 'getting-started', label: 'Getting Started' },
-  { key: 'reboot', label: 'Reboot AI2FI' },
   {
     key: 'strategy', label: 'Financial Strategy', children: [
       { key: 'networth', label: 'Net Worth' },

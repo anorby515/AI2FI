@@ -19,7 +19,7 @@ import Welcome from './components/Welcome';
 import FinancialStrategy from './components/FinancialStrategy';
 import OnboardingEmptyState from './components/OnboardingEmptyState';
 import GettingStarted from './components/GettingStarted';
-import Reboot from './components/Reboot';
+import RestartButton from './components/RestartButton';
 import './App.css';
 
 // Map sidebar keys to Coming Soon page titles
@@ -345,6 +345,7 @@ export default function App() {
               ))}
             </div>
           </div>
+          <RestartButton />
         </header>
         {statusBar}
         <main>
@@ -394,6 +395,7 @@ export default function App() {
           </div>
           </>)}
         </div>
+        <RestartButton />
       </header>
       {isPortfolioView && statusBar}
 
@@ -411,7 +413,6 @@ export default function App() {
 
       <main>
         {sidebarView === 'getting-started' && <GettingStarted profileName={profile?.name} />}
-        {sidebarView === 'reboot' && <Reboot />}
         {sidebarView === 'welcome' && <Welcome />}
         {sidebarView === 'strategy' && <FinancialStrategy />}
         {sidebarView === 'networth' && <NetWorthView />}
@@ -473,7 +474,7 @@ export default function App() {
           )}
         </>)}
 
-        {!['getting-started', 'reboot', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

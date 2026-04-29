@@ -324,6 +324,16 @@ npm start</code></pre>
   <pre><code>user-profiles/&lt;your-name&gt;/private/Finances.xlsx</code></pre>
   <p class="muted">Start from <code>user-profiles/example/</code> as a template if you want the expected shape. Everything under <code>user-profiles/&lt;your-name&gt;/</code> is gitignored &mdash; it never leaves your machine.</p>
 
+  <h3>Restart the server</h3>
+  <p>The dashboard runs as a macOS login agent (label <code>com.ai2fi.dashboard</code>, listening on port 3001). If you ever need to kick it &mdash; after editing server code, or if it stops responding &mdash; restart it from Terminal:</p>
+  <pre><code>launchctl unload ~/Library/LaunchAgents/com.ai2fi.dashboard.plist
+launchctl load   ~/Library/LaunchAgents/com.ai2fi.dashboard.plist</code></pre>
+  <p>Or as a one-liner:</p>
+  <pre><code>launchctl kickstart -k gui/$(id -u)/com.ai2fi.dashboard</code></pre>
+  <p>If the server is wedged and won't release port 3001, force-kill the process &mdash; launchd will auto-restart it within ~10 seconds (the agent has <code>KeepAlive</code> set):</p>
+  <pre><code>lsof -ti :3001 | xargs kill -9</code></pre>
+  <p class="muted">Server logs live at <code>dashboard/logs/server.log</code> and <code>dashboard/logs/server.err.log</code> &mdash; tail those if a restart doesn't fix it.</p>
+
   <h3>Uninstall anytime</h3>
   <p>From Terminal, in this folder:</p>
   <pre><code>bash dashboard/uninstall.command</code></pre>

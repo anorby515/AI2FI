@@ -68,21 +68,12 @@ app.post('/api/sync', async (_, res) => {
   const log = [];
   let errors = 0;
 
-  // Step 0: Preflight — must have a real user spreadsheet before we hit Yahoo.
-  // Sync is intentionally refused while reading the demo template so the
-  // server's caches (splits, quotes, benchmarks) don't fill up with template
-  // tickers and overwrite the user's data when they later pivot.
+  // Step 0: Preflight — must have a spreadsheet to read tickers from. The
+  // demo template is allowed: cache.js scopes template-mode writes under a
+  // `template/` subdirectory so they can't pollute a real user's cache.
   const sheet = resolveSpreadsheet();
   if (!sheet) {
     return res.status(404).json({ log: ['No spreadsheet available — sync aborted'], errors: 1, aborted: true, ...noProfileResponse() });
-  }
-  if (sheet.isTemplate) {
-    return res.status(400).json({
-      log: ['Sync is disabled while the dashboard is reading the demo template. Copy the template into your profile first (the Coach handles this during onboarding), then re-run sync.'],
-      errors: 1,
-      aborted: true,
-      isTemplate: true,
-    });
   }
 
   const available = await healthCheck();

@@ -218,7 +218,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                 <Stat value={totalAlpha != null ? (totalAlpha >= 0 ? '+' : '') + formatPct(totalAlpha) : '—'} accent={totalAlpha != null ? (totalAlpha >= 0 ? 'positive' : 'negative') : null} />
                 <Stat value={allBeatingSP != null ? formatPct(allBeatingSP.pct) : '—'} sub={allBeatingSP != null ? `${allBeatingSP.beat} of ${allBeatingSP.total}` : null} accent={allBeatingSP != null ? (allBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
                 <Stat label="Charity" value={charitableClosed.length > 0 ? formatCurrency(charitableGL) : '—'} sub={charitableClosed.length > 0 ? `${charitableClosed.length} donations` : null} accent={charitableClosed.length > 0 ? (charitableIsPos ? 'positive' : 'negative') : null} />
-                <div className="stat stat-action">
+                <div className="stat-action">
                   {onReload && <Button variant="ghost" onClick={onReload}>Reload from sheet</Button>}
                 </div>
               </div>
@@ -234,7 +234,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                 <Stat value={portfolioAlpha != null ? (portfolioAlpha >= 0 ? '+' : '') + formatPct(portfolioAlpha) : '—'} accent={portfolioAlpha != null ? (alphaPos ? 'positive' : 'negative') : null} />
                 <Stat value={openBeatingSP != null ? formatPct(openBeatingSP.pct) : '—'} sub={openBeatingSP != null ? `${openBeatingSP.beat} of ${openBeatingSP.total}` : null} accent={openBeatingSP != null ? (openBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
                 <div className="stat" />
-                <div className="stat" />
+                <div />
               </div>
             </div>
 
@@ -249,7 +249,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                   <Stat value={closedAlpha != null ? (closedAlpha >= 0 ? '+' : '') + formatPct(closedAlpha) : '—'} accent={closedAlpha != null ? (closedAlpha >= 0 ? 'positive' : 'negative') : null} />
                   <Stat value={closedBeatingSP != null ? formatPct(closedBeatingSP.pct) : '—'} sub={closedBeatingSP != null ? `${closedBeatingSP.beat} of ${closedBeatingSP.total}` : null} accent={closedBeatingSP != null ? (closedBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
                   <div className="stat" />
-                  <div className="stat" />
+                  <div />
                 </div>
               </div>
             )}

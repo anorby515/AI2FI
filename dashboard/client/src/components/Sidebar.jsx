@@ -23,6 +23,7 @@ const BASE_NAV = [
   },
   {
     key: 'tools', label: 'Tools', children: [
+      { key: 'refinance-calculator', label: 'Refinance Calculator' },
       { key: 'moat-analysis', label: 'Moat Analysis' },
       { key: 'sankey-diagram', label: 'Sankey Diagram' },
       { key: 'tradeoff-calculator', label: 'Trade-off Analysis' },

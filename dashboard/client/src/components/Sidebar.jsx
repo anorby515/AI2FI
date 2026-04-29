@@ -18,12 +18,12 @@ const BASE_NAV = [
       { key: 'retirement', label: 'Retirement' },
       { key: 'esa', label: 'ESA' },
       { key: 'brokerage', label: 'Brokerage' },
+      { key: 'moat-analysis', label: 'Moat Analysis' },
     ]
   },
   {
     key: 'tools', label: 'Tools', children: [
       { key: 'refinance-calculator', label: 'Refinance Calculator' },
-      { key: 'moat-analysis', label: 'Moat Analysis' },
       { key: 'sankey-diagram', label: 'Sankey Diagram' },
       { key: 'tradeoff-calculator', label: 'Trade-off Analysis' },
     ]

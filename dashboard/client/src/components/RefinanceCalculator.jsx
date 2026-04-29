@@ -462,24 +462,22 @@ export default function RefinanceCalculator() {
 
           <div className="rc__subsection-title">Break-Even &amp; Lifetime</div>
           <div className="rc__current-grid">
+            {/* Row 1 — the deal: what it costs, what you save per month */}
+            <Stat label="Total Refi Cost"   value={fmtUSD(m.totalRefiCost)} sub={m.pointsCost > 0 ? `incl. ${fmtUSD0(m.pointsCost)} in points` : null} />
+            <Stat label="Out of Pocket"     value={fmtUSD(m.upfrontCost)} sub={rollIntoLoan ? 'closing costs rolled in' : 'paid at closing'} />
             <Stat
               label="Monthly Savings"
               value={fmtUSD(m.monthlySavings)}
               tone={m.monthlySavings > 0 ? 'pos' : m.monthlySavings < 0 ? 'neg' : 'neutral'}
+              sub="old P&I − new P&I"
             />
-            <Stat label="Total Refi Cost"   value={fmtUSD(m.totalRefiCost)} sub={m.pointsCost > 0 ? `incl. ${fmtUSD0(m.pointsCost)} in points` : null} />
-            <Stat label="Out of Pocket"     value={fmtUSD(m.upfrontCost)} sub={rollIntoLoan ? 'closing costs rolled in' : 'paid at closing'} />
+
+            {/* Row 2 — naive / cash-flow view (industry standard) */}
             <Stat
               label="Cash-Flow Break-Even"
               value={m.breakEvenMonths ? fmtMonths(m.breakEvenMonths) : 'Never'}
               sub={m.breakEvenIso ? `recoup costs by ${fmtDate(m.breakEvenIso)}` : 'monthly savings ≤ 0'}
               tone={m.breakEvenMonths && m.breakEvenMonths < 36 ? 'pos' : 'neutral'}
-            />
-            <Stat
-              label="True Break-Even"
-              value={m.trueBreakEvenMonths ? fmtMonths(m.trueBreakEvenMonths) : 'Never'}
-              sub={m.trueBreakEvenIso ? `interest crossover ${fmtDate(m.trueBreakEvenIso)}` : 'term reset never recovers'}
-              tone={m.trueBreakEvenMonths && m.trueBreakEvenMonths < 60 ? 'pos' : 'neg'}
             />
             <Stat
               label="Lifetime Interest Δ"
@@ -491,7 +489,15 @@ export default function RefinanceCalculator() {
               label="Lifetime Net Savings"
               value={fmtUSD(m.lifetimeNetSavings)}
               tone={m.lifetimeNetSavings > 0 ? 'pos' : 'neg'}
-              sub="after refi costs"
+              sub="lifetime Δ − refi costs"
+            />
+
+            {/* Row 3 — honest economic view */}
+            <Stat
+              label="True Break-Even"
+              value={m.trueBreakEvenMonths ? fmtMonths(m.trueBreakEvenMonths) : 'Never'}
+              sub={m.trueBreakEvenIso ? `interest crossover ${fmtDate(m.trueBreakEvenIso)}` : 'term reset never recovers'}
+              tone={m.trueBreakEvenMonths && m.trueBreakEvenMonths < 60 ? 'pos' : 'neg'}
             />
             <Stat
               label={`NPV @ ${Number.isFinite(discountRatePct) ? discountRatePct : 0}%`}

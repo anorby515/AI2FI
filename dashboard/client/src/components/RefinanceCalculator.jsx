@@ -459,56 +459,59 @@ export default function RefinanceCalculator() {
             <Stat label="Effective APR"     value={fmtPct(m.effectiveAPR)} sub="rate + closing costs" />
             <Stat label="New Payoff"        value={fmtDate(m.newPayoffIso)} />
           </div>
+
+          <div className="rc__subsection-title">Break-Even &amp; Lifetime</div>
+          <div className="rc__current-grid">
+            <Stat
+              label="Monthly Savings"
+              value={fmtUSD(m.monthlySavings)}
+              tone={m.monthlySavings > 0 ? 'pos' : m.monthlySavings < 0 ? 'neg' : 'neutral'}
+            />
+            <Stat label="Total Refi Cost"   value={fmtUSD(m.totalRefiCost)} sub={m.pointsCost > 0 ? `incl. ${fmtUSD0(m.pointsCost)} in points` : null} />
+            <Stat label="Out of Pocket"     value={fmtUSD(m.upfrontCost)} sub={rollIntoLoan ? 'closing costs rolled in' : 'paid at closing'} />
+            <Stat
+              label="Cash-Flow Break-Even"
+              value={m.breakEvenMonths ? fmtMonths(m.breakEvenMonths) : 'Never'}
+              sub={m.breakEvenIso ? `recoup costs by ${fmtDate(m.breakEvenIso)}` : 'monthly savings ≤ 0'}
+              tone={m.breakEvenMonths && m.breakEvenMonths < 36 ? 'pos' : 'neutral'}
+            />
+            <Stat
+              label="True Break-Even"
+              value={m.trueBreakEvenMonths ? fmtMonths(m.trueBreakEvenMonths) : 'Never'}
+              sub={m.trueBreakEvenIso ? `interest crossover ${fmtDate(m.trueBreakEvenIso)}` : 'term reset never recovers'}
+              tone={m.trueBreakEvenMonths && m.trueBreakEvenMonths < 60 ? 'pos' : 'neg'}
+            />
+            <Stat
+              label="Lifetime Interest Δ"
+              value={fmtUSD(m.lifetimeInterestDelta)}
+              tone={m.lifetimeInterestDelta > 0 ? 'pos' : 'neg'}
+              sub="current interest left − new interest"
+            />
+            <Stat
+              label="Lifetime Net Savings"
+              value={fmtUSD(m.lifetimeNetSavings)}
+              tone={m.lifetimeNetSavings > 0 ? 'pos' : 'neg'}
+              sub="after refi costs"
+            />
+            <Stat
+              label={`NPV @ ${Number.isFinite(discountRatePct) ? discountRatePct : 0}%`}
+              value={fmtUSD(m.npv)}
+              tone={m.npv > 0 ? 'pos' : 'neg'}
+              sub="present value of cash-flow advantage"
+            />
+          </div>
+
+          <div className={`rc__verdict rc__verdict--${verdictTone}`}>{verdictLabel}</div>
         </Card>
       </div>
 
-      {/* Break-even analysis */}
-      <Card>
-        <div className="rc__section-title">Break-Even Analysis</div>
-        <div className="rc__be-grid">
-          <Stat
-            label="Monthly Savings"
-            value={fmtUSD(m.monthlySavings)}
-            tone={m.monthlySavings > 0 ? 'pos' : m.monthlySavings < 0 ? 'neg' : 'neutral'}
-          />
-          <Stat label="Total Refi Cost"   value={fmtUSD(m.totalRefiCost)} sub={m.pointsCost > 0 ? `incl. ${fmtUSD0(m.pointsCost)} in points` : null} />
-          <Stat label="Out of Pocket"     value={fmtUSD(m.upfrontCost)} sub={rollIntoLoan ? 'closing costs rolled in' : 'paid at closing'} />
-          <Stat
-            label="Cash-Flow Break-Even"
-            value={m.breakEvenMonths ? fmtMonths(m.breakEvenMonths) : 'Never'}
-            sub={m.breakEvenIso ? `recoup costs by ${fmtDate(m.breakEvenIso)}` : 'monthly savings ≤ 0'}
-            tone={m.breakEvenMonths && m.breakEvenMonths < 36 ? 'pos' : 'neutral'}
-          />
-          <Stat
-            label="True Break-Even"
-            value={m.trueBreakEvenMonths ? fmtMonths(m.trueBreakEvenMonths) : 'Never'}
-            sub={m.trueBreakEvenIso ? `interest crossover ${fmtDate(m.trueBreakEvenIso)}` : 'term reset never recovers'}
-            tone={m.trueBreakEvenMonths && m.trueBreakEvenMonths < 60 ? 'pos' : 'neg'}
-          />
-          <Stat
-            label="Lifetime Interest Δ"
-            value={fmtUSD(m.lifetimeInterestDelta)}
-            tone={m.lifetimeInterestDelta > 0 ? 'pos' : 'neg'}
-            sub="current interest left − new interest"
-          />
-          <Stat
-            label="Lifetime Net Savings"
-            value={fmtUSD(m.lifetimeNetSavings)}
-            tone={m.lifetimeNetSavings > 0 ? 'pos' : 'neg'}
-            sub="after refi costs"
-          />
-          <Stat
-            label={`NPV @ ${Number.isFinite(discountRatePct) ? discountRatePct : 0}%`}
-            value={fmtUSD(m.npv)}
-            tone={m.npv > 0 ? 'pos' : 'neg'}
-            sub="present value of cash-flow advantage"
-          />
-        </div>
-
-        <div className={`rc__verdict rc__verdict--${verdictTone}`}>{verdictLabel}</div>
-
-        {beChart && <BreakEvenChart {...beChart} />}
-      </Card>
+      {/* Break-even chart — full width below the side-by-side */}
+      {beChart && (
+        <Card>
+          <div className="rc__section-title">Break-Even Chart</div>
+          <BreakEvenChart {...beChart} />
+        </Card>
+      )}
     </div>
   );
 }

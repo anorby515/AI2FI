@@ -170,9 +170,12 @@
 .rc__svg-grid line       { stroke: var(--rule); }
 .rc__svg-axis            { fill: var(--ink-2); font-size: 11px; font-family: var(--font-mono); }
 .rc__svg-savings         { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.rc__svg-net             { fill: none; stroke: var(--pos); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .rc__svg-cost            { stroke: var(--accent-2); stroke-width: 1.5; stroke-dasharray: 5 4; }
 .rc__svg-cost-label      { fill: var(--accent-2); font-size: 11px; font-family: var(--font-mono); }
+.rc__svg-zero            { stroke: var(--rule-3); stroke-width: 1; }
 .rc__svg-marker          { stroke: var(--ink-2); stroke-dasharray: 3 4; stroke-width: 1; }
+.rc__svg-marker--true    { stroke: var(--pos); }
 .rc__svg-marker-text     { fill: var(--ink-2); font-size: 11px; font-family: var(--font-sans); }
 
 @media (max-width: 1100px) {

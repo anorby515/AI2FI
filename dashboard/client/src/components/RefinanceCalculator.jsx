@@ -70,6 +70,32 @@ function totalInterest(principal, annualRate, termMonths) {
   return pmt * termMonths - principal;
 }
 
+// Month-by-month amortization. Returns parallel arrays where index `m` is the
+// state at the END of month m. Index 0 is t=0 (no payments yet). Once the
+// balance hits zero we stop accruing interest but pad the arrays out to
+// `maxMonths` so callers can compare two schedules of equal length.
+function amortizeSchedule(balance, annualRate, monthlyPayment, maxMonths) {
+  const r = annualRate / MONTHS_IN_YEAR;
+  const cumI = [0];
+  const bals = [balance];
+  let bal = balance;
+  let ci = 0;
+  for (let m = 1; m <= maxMonths; m++) {
+    if (bal <= 0.01 || monthlyPayment <= 0) {
+      cumI.push(ci); bals.push(0);
+      continue;
+    }
+    const interest = bal * r;
+    let principal = monthlyPayment - interest;
+    if (principal <= 0) { cumI.push(ci); bals.push(bal); continue; }
+    if (principal > bal) principal = bal;
+    bal -= principal;
+    ci += interest;
+    cumI.push(ci); bals.push(bal);
+  }
+  return { cumI, bals };
+}
+
 // Number input that renders a $/% chrome and parses on blur/change.
 function NumberField({ label, value, onChange, prefix, suffix, step = 1, min, hint }) {
   return (
@@ -127,6 +153,7 @@ export default function RefinanceCalculator() {
   const [rollIntoLoan, setRollIntoLoan] = useState(false);
   const [cashOut, setCashOut] = useState(0);
   const [pointsPct, setPointsPct] = useState(0);
+  const [discountRatePct, setDiscountRatePct] = useState(5);
 
   // Seed defaults from the mortgage data once it loads.
   const [seeded, setSeeded] = useState(false);
@@ -219,25 +246,95 @@ export default function RefinanceCalculator() {
       return r * MONTHS_IN_YEAR;
     })();
 
+    // Schedules over a horizon long enough to cover both loans. Used for
+    // True Break-Even (interest-cost crossover) and NPV.
+    const horizonMonths = Math.max(
+      Number.isFinite(curMonthsLeft) ? Math.ceil(curMonthsLeft) : 0,
+      newTerm,
+    );
+
+    const oldSched = amortizeSchedule(curBalance, curRate, curPmt, horizonMonths);
+    const newSched = (newPmt != null && newTerm > 0)
+      ? amortizeSchedule(newLoanAmount, newRate, newPmt, horizonMonths)
+      : null;
+
+    // True Break-Even: smallest m where (oldCumI − newCumI − refiCost) ≥ 0.
+    // Captures interest cost on both sides and the term-reset penalty;
+    // returns null ("Never") when the new loan never overtakes.
+    let trueBreakEvenMonths = null;
+    if (newSched && monthlySavings != null && monthlySavings > 0) {
+      for (let mi = 1; mi <= horizonMonths; mi++) {
+        if (oldSched.cumI[mi] - newSched.cumI[mi] - totalRefiCost >= 0) {
+          trueBreakEvenMonths = mi;
+          break;
+        }
+      }
+    }
+    const trueBreakEvenIso = trueBreakEvenMonths
+      ? addMonths(data.as_of_date, trueBreakEvenMonths)
+      : null;
+
+    // NPV of the refi: discount the monthly cash-flow advantage stream and
+    // subtract upfront costs. Cash flow at month mi:
+    //   + oldPmt (if mi ≤ curMonthsLeft, you'd have been paying it)
+    //   − newPmt (if mi ≤ newTerm, you actually pay it)
+    // t=0 cash flow: cashOut received − upfrontCost paid.
+    // Discount rate is the user's opportunity cost of capital (default 5%).
+    let npv = null;
+    if (newPmt != null) {
+      const dMonthly = (Number.isFinite(discountRatePct) ? discountRatePct : 0) / 100 / MONTHS_IN_YEAR;
+      let pv = cash - upfrontCost;
+      for (let mi = 1; mi <= horizonMonths; mi++) {
+        const oldOut = (mi <= curMonthsLeft) ? curPmt : 0;
+        const newOut = (mi <= newTerm) ? newPmt : 0;
+        const cf = oldOut - newOut;
+        pv += cf / Math.pow(1 + dMonthly, mi);
+      }
+      npv = pv;
+    }
+
     return {
       curBalance, curRate, curPmt, curMonthsLeft, curRemainingInterest, curPayoffIso,
       newLoanAmount, newRate, newTerm, newPmt, newTotalInterest, newPayoffIso,
       monthlySavings, totalRefiCost, upfrontCost, pointsCost,
       breakEvenMonths, breakEvenIso,
+      trueBreakEvenMonths, trueBreakEvenIso,
       lifetimeInterestDelta, lifetimeNetSavings,
-      effectiveAPR,
+      npv, effectiveAPR,
+      oldSched, newSched, horizonMonths,
     };
-  }, [data, newPrincipal, newRatePct, newTermYears, closingCosts, rollIntoLoan, cashOut, pointsPct]);
+  }, [data, newPrincipal, newRatePct, newTermYears, closingCosts, rollIntoLoan, cashOut, pointsPct, discountRatePct]);
 
   // ── Break-even chart series ──────────────────────────────────────
+  // Two lines:
+  //   • Cumulative cash-flow savings (pmt × m) — crosses RefiCost at the
+  //     cash-flow break-even.
+  //   • Net interest benefit = (oldCumI − newCumI) − refiCost — crosses
+  //     ZERO at the true break-even and goes negative when term reset
+  //     wipes out the interest savings.
   const beChart = useMemo(() => {
-    if (!calc || !calc.breakEvenMonths || !calc.monthlySavings) return null;
-    const horizon = Math.min(360, Math.max(36, Math.ceil(calc.breakEvenMonths * 2)));
+    if (!calc || !calc.monthlySavings || calc.monthlySavings <= 0) return null;
+    if (!calc.oldSched || !calc.newSched) return null;
+    const cashFlowEnd = calc.breakEvenMonths || 0;
+    const trueEnd = calc.trueBreakEvenMonths || calc.horizonMonths;
+    const horizon = Math.min(
+      360,
+      Math.max(36, Math.ceil(Math.max(cashFlowEnd, trueEnd) * 1.4)),
+    );
+    const cap = Math.min(horizon, calc.horizonMonths);
     const pts = [];
-    for (let m = 0; m <= horizon; m++) {
-      pts.push({ m, cumSavings: m * calc.monthlySavings });
+    for (let mi = 0; mi <= cap; mi++) {
+      const cumSavings = mi * calc.monthlySavings;
+      const netInterest = calc.oldSched.cumI[mi] - calc.newSched.cumI[mi] - calc.totalRefiCost;
+      pts.push({ m: mi, cumSavings, netInterest });
     }
-    return { pts, horizon, cost: calc.totalRefiCost, breakEvenMonths: calc.breakEvenMonths };
+    return {
+      pts,
+      horizon: cap,
+      cost: calc.totalRefiCost,
+      cashFlowBE: calc.breakEvenMonths,
+      trueBE: calc.trueBreakEvenMonths,
+    };
   }, [calc]);
 
   if (errorBody) return <RefiEmpty body={errorBody} />;
@@ -245,18 +342,19 @@ export default function RefinanceCalculator() {
 
   const m = calc;
 
-  // Recommendation chip
+  // Verdict — anchored on NPV (the most honest single number) with break-even
+  // recency and true break-even existence as supporting signals.
   let verdictLabel = 'Refinance unlikely to save money';
   let verdictTone = 'neg';
-  if (m.monthlySavings != null && m.monthlySavings > 0 && m.breakEvenMonths != null) {
-    if (m.breakEvenMonths < 36 && m.lifetimeNetSavings > 0) {
-      verdictLabel = 'Refi looks favorable';
+  if (m.npv != null && m.monthlySavings > 0) {
+    if (m.npv > 0 && m.trueBreakEvenMonths && m.trueBreakEvenMonths <= 60) {
+      verdictLabel = 'Refi looks favorable (positive NPV)';
       verdictTone = 'pos';
-    } else if (m.lifetimeNetSavings > 0) {
-      verdictLabel = 'Refi is borderline';
+    } else if (m.npv > 0) {
+      verdictLabel = 'Refi is borderline — positive NPV but slow true break-even';
       verdictTone = 'neutral';
     } else {
-      verdictLabel = 'Refi costs exceed lifetime interest savings';
+      verdictLabel = 'Refi has negative NPV — term reset wipes out the savings';
       verdictTone = 'neg';
     }
   }
@@ -340,6 +438,14 @@ export default function RefinanceCalculator() {
               step={0.125}
               hint={`1 point = 1% of new loan = ${fmtUSD0(m.newLoanAmount * 0.01)} per point`}
             />
+            <NumberField
+              label="Discount Rate (for NPV)"
+              value={discountRatePct}
+              onChange={setDiscountRatePct}
+              suffix="%"
+              step={0.25}
+              hint="Your opportunity cost of capital — what saved cash could earn elsewhere"
+            />
           </div>
         </Card>
 
@@ -368,10 +474,16 @@ export default function RefinanceCalculator() {
           <Stat label="Total Refi Cost"   value={fmtUSD(m.totalRefiCost)} sub={m.pointsCost > 0 ? `incl. ${fmtUSD0(m.pointsCost)} in points` : null} />
           <Stat label="Out of Pocket"     value={fmtUSD(m.upfrontCost)} sub={rollIntoLoan ? 'closing costs rolled in' : 'paid at closing'} />
           <Stat
-            label="Break-Even"
+            label="Cash-Flow Break-Even"
             value={m.breakEvenMonths ? fmtMonths(m.breakEvenMonths) : 'Never'}
-            sub={m.breakEvenIso ? fmtDate(m.breakEvenIso) : null}
+            sub={m.breakEvenIso ? `recoup costs by ${fmtDate(m.breakEvenIso)}` : 'monthly savings ≤ 0'}
             tone={m.breakEvenMonths && m.breakEvenMonths < 36 ? 'pos' : 'neutral'}
+          />
+          <Stat
+            label="True Break-Even"
+            value={m.trueBreakEvenMonths ? fmtMonths(m.trueBreakEvenMonths) : 'Never'}
+            sub={m.trueBreakEvenIso ? `interest crossover ${fmtDate(m.trueBreakEvenIso)}` : 'term reset never recovers'}
+            tone={m.trueBreakEvenMonths && m.trueBreakEvenMonths < 60 ? 'pos' : 'neg'}
           />
           <Stat
             label="Lifetime Interest Δ"
@@ -385,6 +497,12 @@ export default function RefinanceCalculator() {
             tone={m.lifetimeNetSavings > 0 ? 'pos' : 'neg'}
             sub="after refi costs"
           />
+          <Stat
+            label={`NPV @ ${Number.isFinite(discountRatePct) ? discountRatePct : 0}%`}
+            value={fmtUSD(m.npv)}
+            tone={m.npv > 0 ? 'pos' : 'neg'}
+            sub="present value of cash-flow advantage"
+          />
         </div>
 
         <div className={`rc__verdict rc__verdict--${verdictTone}`}>{verdictLabel}</div>
@@ -395,32 +513,36 @@ export default function RefinanceCalculator() {
   );
 }
 
-// ── Break-even SVG chart: cumulative savings vs sunk cost line ───────
-function BreakEvenChart({ pts, horizon, cost, breakEvenMonths }) {
+// ── Break-even SVG chart: cumulative savings + net interest benefit ───
+function BreakEvenChart({ pts, horizon, cost, cashFlowBE, trueBE }) {
   const width = 1000;
-  const height = 240;
-  const pad = { t: 16, r: 16, b: 32, l: 64 };
+  const height = 280;
+  const pad = { t: 16, r: 16, b: 56, l: 72 };
   const plotW = width - pad.l - pad.r;
   const plotH = height - pad.t - pad.b;
 
   const xMax = horizon;
-  const yMax = Math.max(cost * 1.15, pts[pts.length - 1].cumSavings * 1.05);
-  const x = (m) => pad.l + (m / xMax) * plotW;
-  const y = (v) => pad.t + (1 - v / yMax) * plotH;
+  const allY = pts.flatMap(p => [p.cumSavings, p.netInterest]).concat([cost, 0]);
+  const rawMin = Math.min(...allY);
+  const rawMax = Math.max(...allY);
+  const yMin = rawMin < 0 ? rawMin * 1.1 : 0;
+  const yMax = rawMax * 1.1;
+  const x = (mi) => pad.l + (mi / xMax) * plotW;
+  const y = (v) => pad.t + (1 - (v - yMin) / (yMax - yMin)) * plotH;
 
-  const savingsPath = pts
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.m).toFixed(2)} ${y(p.cumSavings).toFixed(2)}`)
+  const linePath = (key) => pts
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.m).toFixed(2)} ${y(p[key]).toFixed(2)}`)
     .join(' ');
 
   const yTicks = [];
   for (let i = 0; i <= 4; i++) {
-    const v = (yMax * i) / 4;
+    const v = yMin + ((yMax - yMin) * i) / 4;
     yTicks.push({ v, y: y(v) });
   }
   const xTicks = [];
   const step = Math.max(6, Math.round(xMax / 8));
-  for (let m = 0; m <= xMax; m += step) {
-    xTicks.push({ m, x: x(m) });
+  for (let mi = 0; mi <= xMax; mi += step) {
+    xTicks.push({ m: mi, x: x(mi) });
   }
 
   return (
@@ -441,20 +563,46 @@ function BreakEvenChart({ pts, horizon, cost, breakEvenMonths }) {
         </text>
       ))}
 
-      {/* Sunk-cost horizontal line */}
+      {/* Zero baseline (only meaningful when net-interest line goes negative) */}
+      {yMin < 0 && (
+        <line className="rc__svg-zero" x1={pad.l} y1={y(0)} x2={width - pad.r} y2={y(0)} />
+      )}
+
+      {/* Sunk-cost horizontal line — anchor for cash-flow break-even */}
       <line className="rc__svg-cost" x1={pad.l} y1={y(cost)} x2={width - pad.r} y2={y(cost)} />
       <text className="rc__svg-cost-label" x={width - pad.r - 8} y={y(cost) - 6} textAnchor="end">
         Refi cost: {fmtUSD0(cost)}
       </text>
 
-      {/* Break-even marker */}
-      <line className="rc__svg-marker" x1={x(breakEvenMonths)} y1={pad.t} x2={x(breakEvenMonths)} y2={pad.t + plotH} />
-      <text className="rc__svg-marker-text" x={x(breakEvenMonths) + 6} y={pad.t + 12}>
-        Break-even · month {Math.ceil(breakEvenMonths)}
-      </text>
+      {/* Break-even markers */}
+      {cashFlowBE && (
+        <g>
+          <line className="rc__svg-marker" x1={x(cashFlowBE)} y1={pad.t} x2={x(cashFlowBE)} y2={pad.t + plotH} />
+          <text className="rc__svg-marker-text" x={x(cashFlowBE) + 6} y={pad.t + 12}>
+            Cash-flow BE · m{Math.ceil(cashFlowBE)}
+          </text>
+        </g>
+      )}
+      {trueBE && (
+        <g>
+          <line className="rc__svg-marker rc__svg-marker--true" x1={x(trueBE)} y1={pad.t} x2={x(trueBE)} y2={pad.t + plotH} />
+          <text className="rc__svg-marker-text" x={x(trueBE) + 6} y={pad.t + 28}>
+            True BE · m{trueBE}
+          </text>
+        </g>
+      )}
 
-      {/* Cumulative savings line */}
-      <path d={savingsPath} className="rc__svg-savings" />
+      {/* Series */}
+      <path d={linePath('cumSavings')}  className="rc__svg-savings" />
+      <path d={linePath('netInterest')} className="rc__svg-net" />
+
+      {/* Legend */}
+      <g transform={`translate(${pad.l}, ${height - 18})`}>
+        <line x1="0"   y1="0" x2="20" y2="0" className="rc__svg-savings" />
+        <text x="26"  y="4" className="rc__svg-axis">Cumulative cash-flow savings</text>
+        <line x1="260" y1="0" x2="280" y2="0" className="rc__svg-net" />
+        <text x="286" y="4" className="rc__svg-axis">Net interest benefit (true)</text>
+      </g>
     </svg>
   );
 }

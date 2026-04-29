@@ -14,7 +14,7 @@ const BASE_NAV = [
     ]
   },
   {
-    key: 'investing', label: 'Investing', children: [
+    key: 'portfolio-analysis', label: 'Portfolio Analysis', children: [
       { key: 'hsa', label: 'HSA' },
       { key: 'retirement', label: 'Retirement' },
       { key: 'esa', label: 'ESA' },

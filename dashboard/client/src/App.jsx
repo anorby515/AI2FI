@@ -24,7 +24,6 @@ import './App.css';
 
 // Map sidebar keys to Coming Soon page titles
 const COMING_SOON_TITLES = {
-  investing: 'Investing',
   tools: 'Tools',
   'tradeoff-calculator': 'Trade-Off Calculator',
   'moat-analysis': 'Moat Analysis',
@@ -32,9 +31,9 @@ const COMING_SOON_TITLES = {
 };
 
 // Sidebar keys that route to the portfolio screens. The parent
-// (`investment-portfolio`) shows the aggregate; each child filters by
+// (`portfolio-analysis`) shows the aggregate; each child filters by
 // `accountTypeGroup` from the spreadsheet's Lookup Tables tab.
-const PORTFOLIO_VIEW_KEYS = ['investment-portfolio', 'retirement', 'brokerage', 'hsa', 'esa'];
+const PORTFOLIO_VIEW_KEYS = ['portfolio-analysis', 'retirement', 'brokerage', 'hsa', 'esa'];
 const PORTFOLIO_GROUP_BY_VIEW = {
   retirement: 'Retirement',
   brokerage: 'Brokerage',
@@ -311,7 +310,6 @@ export default function App() {
         {csvStatus?.count != null && <span className="status-item positive">Imported {csvStatus.count} lots</span>}
         {csvStatus?.error && <span className="status-item negative">{csvStatus.error}</span>}
       </div>
-      <button className="check-btn" onClick={reloadPortfolio}>Reload from sheet</button>
       <button className="sync-btn" onClick={handleSync} disabled={syncing}>
         {syncing ? 'Syncing...' : 'Sync'}
       </button>
@@ -431,6 +429,7 @@ export default function App() {
             selectedAccounts={selectedAccounts}
             spyLookup={spyLookup}
             view={view}
+            onReload={reloadPortfolio}
           />
 
           {(view === 'Holdings' || view === 'Closed') && (() => {

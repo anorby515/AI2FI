@@ -1,0 +1,182 @@
+.rc {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--pad-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.rc__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: var(--pad-lg) 0 0;
+  flex-wrap: wrap;
+}
+
+.rc__page-header {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  color: var(--ink);
+}
+
+.rc__section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-2);
+  margin-bottom: 14px;
+  letter-spacing: 0.2px;
+}
+
+.rc__current-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap);
+}
+
+.rc__split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+
+.rc__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.rc__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rc__field-label {
+  font-size: 12px;
+  color: var(--ink-2);
+  letter-spacing: 0.2px;
+}
+.rc__field-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  background: var(--card-hi);
+  border-radius: var(--r);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--t-fast);
+}
+.rc__field-input:focus-within {
+  border-color: var(--accent-2);
+}
+.rc__field-input input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+}
+.rc__field-input input::-webkit-outer-spin-button,
+.rc__field-input input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.rc__field-prefix,
+.rc__field-suffix {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.rc__field-hint {
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.rc__checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 4px 0;
+}
+.rc__checkbox input[type="checkbox"] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--rule-3);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.rc__checkbox input[type="checkbox"]:checked {
+  border-color: var(--accent-2);
+  background: var(--accent-2);
+}
+.rc__checkbox input[type="checkbox"]:checked::after {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid var(--card);
+  border-bottom: 2px solid var(--card);
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+.rc__be-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap);
+}
+
+.rc__verdict {
+  margin-top: var(--gap);
+  padding: 10px 14px;
+  border-radius: var(--r);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid var(--rule);
+}
+.rc__verdict--pos     { color: var(--pos); border-color: var(--pos); background: color-mix(in srgb, var(--pos) 10%, transparent); }
+.rc__verdict--neg     { color: var(--neg); border-color: var(--neg); background: color-mix(in srgb, var(--neg) 10%, transparent); }
+.rc__verdict--neutral { color: var(--ink-2); }
+
+.rc__loading,
+.rc__empty {
+  padding: 80px 40px;
+  color: var(--dim);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ── Break-even chart ──────────────────────────────────────────── */
+
+.rc__svg {
+  width: 100%;
+  display: block;
+  margin-top: var(--gap);
+}
+.rc__svg-grid line       { stroke: var(--rule); }
+.rc__svg-axis            { fill: var(--ink-2); font-size: 11px; font-family: var(--font-mono); }
+.rc__svg-savings         { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.rc__svg-cost            { stroke: var(--accent-2); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.rc__svg-cost-label      { fill: var(--accent-2); font-size: 11px; font-family: var(--font-mono); }
+.rc__svg-marker          { stroke: var(--ink-2); stroke-dasharray: 3 4; stroke-width: 1; }
+.rc__svg-marker-text     { fill: var(--ink-2); font-size: 11px; font-family: var(--font-sans); }
+
+@media (max-width: 1100px) {
+  .rc__split          { grid-template-columns: 1fr; }
+  .rc__current-grid   { grid-template-columns: repeat(2, 1fr); }
+  .rc__be-grid        { grid-template-columns: repeat(2, 1fr); }
+}

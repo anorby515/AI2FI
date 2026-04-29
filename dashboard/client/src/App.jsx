@@ -21,6 +21,7 @@ import OnboardingEmptyState from './components/OnboardingEmptyState';
 import GettingStarted from './components/GettingStarted';
 import RestartButton from './components/RestartButton';
 import MoatAnalysis from './components/MoatAnalysis';
+import RefinanceCalculator from './components/RefinanceCalculator';
 import './App.css';
 
 // Map sidebar keys to Coming Soon page titles
@@ -334,6 +335,7 @@ export default function App() {
           />
         )}
         {sidebarView === 'moat-analysis' && <MoatAnalysis />}
+        {sidebarView === 'refinance-calculator' && <RefinanceCalculator />}
 
         {isPortfolioView && (<>
           <Dashboard
@@ -388,7 +390,7 @@ export default function App() {
           )}
         </>)}
 
-        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', 'moat-analysis', 'sankey-diagram', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', 'moat-analysis', 'sankey-diagram', 'refinance-calculator', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

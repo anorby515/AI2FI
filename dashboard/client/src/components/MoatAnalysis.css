@@ -1,0 +1,84 @@
+.moat-analysis {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.moat-analysis__head {
+  margin-bottom: 4px;
+}
+
+.moat-analysis__head h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.moat-analysis__lede {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.moat-analysis h2 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.moat-analysis p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.moat-analysis ul,
+.moat-analysis ol {
+  margin: 0 0 10px;
+  padding-left: 22px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.moat-analysis li {
+  margin-bottom: 6px;
+}
+
+.moat-analysis code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+}
+
+.moat-analysis pre {
+  margin: 6px 0 12px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.moat-analysis pre code {
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.moat-analysis__note {
+  font-size: 12px !important;
+  color: var(--text-dim) !important;
+  font-style: italic;
+}

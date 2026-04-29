@@ -20,13 +20,13 @@ import FinancialStrategy from './components/FinancialStrategy';
 import OnboardingEmptyState from './components/OnboardingEmptyState';
 import GettingStarted from './components/GettingStarted';
 import RestartButton from './components/RestartButton';
+import MoatAnalysis from './components/MoatAnalysis';
 import './App.css';
 
 // Map sidebar keys to Coming Soon page titles
 const COMING_SOON_TITLES = {
   tools: 'Tools',
   'tradeoff-calculator': 'Trade-Off Calculator',
-  'moat-analysis': 'Moat Analysis',
   'loan-calculator': 'Loan Calculator',
 };
 
@@ -326,6 +326,7 @@ export default function App() {
         {sidebarView === 'college' && <CollegeView />}
         {sidebarView === 'education-savings' && <EducationSavingsView />}
         {sidebarView === 'budget' && <AnnualBudget />}
+        {sidebarView === 'moat-analysis' && <MoatAnalysis />}
 
         {isPortfolioView && (<>
           <Dashboard
@@ -380,7 +381,7 @@ export default function App() {
           )}
         </>)}
 
-        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', 'moat-analysis', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

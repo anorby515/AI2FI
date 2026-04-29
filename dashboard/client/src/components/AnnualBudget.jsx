@@ -1,29 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { sankey as d3Sankey, sankeyLinkHorizontal, sankeyLeft, sankeyRight, sankeyCenter, sankeyJustify } from 'd3-sankey';
-import { Card, Stat, Segment, Button } from '../ui';
+import { sankey as d3Sankey, sankeyLinkHorizontal, sankeyJustify } from 'd3-sankey';
+import { Card, Stat, Button } from '../ui';
 import './AnnualBudget.css';
 
 /**
  * AnnualBudget — Sankey flow diagram of income → categories → line items.
  *
  * Data contract: { nodes: [{ id, name }], links: [{ source, target, value }] }.
- * Today the user feeds it via CSV upload or the bundled sample. Next iteration
- * will pull from a Budget tab in Finances.xlsx via /api/budget.
+ * Pulls from a Budget tab in Finances.xlsx via /api/budget, falling back to
+ * a bundled sample.
  */
-
-const ALIGN_OPTIONS = [
-  { label: 'Justify', value: 'justify' },
-  { label: 'Left',    value: 'left' },
-  { label: 'Right',   value: 'right' },
-  { label: 'Center',  value: 'center' },
-];
-
-const ALIGN_FNS = {
-  justify: sankeyJustify,
-  left: sankeyLeft,
-  right: sankeyRight,
-  center: sankeyCenter,
-};
 
 // Node colors — pull from token palette so accent swaps cascade correctly.
 const NODE_PALETTE = [
@@ -100,46 +86,15 @@ const SAMPLE_BUDGET = {
   ],
 };
 
-function parseCsv(text) {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) throw new Error('CSV is empty');
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-  const sIdx = headers.indexOf('source');
-  const tIdx = headers.indexOf('target');
-  const vIdx = headers.indexOf('value');
-  if (sIdx < 0 || tIdx < 0 || vIdx < 0) {
-    throw new Error('CSV must have columns: source, target, value');
-  }
-  const links = [];
-  const nodeSet = new Set();
-  for (let i = 1; i < lines.length; i++) {
-    const parts = lines[i].split(',').map(p => p.trim());
-    if (!parts[sIdx] || !parts[tIdx]) continue;
-    const value = parseFloat(parts[vIdx]);
-    if (!Number.isFinite(value)) continue;
-    links.push({ source: parts[sIdx], target: parts[tIdx], value });
-    nodeSet.add(parts[sIdx]);
-    nodeSet.add(parts[tIdx]);
-  }
-  if (!links.length) throw new Error('No valid rows found');
-  return {
-    nodes: [...nodeSet].map(name => ({ id: name, name })),
-    links,
-  };
-}
-
 export default function AnnualBudget() {
   const [data, setData] = useState(null);
-  const [source, setSource] = useState('loading'); // 'spreadsheet' | 'sample' | 'upload' | 'loading'
+  const [source, setSource] = useState('loading'); // 'spreadsheet' | 'sample' | 'loading'
   const [apiError, setApiError] = useState(null);
-  const [align, setAlign] = useState('justify');
-  const [error, setError] = useState(null);
   const [size, setSize] = useState({ w: 1000, h: 600 });
   const [hover, setHover] = useState(null); // { type: 'node'|'link', d, x, y }
   const [focusedNode, setFocusedNode] = useState(null);
 
   const wrapRef = useRef(null);
-  const fileRef = useRef(null);
 
   // Pull the Budget tab from the user's spreadsheet on mount. Fall back to
   // the bundled sample if the tab isn't there yet (so a fresh profile still
@@ -187,7 +142,7 @@ export default function AnnualBudget() {
     if (!data?.nodes?.length || !data?.links?.length) return null;
     const sankeyGen = d3Sankey()
       .nodeId(d => d.id || d.name)
-      .nodeAlign(ALIGN_FNS[align] || sankeyJustify)
+      .nodeAlign(sankeyJustify)
       .nodeWidth(14)
       .nodePadding(16)
       .extent([[8, 12], [size.w - 8, size.h - 12]]);
@@ -198,7 +153,7 @@ export default function AnnualBudget() {
       links: data.links.map(l => ({ ...l })),
     });
     return graph;
-  }, [data, align, size.w, size.h]);
+  }, [data, size.w, size.h]);
 
   // Stats — total inflow and outflow across the diagram.
   const stats = useMemo(() => {
@@ -231,38 +186,8 @@ export default function AnnualBudget() {
   // Color a node by its index — stable across re-renders.
   const nodeColor = (i) => NODE_PALETTE[i % NODE_PALETTE.length];
 
-  function handleFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const text = ev.target.result;
-        let parsed;
-        if (file.name.toLowerCase().endsWith('.json')) {
-          parsed = JSON.parse(text);
-          if (!parsed?.nodes || !parsed?.links) {
-            throw new Error('JSON must have { nodes, links }');
-          }
-        } else {
-          parsed = parseCsv(text);
-        }
-        setData(parsed);
-        setSource('upload');
-        setError(null);
-        setFocusedNode(null);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        if (fileRef.current) fileRef.current.value = '';
-      }
-    };
-    reader.readAsText(file);
-  }
-
   function handleReloadFromSheet() {
     setSource('loading');
-    setError(null);
     setFocusedNode(null);
     fetch('/api/budget')
       .then(async (r) => {
@@ -312,15 +237,6 @@ export default function AnnualBudget() {
           <div className="ab__subtitle">Where the money comes in, and where it goes</div>
         </div>
         <div className="ab__head-right">
-          <Segment options={ALIGN_OPTIONS} value={align} onChange={setAlign} mono />
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,.json"
-            onChange={handleFile}
-            style={{ display: 'none' }}
-          />
-          <Button variant="ghost" onClick={() => fileRef.current?.click()}>Upload CSV / JSON</Button>
           <Button variant="ghost" onClick={handleReloadFromSheet}>Reload from sheet</Button>
         </div>
       </div>
@@ -331,18 +247,6 @@ export default function AnnualBudget() {
             Showing the bundled sample — couldn't load the <code>Budget</code> tab from your spreadsheet ({apiError}).
             Add a <code>Budget</code> tab with <code>Source · Target · Value</code> columns and click <strong>Reload from sheet</strong>.
           </span>
-        </Card>
-      )}
-
-      {source === 'upload' && (
-        <Card className="ab__notice">
-          <span>Showing data from your uploaded file. Click <strong>Reload from sheet</strong> to switch back to your spreadsheet.</span>
-        </Card>
-      )}
-
-      {error && (
-        <Card className="ab__error">
-          <span>Couldn't load file: {error}</span>
         </Card>
       )}
 
@@ -445,7 +349,7 @@ export default function AnnualBudget() {
             <div className="ab__empty">
               <div className="ab__empty-title">{source === 'loading' ? 'Loading budget…' : 'No data loaded'}</div>
               {source !== 'loading' && (
-                <div className="ab__empty-text">Upload a CSV with <code>source,target,value</code> columns or click reload.</div>
+                <div className="ab__empty-text">Add a <code>Budget</code> tab to your spreadsheet, then click reload.</div>
               )}
             </div>
           )}

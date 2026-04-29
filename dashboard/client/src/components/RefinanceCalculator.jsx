@@ -489,24 +489,18 @@ export default function RefinanceCalculator() {
             <Stat label="New Monthly P&I"  value={fmtUSD(m.newPmt)} />
             <Stat label="New Payoff"       value={fmtDate(m.newPayoffIso)} />
 
-            {/* Row 2 — deltas vs current loan */}
+            {/* Row 2 — parenthetical deltas vs current loan */}
             <Stat
-              label="Δ Loan vs Current"
-              value={fmtUSDDelta(loanDelta)}
+              value={`(${fmtUSDDelta(loanDelta)})`}
               tone={loanDelta > 0 ? 'neg' : loanDelta < 0 ? 'pos' : 'neutral'}
-              sub="new principal − current balance"
             />
             <Stat
-              label="Monthly Savings"
-              value={fmtUSDDelta(m.monthlySavings)}
+              value={`(${fmtUSDDelta(m.monthlySavings)})`}
               tone={m.monthlySavings > 0 ? 'pos' : m.monthlySavings < 0 ? 'neg' : 'neutral'}
-              sub="old P&I − new P&I"
             />
             <Stat
-              label="Δ Payoff vs Current"
-              value={fmtMonthsDelta(payoffDeltaMonths)}
+              value={`(${fmtMonthsDelta(payoffDeltaMonths)})`}
               tone={payoffDeltaMonths > 0 ? 'neg' : payoffDeltaMonths < 0 ? 'pos' : 'neutral'}
-              sub="new payoff − current payoff"
             />
 
             {/* Row 3 — lifetime totals */}
@@ -516,26 +510,21 @@ export default function RefinanceCalculator() {
               label="Lifetime Net Savings"
               value={fmtUSD(m.lifetimeNetSavings)}
               tone={m.lifetimeNetSavings > 0 ? 'pos' : 'neg'}
-              sub="lifetime Δ − refi costs"
             />
 
-            {/* Row 4 — honest economic view */}
+            {/* Row 4 — Δ Lifetime Interest as parenthetical, NPV + True BE as full stats */}
             <Stat
-              label="Δ Lifetime Interest"
-              value={fmtUSDDelta(lifetimeInterestRowDelta)}
+              value={`(${fmtUSDDelta(lifetimeInterestRowDelta)})`}
               tone={lifetimeInterestRowDelta < 0 ? 'pos' : lifetimeInterestRowDelta > 0 ? 'neg' : 'neutral'}
-              sub="new interest − current interest left"
             />
             <Stat
               label={`NPV @ ${Number.isFinite(discountRatePct) ? discountRatePct : 0}%`}
               value={fmtUSD(m.npv)}
               tone={m.npv > 0 ? 'pos' : 'neg'}
-              sub="present value of cash-flow advantage"
             />
             <Stat
               label="True Break-Even"
               value={m.trueBreakEvenMonths ? fmtMonths(m.trueBreakEvenMonths) : 'Never'}
-              sub={m.trueBreakEvenIso ? `interest crossover ${fmtDate(m.trueBreakEvenIso)}` : 'term reset never recovers'}
               tone={m.trueBreakEvenMonths && m.trueBreakEvenMonths < 60 ? 'pos' : 'neg'}
             />
           </div>

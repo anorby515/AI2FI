@@ -324,6 +324,28 @@ npm start</code></pre>
   <pre><code>user-profiles/&lt;your-name&gt;/private/Finances.xlsx</code></pre>
   <p class="muted">Start from <code>user-profiles/example/</code> as a template if you want the expected shape. Everything under <code>user-profiles/&lt;your-name&gt;/</code> is gitignored &mdash; it never leaves your machine.</p>
 
+  <h3>Restart the server</h3>
+  <p>The dashboard runs as a macOS login agent (label <code>com.ai2fi.dashboard</code>, listening on port 3001). If it stops responding &mdash; or after you've pulled new server code &mdash; you can bounce it right here:</p>
+
+  <div class="install-block">
+    <div class="label">One-click restart</div>
+    <button id="restart-btn" class="copy-btn" type="button" style="position: static;">Restart server</button>
+    <span id="restart-status" class="muted" style="margin-left: 0.75rem;"></span>
+    <p class="muted" style="margin: 0.6rem 0 0;">Tells the running server to exit; launchd auto-respawns it within a couple of seconds.</p>
+  </div>
+
+  <details>
+    <summary>Restart from Terminal instead</summary>
+    <p>One-liner:</p>
+    <pre><code>launchctl kickstart -k gui/$(id -u)/com.ai2fi.dashboard</code></pre>
+    <p>Long form (unload + load):</p>
+    <pre><code>launchctl unload ~/Library/LaunchAgents/com.ai2fi.dashboard.plist
+launchctl load   ~/Library/LaunchAgents/com.ai2fi.dashboard.plist</code></pre>
+    <p>If port 3001 is wedged, force-kill &mdash; launchd will auto-restart within ~10 seconds:</p>
+    <pre><code>lsof -ti :3001 | xargs kill -9</code></pre>
+    <p class="muted">Server logs live at <code>dashboard/logs/server.log</code> and <code>dashboard/logs/server.err.log</code>.</p>
+  </details>
+
   <h3>Uninstall anytime</h3>
   <p>From Terminal, in this folder:</p>
   <pre><code>bash dashboard/uninstall.command</code></pre>
@@ -451,6 +473,61 @@ npm start</code></pre>
       finally { document.body.removeChild(ta); }
     }
   });
+
+  // ── Restart-server button ──────────────────────────────────────
+  // Hits POST /api/restart on the local dashboard. The server responds
+  // with {ok:true} and then exits non-zero so launchd's KeepAlive
+  // respawns it. We poll /health until it's back, then flip the status
+  // to a green check.
+  var SERVER_BASE = 'http://localhost:3001';
+  var restartBtn = document.getElementById('restart-btn');
+  var restartStatus = document.getElementById('restart-status');
+
+  function setRestartStatus(text, kind) {
+    restartStatus.textContent = text;
+    restartStatus.style.color = kind === 'ok'  ? 'var(--green)'
+                              : kind === 'err' ? 'var(--dot-red)'
+                              : '';
+  }
+
+  function pollHealth(deadlineMs) {
+    return fetch(SERVER_BASE + '/health', { cache: 'no-store' })
+      .then(function (r) { return r.ok; }, function () { return false; })
+      .then(function (up) {
+        if (up) return true;
+        if (Date.now() > deadlineMs) return false;
+        return new Promise(function (resolve) { setTimeout(resolve, 400); })
+          .then(function () { return pollHealth(deadlineMs); });
+      });
+  }
+
+  if (restartBtn) {
+    restartBtn.addEventListener('click', function () {
+      restartBtn.disabled = true;
+      setRestartStatus('Restarting…');
+      // Fire the request. The server responds before exiting, but if the
+      // network drops mid-flight we still want to start polling — so swallow
+      // any error here and treat it as "request was probably accepted."
+      fetch(SERVER_BASE + '/api/restart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      }).catch(function () { /* expected — server is exiting */ });
+
+      // Wait a beat so the old process can exit, then poll for the new one.
+      setTimeout(function () {
+        pollHealth(Date.now() + 30000).then(function (back) {
+          restartBtn.disabled = false;
+          if (back) {
+            setRestartStatus('✓ Restarted', 'ok');
+            setTimeout(function () { setRestartStatus(''); }, 4000);
+          } else {
+            setRestartStatus("Didn't come back in 30s — check dashboard/logs/server.err.log", 'err');
+          }
+        });
+      }, 1500);
+    });
+  }
 
   // ── CHANGELOG render ───────────────────────────────────────────
   var statusEl  = document.getElementById('changelog-status');

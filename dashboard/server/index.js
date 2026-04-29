@@ -8,7 +8,22 @@ const tracker = require('./apiTracker');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: 'http://localhost:5173' }));
+// Allowed origins: the Vite dev server, same-origin requests served from
+// the dashboard itself, and the local Welcome HTML opened via file:// (which
+// browsers report as the literal string "null"). Any other origin is rejected
+// — the server is bound to localhost so this is the meaningful security gate
+// against a stray browser tab on a malicious site hitting us.
+const ALLOWED_ORIGINS = new Set([
+  'http://localhost:5173',
+  'http://localhost:3001',
+  'null',
+]);
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || ALLOWED_ORIGINS.has(origin)) return cb(null, true);
+    return cb(new Error(`Origin not allowed: ${origin}`));
+  },
+}));
 app.use(express.json());
 
 app.use('/api/portfolio', require('./routes/portfolio'));
@@ -151,6 +166,17 @@ app.post('/api/sync', async (_, res) => {
 });
 
 app.get('/health', (_, res) => res.json({ ok: true }));
+
+// POST /api/restart — exit non-zero so launchd's KeepAlive policy respawns
+// the agent. Used by the "Restart server" button on the Welcome page. The
+// CORS gate above and the localhost-only bind are what make this safe to
+// expose without auth — preflight will reject any cross-origin caller that
+// isn't the local Welcome page or dev server.
+app.post('/api/restart', (_, res) => {
+  res.json({ ok: true, message: 'Restarting' });
+  // Small delay so the response flushes to the wire before we exit.
+  setTimeout(() => process.exit(1), 100);
+});
 
 // Serve the built client (production mode).
 // The dev workflow (`npm run dev`) runs Vite separately on 5173 and proxies /api here,

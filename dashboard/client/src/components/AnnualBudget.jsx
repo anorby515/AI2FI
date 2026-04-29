@@ -86,22 +86,31 @@ const SAMPLE_BUDGET = {
   ],
 };
 
-export default function AnnualBudget() {
+export default function AnnualBudget({
+  defaultTab = 'Budget',
+  title = 'Annual Budget',
+  subtitle = 'Where the money comes in, and where it goes',
+}) {
   const [data, setData] = useState(null);
   const [source, setSource] = useState('loading'); // 'spreadsheet' | 'sample' | 'loading'
   const [apiError, setApiError] = useState(null);
   const [size, setSize] = useState({ w: 1000, h: 600 });
   const [hover, setHover] = useState(null); // { type: 'node'|'link', d, x, y }
   const [focusedNode, setFocusedNode] = useState(null);
+  const [tab, setTab] = useState(defaultTab);
 
   const wrapRef = useRef(null);
 
-  // Pull the Budget tab from the user's spreadsheet on mount. Fall back to
-  // the bundled sample if the tab isn't there yet (so a fresh profile still
-  // sees a meaningful diagram).
+  function fetchTab(tabName) {
+    return fetch(`/api/budget?tab=${encodeURIComponent(tabName)}`);
+  }
+
+  // Pull the configured tab from the user's spreadsheet on mount. Fall back
+  // to the bundled sample if the tab isn't there yet (so a fresh profile
+  // still sees a meaningful diagram).
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/budget')
+    fetchTab(defaultTab)
       .then(async (r) => {
         const body = await r.json().catch(() => ({}));
         if (cancelled) return;
@@ -122,7 +131,7 @@ export default function AnnualBudget() {
         setApiError(err.message);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [defaultTab]);
 
   // Track container width — Sankey needs explicit pixel dimensions.
   useEffect(() => {
@@ -189,7 +198,7 @@ export default function AnnualBudget() {
   function handleReloadFromSheet() {
     setSource('loading');
     setFocusedNode(null);
-    fetch('/api/budget')
+    fetchTab(tab)
       .then(async (r) => {
         const body = await r.json().catch(() => ({}));
         if (r.ok && body?.nodes && body?.links) {
@@ -233,10 +242,21 @@ export default function AnnualBudget() {
     <div className="ab">
       <div className="ab__head">
         <div>
-          <div className="ab__title">Annual Budget</div>
-          <div className="ab__subtitle">Where the money comes in, and where it goes</div>
+          <div className="ab__title">{title}</div>
+          <div className="ab__subtitle">{subtitle}</div>
         </div>
         <div className="ab__head-right">
+          <label className="ab__tab-input">
+            <span>Tab Name</span>
+            <input
+              type="text"
+              value={tab}
+              onChange={(e) => setTab(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleReloadFromSheet(); }}
+              placeholder={defaultTab}
+              spellCheck={false}
+            />
+          </label>
           <Button variant="ghost" onClick={handleReloadFromSheet}>Reload from sheet</Button>
         </div>
       </div>
@@ -244,8 +264,8 @@ export default function AnnualBudget() {
       {source === 'sample' && apiError && (
         <Card className="ab__notice">
           <span>
-            Showing the bundled sample — couldn't load the <code>Budget</code> tab from your spreadsheet ({apiError}).
-            Add a <code>Budget</code> tab with <code>Source · Target · Value</code> columns and click <strong>Reload from sheet</strong>.
+            Showing the bundled sample — couldn't load the <code>{tab}</code> tab from your spreadsheet ({apiError}).
+            Add a <code>{tab}</code> tab with <code>Source · Target · Value</code> columns and click <strong>Reload from sheet</strong>.
           </span>
         </Card>
       )}
@@ -349,7 +369,7 @@ export default function AnnualBudget() {
             <div className="ab__empty">
               <div className="ab__empty-title">{source === 'loading' ? 'Loading budget…' : 'No data loaded'}</div>
               {source !== 'loading' && (
-                <div className="ab__empty-text">Add a <code>Budget</code> tab to your spreadsheet, then click reload.</div>
+                <div className="ab__empty-text">Add a <code>{tab}</code> tab to your spreadsheet, then click reload.</div>
               )}
             </div>
           )}

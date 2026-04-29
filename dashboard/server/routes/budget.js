@@ -3,7 +3,8 @@ const router = express.Router();
 const ExcelJS = require('exceljs');
 const { resolveSpreadsheet, noProfileResponse } = require('../profile-resolver');
 
-// Tab names we'll try, in order. First match wins.
+// Tab names we'll try, in order, when the caller hasn't pinned a specific
+// tab via ?tab=<name>. First match wins.
 const TAB_NAME_CANDIDATES = ['Budget', 'Annual Budget', 'Cash Flow', 'CashFlow'];
 
 const HEADER_ALIASES = {
@@ -23,9 +24,11 @@ function unwrap(val) {
   return val;
 }
 
-function findBudgetWorksheet(wb) {
+function findBudgetWorksheet(wb, requestedTab) {
   const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
-  const candidates = new Set(TAB_NAME_CANDIDATES.map(norm));
+  const candidates = requestedTab
+    ? new Set([norm(requestedTab)])
+    : new Set(TAB_NAME_CANDIDATES.map(norm));
   let match = null;
   wb.eachSheet((ws) => {
     if (match) return;
@@ -58,10 +61,10 @@ function findHeader(ws) {
   return null;
 }
 
-async function parseBudget(spreadsheetPath) {
+async function parseBudget(spreadsheetPath, requestedTab) {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(spreadsheetPath);
-  const ws = findBudgetWorksheet(wb);
+  const ws = findBudgetWorksheet(wb, requestedTab);
   if (!ws) {
     const tabs = [];
     wb.eachSheet(s => tabs.push(s.name));
@@ -105,15 +108,19 @@ async function parseBudget(spreadsheetPath) {
 }
 
 // GET /api/budget — returns { nodes, links, isTemplate } for the Sankey.
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   const sheet = resolveSpreadsheet();
   if (!sheet) return res.status(404).json(noProfileResponse());
+  const requestedTab = typeof req.query.tab === 'string' && req.query.tab.trim()
+    ? req.query.tab.trim()
+    : null;
   try {
-    const data = await parseBudget(sheet.path);
+    const data = await parseBudget(sheet.path, requestedTab);
     if (data && data.error === 'no-tab') {
+      const tried = requestedTab ? `"${requestedTab}"` : TAB_NAME_CANDIDATES.join(', ');
       return res.status(404).json({
-        error: `No Budget tab found in ${sheet.isTemplate ? 'the template' : 'your spreadsheet'}. ` +
-               `Tried tab names: ${TAB_NAME_CANDIDATES.join(', ')}.`,
+        error: `No tab found in ${sheet.isTemplate ? 'the template' : 'your spreadsheet'}. ` +
+               `Tried tab name${requestedTab ? '' : 's'}: ${tried}.`,
         availableTabs: data.availableTabs,
         spreadsheetPath: sheet.path,
         isTemplate: !!sheet.isTemplate,

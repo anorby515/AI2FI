@@ -326,6 +326,13 @@ export default function App() {
         {sidebarView === 'college' && <CollegeView />}
         {sidebarView === 'education-savings' && <EducationSavingsView />}
         {sidebarView === 'budget' && <AnnualBudget />}
+        {sidebarView === 'sankey-diagram' && (
+          <AnnualBudget
+            defaultTab="Sankey"
+            title="Sankey Diagram"
+            subtitle="Flow visualization for any source · target · value tab"
+          />
+        )}
         {sidebarView === 'moat-analysis' && <MoatAnalysis />}
 
         {isPortfolioView && (<>
@@ -381,7 +388,7 @@ export default function App() {
           )}
         </>)}
 
-        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', 'moat-analysis', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', 'moat-analysis', 'sankey-diagram', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { formatCurrency, formatPct, totalCostBasis, currentValue, gainLoss, gainLossPct, calcCAGR, calcLotsIRR, calcClosedLotsIRR, calcBenchmarkIRR, calcIRR, ds, dc } from '../utils/calculations';
 import { benchmarkPriceOnDate } from '../hooks/usePortfolio';
+import { Button } from '../ui';
 
-export default function Dashboard({ positions, openLots, closedLots, quotes, quotesLoading, selectedAccounts, spyLookup, view }) {
+export default function Dashboard({ positions, openLots, closedLots, quotes, quotesLoading, selectedAccounts, spyLookup, view, onReload }) {
   const allSelected = selectedAccounts.size === 0;
   const filteredLots = allSelected
     ? openLots
@@ -203,6 +204,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                 <div className="col-header">Alpha</div>
                 <div className="col-header">% Alpha &gt; 0</div>
                 <div className="col-header" />
+                <div className="col-header" />
               </div>
             </div>
 
@@ -216,6 +218,9 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                 <Stat value={totalAlpha != null ? (totalAlpha >= 0 ? '+' : '') + formatPct(totalAlpha) : '—'} accent={totalAlpha != null ? (totalAlpha >= 0 ? 'positive' : 'negative') : null} />
                 <Stat value={allBeatingSP != null ? formatPct(allBeatingSP.pct) : '—'} sub={allBeatingSP != null ? `${allBeatingSP.beat} of ${allBeatingSP.total}` : null} accent={allBeatingSP != null ? (allBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
                 <Stat label="Charity" value={charitableClosed.length > 0 ? formatCurrency(charitableGL) : '—'} sub={charitableClosed.length > 0 ? `${charitableClosed.length} donations` : null} accent={charitableClosed.length > 0 ? (charitableIsPos ? 'positive' : 'negative') : null} />
+                <div className="stat stat-action">
+                  {onReload && <Button variant="ghost" onClick={onReload}>Reload from sheet</Button>}
+                </div>
               </div>
             </div>
 
@@ -228,6 +233,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                 <Stat value={portfolioIRR != null ? formatPct(portfolioIRR) : '—'} accent={portfolioIRR != null ? (portfolioIRR >= 0 ? 'positive' : 'negative') : null} />
                 <Stat value={portfolioAlpha != null ? (portfolioAlpha >= 0 ? '+' : '') + formatPct(portfolioAlpha) : '—'} accent={portfolioAlpha != null ? (alphaPos ? 'positive' : 'negative') : null} />
                 <Stat value={openBeatingSP != null ? formatPct(openBeatingSP.pct) : '—'} sub={openBeatingSP != null ? `${openBeatingSP.beat} of ${openBeatingSP.total}` : null} accent={openBeatingSP != null ? (openBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
+                <div className="stat" />
                 <div className="stat" />
               </div>
             </div>
@@ -242,6 +248,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                   <Stat value={closedIRR != null ? formatPct(closedIRR) : '—'} accent={closedIRR != null ? (closedIRR >= 0 ? 'positive' : 'negative') : null} />
                   <Stat value={closedAlpha != null ? (closedAlpha >= 0 ? '+' : '') + formatPct(closedAlpha) : '—'} accent={closedAlpha != null ? (closedAlpha >= 0 ? 'positive' : 'negative') : null} />
                   <Stat value={closedBeatingSP != null ? formatPct(closedBeatingSP.pct) : '—'} sub={closedBeatingSP != null ? `${closedBeatingSP.beat} of ${closedBeatingSP.total}` : null} accent={closedBeatingSP != null ? (closedBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
+                  <div className="stat" />
                   <div className="stat" />
                 </div>
               </div>

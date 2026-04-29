@@ -252,6 +252,7 @@ body {
   z-index: 99;
 }
 .status-info { display: flex; gap: 16px; align-items: center; }
+.status-actions { display: flex; gap: 12px; align-items: center; }
 .status-item strong { color: var(--text); }
 .status-dot {
   width: 8px; height: 8px; border-radius: 50%;

@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { Card } from '../ui';
+import { Card, Button } from '../ui';
 import './EducationSavingsView.css';
 
 const ALL = '__all__';
@@ -192,7 +192,8 @@ export default function EducationSavingsView() {
   // contribution. Keyed by student name; value in dollars (-500..+500, step 25).
   const [contribDelta, setContribDelta] = useState({});
 
-  useEffect(() => {
+  const reload = useCallback(() => {
+    setErrorBody(null);
     fetch('/api/education-savings')
       .then(async (r) => {
         const body = await r.json().catch(() => ({}));
@@ -202,6 +203,8 @@ export default function EducationSavingsView() {
       .then((body) => { if (body) setData(body); })
       .catch((e) => setErrorBody({ status: 0, error: e.message }));
   }, []);
+
+  useEffect(() => { reload(); }, [reload]);
 
   const ratePct = Number.parseFloat(rateInput);
   const ratePctSafe = Number.isFinite(ratePct) ? ratePct : DEFAULT_RATE_PCT;
@@ -244,7 +247,10 @@ export default function EducationSavingsView() {
   if (errorBody) {
     return (
       <div className="es">
-        <div className="es__page-header">Educational Savings</div>
+        <div className="es__head">
+          <div className="es__page-header">Educational Savings</div>
+          <Button variant="ghost" onClick={reload}>Reload from sheet</Button>
+        </div>
         <Card>
           <div className="es__error">
             {errorBody.error || `Failed to load (status ${errorBody.status}).`}
@@ -257,7 +263,10 @@ export default function EducationSavingsView() {
   if (!data) {
     return (
       <div className="es">
-        <div className="es__page-header">Educational Savings</div>
+        <div className="es__head">
+          <div className="es__page-header">Educational Savings</div>
+          <Button variant="ghost" onClick={reload}>Reload from sheet</Button>
+        </div>
         <div className="es__loading">Loading…</div>
       </div>
     );
@@ -267,7 +276,10 @@ export default function EducationSavingsView() {
 
   return (
     <div className="es">
-      <div className="es__page-header">Educational Savings</div>
+      <div className="es__head">
+        <div className="es__page-header">Educational Savings</div>
+        <Button variant="ghost" onClick={reload}>Reload from sheet</Button>
+      </div>
 
       <Card>
         <div className="es__forecast-control">

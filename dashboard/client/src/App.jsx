@@ -190,7 +190,7 @@ export default function App() {
     window.location.reload();
   }
 
-  const { lots: allLots, openLots: rawOpenLots, closedLots: rawClosedLots, positions: rawPositions, allPositions: rawAllPositions, quotes, loading, error, emptyState } = usePortfolio();
+  const { lots: allLots, openLots: rawOpenLots, closedLots: rawClosedLots, positions: rawPositions, allPositions: rawAllPositions, quotes, loading, error, emptyState, refetch: reloadPortfolio } = usePortfolio();
 
   // Active portfolio sub-view (parent = aggregate, children filter by group).
   const isPortfolioView = PORTFOLIO_VIEW_KEYS.includes(sidebarView);
@@ -311,6 +311,7 @@ export default function App() {
         {csvStatus?.count != null && <span className="status-item positive">Imported {csvStatus.count} lots</span>}
         {csvStatus?.error && <span className="status-item negative">{csvStatus.error}</span>}
       </div>
+      <button className="check-btn" onClick={reloadPortfolio}>Reload from sheet</button>
       <button className="sync-btn" onClick={handleSync} disabled={syncing}>
         {syncing ? 'Syncing...' : 'Sync'}
       </button>

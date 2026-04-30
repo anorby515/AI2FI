@@ -331,6 +331,20 @@ export default function EducationSavingsView() {
                   <td className="es__num">{fmtUSD(baseMonthly)}</td>
                   <td>
                     <div className="es__slider-cell">
+                      <span className={`es__slider-val ${deltaTone}`}>
+                        {fmtUSDSigned(delta)}
+                      </span>
+                      <button
+                        type="button"
+                        className="es__slider-btn"
+                        aria-label="Decrease by $25"
+                        title="−$25"
+                        disabled={delta <= -baseMonthly}
+                        onClick={() => setContribDelta(prev => ({
+                          ...prev,
+                          [s.name]: Math.max(-baseMonthly, (prev[s.name] || 0) - 25),
+                        }))}
+                      >−</button>
                       <input
                         type="range"
                         className="es__slider"
@@ -343,9 +357,17 @@ export default function EducationSavingsView() {
                           [s.name]: Number(e.target.value),
                         }))}
                       />
-                      <span className={`es__slider-val ${deltaTone}`}>
-                        {fmtUSDSigned(delta)}
-                      </span>
+                      <button
+                        type="button"
+                        className="es__slider-btn"
+                        aria-label="Increase by $25"
+                        title="+$25"
+                        disabled={delta >= 500}
+                        onClick={() => setContribDelta(prev => ({
+                          ...prev,
+                          [s.name]: Math.min(500, (prev[s.name] || 0) + 25),
+                        }))}
+                      >+</button>
                     </div>
                   </td>
                   <td>{fmtDate(s.college_start_date)}</td>

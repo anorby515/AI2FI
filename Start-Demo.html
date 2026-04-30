@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Start the AI2FI demo</title>
+  <meta name="description" content="Two clicks to a live demo. No install, no Terminal." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%96%B6%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --page-bg:      #13151a;
+      --term-bg:      #1e2128;
+      --titlebar-bg:  #282c34;
+      --border:       #2e323c;
+      --fg:           #abb2bf;
+      --fg-dim:       #636d83;
+      --fg-bright:    #dde1e8;
+      --cyan:         #56b6c2;
+      --green:        #98c379;
+      --accent:       #61afef;
+      --warn-bg:      #2a2213;
+      --warn-border:  #7a5c1e;
+      --code-bg:      #282c34;
+      --dot-red:      #ff5f56;
+      --dot-yellow:   #ffbd2e;
+      --dot-green:    #27c93f;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--page-bg);
+      color: var(--fg);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    .hero-outer { padding: 2.5rem 1.25rem 2rem; display: flex; justify-content: center; }
+    .terminal {
+      width: 100%; max-width: 760px;
+      background: var(--term-bg);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.55);
+      overflow: hidden;
+    }
+    .titlebar {
+      background: var(--titlebar-bg);
+      padding: 0.6rem 1rem;
+      display: flex; align-items: center; gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .dots { display: flex; gap: 6px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-r { background: var(--dot-red); }
+    .dot-y { background: var(--dot-yellow); }
+    .dot-g { background: var(--dot-green); }
+    .titlebar-label {
+      flex: 1; text-align: center;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--fg-dim);
+      letter-spacing: 0.02em;
+    }
+    .term-body { padding: 2rem 2rem 2.25rem; }
+    .wordmark {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(1.6rem, 7vw, 3rem);
+      color: var(--fg-bright);
+      letter-spacing: 0.05em;
+      line-height: 1.25;
+      margin: 0 0 1.25rem;
+    }
+    .tagline {
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      color: var(--fg);
+      margin: 0;
+    }
+
+    .wrap { max-width: 760px; margin: 0 auto; padding: 0 1.25rem 5rem; }
+    h2 {
+      font-size: 1.2rem;
+      margin: 2.75rem 0 0.6rem;
+      color: var(--fg-bright);
+    }
+    p { margin: 0.4rem 0 0.9rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      font-family: var(--mono);
+      background: var(--code-bg);
+      color: var(--green);
+      padding: 0.1em 0.4em;
+      border-radius: 4px;
+      font-size: 0.88em;
+    }
+    .step-block {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--term-bg);
+      padding: 1rem 1.15rem 1.1rem;
+      margin: 1rem 0 1.2rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    .step-num {
+      font-family: var(--mono);
+      font-size: 1.6rem;
+      color: var(--accent);
+      font-weight: 700;
+      line-height: 1;
+      flex-shrink: 0;
+      width: 2.4rem;
+      text-align: center;
+    }
+    .step-body { flex: 1; }
+    .step-body h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+      color: var(--fg-bright);
+    }
+    .step-body p { margin: 0.2rem 0; font-size: 0.95rem; }
+    .step-body p.muted { color: var(--fg-dim); font-size: 0.88rem; margin-top: 0.5rem; }
+
+    .callout {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      border-left: 3px solid var(--dot-yellow);
+      padding: 0.75rem 1rem;
+      border-radius: 4px;
+      margin: 1.1rem 0;
+      font-size: 0.92rem;
+    }
+    .muted { color: var(--fg-dim); font-size: 0.9rem; }
+    footer {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--fg-dim);
+      font-size: 0.88rem;
+      font-family: var(--mono);
+      line-height: 1.8;
+    }
+    footer a { color: var(--fg-dim); }
+    footer a:hover { color: var(--accent); }
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2.5rem 0 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero-outer">
+  <div class="terminal">
+    <div class="titlebar">
+      <div class="dots">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+      </div>
+      <span class="titlebar-label">ai2fi &mdash; demo</span>
+    </div>
+    <div class="term-body">
+      <div class="wordmark">▶ DEMO</div>
+      <p class="tagline">Two clicks to a live AI2FI dashboard. No install, no Terminal.</p>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<hr class="section-divider" />
+
+<h2>Two clicks to start</h2>
+
+<p>You're already in Finder — that's where you found this page. Switch back to that window. You'll see <code>Start-Demo.command</code> sitting next to this file.</p>
+
+<div class="step-block">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <h3>Right-click <code>Start-Demo.command</code> → click <strong>Open</strong></h3>
+    <p>Right-click (or Control-click) the file. Choose <strong>Open</strong> from the menu.</p>
+    <p class="muted">Why right-click? macOS blocks downloaded scripts from running on a plain double-click the first time. Right-click → Open is how you tell it "yes, I trust this." After the first time, double-click works.</p>
+  </div>
+</div>
+
+<div class="step-block">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <h3>Click <strong>Open</strong> in the security dialog</h3>
+    <p>macOS will ask <em>"Are you sure you want to open it?"</em> — click <strong>Open</strong>.</p>
+    <p>A Terminal window opens with the demo running, and your browser opens the dashboard at <code>http://localhost:5173</code> after a few seconds.</p>
+    <p class="muted">To stop the demo: close that Terminal window. That's it.</p>
+  </div>
+</div>
+
+<p class="muted">Folder you came from: <code id="folder-path">(detecting…)</code></p>
+
+<div class="callout">
+  <strong>The demo runs against a sample template.</strong> No personal data, nothing transmitted. You can poke around the whole dashboard without setting anything up.
+</div>
+
+<hr class="section-divider" />
+
+<h2>Ready for the real install?</h2>
+<p>The demo is a quick preview. When you want to point AI2FI at your own spreadsheet and have it run quietly in the background every day, do the full install:</p>
+<p><a href="./Install-AI2FI.html">→ Install-AI2FI.html</a></p>
+<p class="muted">The full install registers a macOS login agent so the dashboard auto-starts, builds the client for production, and configures your profile folder.</p>
+
+<footer>
+  <a href="https://github.com/anorby515/AI2FI">GitHub</a> &middot;
+  <a href="./README.md">README</a> &middot;
+  <a href="./Install-AI2FI.html">Full install</a>
+  <br />
+  Nothing on this page, nor anywhere in AI2FI, transmits your financial data.
+</footer>
+
+</div>
+
+<script>
+(function () {
+  // Show the user which folder they came from so they can confirm where to
+  // look for Start-Demo.command. Browsers can't programmatically open Finder
+  // from a file:// page, so we just display the path as a confirmation cue.
+  var rawHref = window.location.href;
+  var folderPath = null;
+
+  try {
+    if (rawHref.indexOf('file://') === 0) {
+      var path = decodeURIComponent(rawHref.slice('file://'.length));
+      path = path.replace(/\/[^\/]*$/, '');
+      if (path.length > 1 && path[path.length - 1] === '/') path = path.slice(0, -1);
+      folderPath = path;
+    }
+  } catch (e) { /* fall through */ }
+
+  var pathEl = document.getElementById('folder-path');
+  if (folderPath) {
+    pathEl.textContent = folderPath;
+  } else {
+    pathEl.textContent = "couldn't detect — find Start-Demo.command in the folder where you opened this page.";
+  }
+})();
+</script>
+</body>
+</html>

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Welcome to AI2FI</title>
-  <meta name="description" content="You've downloaded AI2FI. Here's how to finish setting it up — all local, nothing transmitted." />
+  <title>Install AI2FI</title>
+  <meta name="description" content="Full install — registers AI2FI to auto-start at login, points the dashboard at your own data. All local, nothing transmitted." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
@@ -255,7 +255,8 @@
     </div>
     <div class="term-body">
       <div class="wordmark">AI2FI</div>
-      <p class="tagline">You're here. Let's get you set up.</p>
+      <p class="tagline">Full install. Auto-start at login, your own data, your machine.</p>
+      <p class="tagline" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--fg-dim);">Just want a quick look first? <a href="./Start-Demo.html" style="color: var(--cyan);">Start-Demo.html</a> spins up a preview without installing anything.</p>
       <nav class="term-nav" aria-label="Sections">
         <a href="#install">1. Install</a>
         <a href="#after">2. After install</a>
@@ -272,34 +273,41 @@
 
 <section id="install">
   <h2>1. Install the dashboard</h2>
-  <p>You've downloaded AI2FI and opened this file. One more step gets the dashboard running at <code>http://localhost:3001</code> and auto-starting at login.</p>
+  <p>One step gets the dashboard running at <code>http://localhost:3001</code> and auto-starting at login. Same right-click trick as the demo &mdash; just on a different file.</p>
 
-  <p><strong>Open Terminal</strong> (<code>&#8984;-Space</code>, type "Terminal") and paste the command below. It's pre-filled with the full path to your AI2FI folder:</p>
+  <h3>Run the installer</h3>
+  <p>In Finder, navigate into the <code>dashboard/</code> folder. Find <code>setup.command</code>. <strong>Right-click</strong> (or Control-click) it &rarr; click <strong>Open</strong> &rarr; click <strong>Open</strong> in the security dialog.</p>
+  <p>A Terminal window will open and the installer will run. You'll be prompted for your Mac password once so the installer can register the login agent. When it finishes, your browser opens at <a href="http://localhost:3001">http://localhost:3001</a>.</p>
 
-  <div class="install-block">
-    <div class="label">Install command &mdash; copy and paste into Terminal</div>
-    <div class="install-cmd">
-      <span id="install-cmd-text">cd "&lt;detecting&hellip;&gt;" &amp;&amp; bash dashboard/setup.command</span>
-      <button class="copy-btn" id="copy-btn" type="button">Copy</button>
-    </div>
-    <p class="muted" style="margin: 0.6rem 0 0;">
-      Folder detected as: <span id="folder-path">(detecting&hellip;)</span>
-    </p>
-  </div>
-
-  <p>The installer will:</p>
+  <p>The installer:</p>
   <ol>
-    <li>Check for Homebrew and Node, install them via Homebrew if missing.</li>
-    <li>Install dashboard dependencies and build the client.</li>
-    <li>Register a macOS login agent so the dashboard auto-starts.</li>
-    <li>Open <a href="http://localhost:3001">http://localhost:3001</a> in your browser.</li>
+    <li>Checks for Homebrew and Node, installing them via Homebrew if missing.</li>
+    <li>Installs dashboard dependencies and builds the client.</li>
+    <li>Registers a macOS login agent so the dashboard auto-starts every login.</li>
+    <li>Opens the dashboard in your browser.</li>
   </ol>
-  <p class="muted">First run takes a couple of minutes. You'll be prompted for your password once so the installer can register the login agent.</p>
+  <p class="muted">First run takes a couple of minutes.</p>
 
   <details>
-    <summary>Why Terminal and not double-click?</summary>
-    <p>Double-clicking <code>dashboard/setup.command</code> from Finder triggers macOS Gatekeeper because the file was downloaded from the internet &mdash; it blocks with a "cannot be opened" dialog that only offers "Move to Trash" or "Done". The Terminal path above reads the script with <code>bash</code>, which doesn't invoke the Gatekeeper check. Same script, same install, just no ceremony.</p>
-    <p>If you've already cloned this repo with <code>git</code> (not downloaded a ZIP), double-clicking <code>setup.command</code> works normally &mdash; git-cloned files aren't quarantined.</p>
+    <summary>Prefer Terminal? Use this command instead.</summary>
+    <p>Open Terminal (<code>&#8984;-Space</code>, type "Terminal") and paste:</p>
+    <div class="install-block" style="margin: 0.6rem 0;">
+      <div class="install-cmd">
+        <span id="install-cmd-text">cd "&lt;detecting&hellip;&gt;" &amp;&amp; bash dashboard/setup.command</span>
+        <button class="copy-btn" id="copy-btn" type="button">Copy</button>
+      </div>
+      <p class="muted" style="margin: 0.6rem 0 0;">
+        Folder detected as: <span id="folder-path">(detecting&hellip;)</span>
+      </p>
+    </div>
+    <p>Same script, same install &mdash; this just bypasses Gatekeeper without the right-click dance.</p>
+  </details>
+
+  <details>
+    <summary>Why right-click? (and the Gatekeeper backstory)</summary>
+    <p>macOS blocks unsigned downloaded scripts from running on a plain double-click &mdash; you'd get a "cannot be opened" dialog with no Open button. Right-click &rarr; Open is the standard macOS way to tell Gatekeeper "yes, I trust this." After the first time, plain double-click works on the same file.</p>
+    <p>The Terminal path under the previous toggle bypasses Gatekeeper a different way (it reads the file with <code>bash</code> rather than executing it directly). Same destination, different door.</p>
+    <p>If you've already cloned this repo with <code>git</code> (not downloaded a ZIP), the files aren't quarantined &mdash; plain double-click works without any ceremony.</p>
   </details>
 
   <details>
@@ -331,7 +339,7 @@ npm start</code></pre>
     <div class="label">One-click restart</div>
     <button id="restart-btn" class="copy-btn" type="button" style="position: static;">Restart server</button>
     <span id="restart-status" class="muted" style="margin-left: 0.75rem;"></span>
-    <p class="muted" style="margin: 0.6rem 0 0;">Tells the running server to exit; launchd auto-respawns it within a couple of seconds.</p>
+    <p class="muted" style="margin: 0.6rem 0 0;">Tells the running server to exit; launchd auto-respawns it within a couple of seconds. Only works after the install above is complete &mdash; if you're still in demo mode, this button has nothing to talk to.</p>
   </div>
 
   <details>
@@ -349,7 +357,7 @@ launchctl load   ~/Library/LaunchAgents/com.ai2fi.dashboard.plist</code></pre>
   <h3>Uninstall anytime</h3>
   <p>From Terminal, in this folder:</p>
   <pre><code>bash dashboard/uninstall.command</code></pre>
-  <p class="muted">Unloads the login agent, removes the plist, kills anything on port 3001. Your files, spreadsheet, and profile are untouched.</p>
+  <p class="muted">Unloads the login agent, removes the plist, kills anything on port 3001. Your files, spreadsheet, and profile are untouched &mdash; and the demo path stays intact, so you can still right-click <code>Start-Demo.command</code> to spin up a preview.</p>
 </section>
 
 <hr class="section-divider" />
@@ -392,7 +400,7 @@ launchctl load   ~/Library/LaunchAgents/com.ai2fi.dashboard.plist</code></pre>
 
 <footer>
   <a href="https://github.com/anorby515/AI2FI">GitHub</a> &middot;
-  <a href="https://anorby515.github.io/AI2FI/">Welcome page (online)</a> &middot;
+  <a href="https://anorby515.github.io/AI2FI/">Install page (online)</a> &middot;
   <a href="./ai-to-fi-architecture.md">Architecture</a> &middot;
   <a href="./RELEASING.md">Release process</a>
   <br />

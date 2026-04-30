@@ -10,7 +10,7 @@ module_memory_file: core/module-memory.md
 
 # Download & Install
 The Onboarding starts with the user on the GitHub website downloading the files and folder.
-Once they've unzipped the folder, then the user will open Welcome-to-AI2FI.html to guide the user 
+Once they've unzipped the folder, the user opens `Start-Demo.html` for a no-install preview (right-click → Open `Start-Demo.command` to spin up the dev servers in demo mode). Users who want the full install — auto-start at login, profile pointed at their own `Finances.xlsx` — open `Install-AI2FI.html` instead.
 
 # boot-experience.MD
 
@@ -47,7 +47,8 @@ Running list. Seeded from the flow above; add emergent items as they surface —
 - [x] Module memory spec (`core/module-memory.md`)
 - [x] Finances template setup procedure (`core/finances-template-setup.md`) — Coach-driven consent + copy to profile root + `private/`, plus walkthrough of `Net Worth MoM`, `Brokerage Ledger`, `Accounts`, `TICKERS`
 - [x] Dashboard template-fallback pattern — `private/Finances.xlsx` first, fall back to `core/sample-data/Financial Template.xlsx`. Client banner + Getting Started default while reading the template; `/api/sync` refuses to run against it. Implemented in `server/profile-resolver.js → resolveSpreadsheet()`.
-- [ ] Welcome-to-AI2FI.html landing page (post-download entry point)
+- [x] `Start-Demo.html` + `Start-Demo.command` (no-install preview, post-download entry point)
+- [x] `Install-AI2FI.html` landing page (full install path)
 
 **Dashboard surface**
 - [x] Net Worth view: pie composition + 2x4 value grid layout (pie at 2x2 footprint, 8 value boxes 4x2 to its right). Uses Nocturne `Card` / `Stat` primitives + Recharts pie. `dashboard/client/src/components/NetWorthView.jsx`.

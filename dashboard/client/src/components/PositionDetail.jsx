@@ -112,14 +112,51 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
     return total;
   }, [dividends, allLots]);
 
-  // Chart data: merge buy/sell markers + normalized SPY into price history
-  // Downsample large datasets to prevent browser crashes
+  // Chart data: merge buy/sell markers + normalized SPY into price history.
+  // Markers plot at the price actually paid/received (split-adjusted to today's
+  // share count, so it shares the y-axis with `close`). Multiple lots on the
+  // same date collapse to a share-weighted average. This means a marker that
+  // sits visibly off the price line is a real signal — the recorded basis
+  // doesn't match the market that day.
   const chartData = useMemo(() => {
     if (!history.length) return [];
-    const buyDates = new Set(allLots.filter(l => l.dateAcquired).map(l => l.dateAcquired));
-    const sellDates = new Set(allLots.filter(l => l.dateSold && l.charitableDonation !== 'Yes').map(l => l.dateSold));
-    const charityDates = new Set(allLots.filter(l => l.dateSold && l.charitableDonation === 'Yes').map(l => l.dateSold));
-    const markerDates = new Set([...buyDates, ...sellDates, ...charityDates]);
+
+    // Per-date weighted-average buy price (today-adjusted). displayShares /
+    // displayCostBasis already incorporate all splits, so dollars / shares is
+    // directly comparable to historical `close`.
+    const buyAgg = new Map();   // date -> { dollars, shares }
+    const sellAgg = new Map();
+    const charityAgg = new Map();
+    for (const lot of allLots) {
+      if (lot.dateAcquired) {
+        const sh = ds(lot);
+        const cb = dc(lot);
+        if (sh > 0 && cb != null) {
+          const a = buyAgg.get(lot.dateAcquired) || { dollars: 0, shares: 0 };
+          a.dollars += sh * cb;
+          a.shares  += sh;
+          buyAgg.set(lot.dateAcquired, a);
+        }
+      }
+      if (lot.dateSold && lot.proceeds && lot.sharesSold) {
+        // Adjust sharesSold from sale-time share count to today's share count
+        // so proceeds/adjShares yields a today-comparable per-share price.
+        const sf = lot.splitFactor || 1;
+        const tsf = lot.totalSplitFactor || 1;
+        const adjShares = lot.sharesSold * (sf / tsf);
+        const target = lot.charitableDonation === 'Yes' ? charityAgg : sellAgg;
+        const a = target.get(lot.dateSold) || { dollars: 0, shares: 0 };
+        a.dollars += lot.proceeds;
+        a.shares  += adjShares;
+        target.set(lot.dateSold, a);
+      }
+    }
+    const wavg = (m, d) => {
+      const a = m.get(d);
+      return (a && a.shares > 0) ? a.dollars / a.shares : undefined;
+    };
+
+    const markerDates = new Set([...buyAgg.keys(), ...sellAgg.keys(), ...charityAgg.keys()]);
 
     // Downsample: keep max ~1500 points + always keep marker dates
     const MAX_POINTS = 1500;
@@ -138,9 +175,9 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
       const spyPrice = spyLookup ? benchmarkPriceOnDate(spyLookup, h.date) : null;
       return {
         ...h,
-        buyMarker: buyDates.has(h.date) ? h.close : undefined,
-        sellMarker: sellDates.has(h.date) ? h.close : undefined,
-        charityMarker: charityDates.has(h.date) ? h.close : undefined,
+        buyMarker: wavg(buyAgg, h.date),
+        sellMarker: wavg(sellAgg, h.date),
+        charityMarker: wavg(charityAgg, h.date),
         spy: spyPrice != null && spyScale != null ? spyPrice * spyScale : undefined,
       };
     });

@@ -69,6 +69,8 @@
 }
 .es__num {
   text-align: right;
+}
+.es__table td.es__num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }

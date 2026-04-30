@@ -477,7 +477,12 @@ function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, togg
       lotGlPct = lotGl != null ? gainLossPct(lotCost, lotValue) : null;
       lotCagr = lotValue != null ? calcCAGR(lotCost, lotValue, lot.dateAcquired, today) : null;
     } else {
-      const proceeds = lot.proceeds || 0;
+      // Derive proceeds from per-share Sell Basis × Shares Sold so we don't
+      // depend on the spreadsheet's Proceeds column. Falls back to lot.proceeds
+      // when sellBasis is missing (older imports).
+      const proceeds = (lot.sellBasis != null && lot.sharesSold != null)
+        ? lot.sellBasis * lot.sharesSold
+        : (lot.proceeds || 0);
       lotGl = proceeds - lotCost;
       lotGlPct = gainLossPct(lotCost, proceeds);
       lotCagr = lot.dateSold ? calcCAGR(lotCost, proceeds, lot.dateAcquired, lot.dateSold) : null;
@@ -533,13 +538,12 @@ function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, togg
           <SortTh col="account" label="Account" />
           <SortTh col="dateAcquired" label="Date Acquired" />
           <SortTh col="originalShares" label="Shares Bought" />
-          <SortTh col="totalSplitFactor" label="Splits" />
           <SortTh col="sharesOpen" label="Shares Open" />
           <SortTh col="adjCost" label="Adj Cost/Share" />
+          <SortTh col="lotCost" label="Cost Basis" />
           <SortTh col="currentValue" label="Current Value" />
           <SortTh col="dateSold" label="Date Sold" />
           <SortTh col="sharesSold" label="Shares Sold" />
-          <SortTh col="lotCost" label="Total Cost" />
           <SortTh col="lotGl" label="G/L $" />
           <SortTh col="lotGlPct" label="G/L %" />
           <SortTh col="lotCagr" label="CAGR" />
@@ -559,13 +563,23 @@ function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, togg
               <td>{r.account}</td>
               <td>{r.dateAcquired}</td>
               <td>{formatShares(r.originalShares)}</td>
-              <td>{r.totalSplitFactor !== 1 ? <span className="split-badge" title={r.splitDescription}>{r.totalSplitFactor}×</span> : '—'}</td>
-              <td>{r.sharesOpen != null ? formatShares(r.sharesOpen) : ''}</td>
+              <td>
+                {r.isOpen ? (
+                  <>
+                    {r.totalSplitFactor !== 1 && (
+                      <>
+                        <span className="split-badge" title={r.splitDescription}>{r.totalSplitFactor}×</span>{' '}
+                      </>
+                    )}
+                    {formatShares(r.sharesOpen)}
+                  </>
+                ) : '—'}
+              </td>
               <td>{formatCurrency(r.adjCost)}</td>
+              <td>{formatCurrency(r.lotCost)}</td>
               <td>{r.currentValue != null ? formatCurrency(r.currentValue) : '—'}</td>
               <td>{r.isOpen ? '' : r.dateSold}</td>
               <td>{r.sharesSold != null ? formatShares(r.sharesSold) : ''}</td>
-              <td>{formatCurrency(r.lotCost)}</td>
               <td className={r.lotGl != null ? (pos ? 'positive' : 'negative') : ''}>
                 {r.lotGl != null ? formatCurrency(r.lotGl) : '—'}
               </td>

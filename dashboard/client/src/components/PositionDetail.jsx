@@ -579,7 +579,18 @@ function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, togg
               <td>{formatCurrency(r.lotCost)}</td>
               <td>{r.currentValue != null ? formatCurrency(r.currentValue) : '—'}</td>
               <td>{r.isOpen ? '' : r.dateSold}</td>
-              <td>{r.sharesSold != null ? formatShares(r.sharesSold) : ''}</td>
+              <td>
+                {r.sharesSold != null ? (
+                  <>
+                    {r.totalSplitFactor !== 1 && (
+                      <>
+                        <span className="split-badge" title={r.splitDescription}>{r.totalSplitFactor}×</span>{' '}
+                      </>
+                    )}
+                    {formatShares(r.sharesSold)}
+                  </>
+                ) : ''}
+              </td>
               <td className={r.lotGl != null ? (pos ? 'positive' : 'negative') : ''}>
                 {r.lotGl != null ? formatCurrency(r.lotGl) : '—'}
               </td>

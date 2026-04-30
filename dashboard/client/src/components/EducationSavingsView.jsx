@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { Card, Button } from '../ui';
+import { Card, Button, Segment } from '../ui';
 import './EducationSavingsView.css';
 
 const ALL = '__all__';
@@ -67,19 +67,23 @@ function deriveGraduationDate(seamDate, collegeStart, semestersRemaining) {
   return walk;
 }
 
-// Project all students together so that, when an older sibling graduates,
-// their monthly contribution can be redirected to the next still-enrolled
-// sibling. Each month, in order:
+// Project all students together. Two toggles drive the model:
+//   - contribStopAt: 'graduation' | 'collegeStart'. When 'collegeStart', each
+//     student stops receiving their monthly contribution the month college
+//     begins. When 'graduation' (default), contributions continue all the way
+//     through college.
+//   - cascade: when true, a sibling's freed-up monthly contribution rolls
+//     forward to the next still-saving sibling once that sibling crosses
+//     their contribution-end date. When false, freed contributions simply
+//     drop out of the model (each child only ever receives their own).
+// Each month, per student:
 //   1. apply growth at the supplied annual rate
-//   2. add own contribution + any inherited contributions from already-
-//      graduated siblings (the youngest pre-grad sibling absorbs the pool)
-//   3. if the student is currently in college (between college_start and
-//      graduation), and the calendar month is Aug or Jan, subtract one
-//      half of estimated_tuition (a semester payment)
-// Each student's graduation date is derived from remaining_tuition rather
-// than college_start + 48 months, so a junior with two years left only
-// gets four more tuition draws instead of eight.
-function projectAllStudents(students, annualRatePct) {
+//   2. add own contribution if before contribution-end date, plus inherited
+//      pool when this student is the cascade recipient
+//   3. during college (Aug/Jan between college_start and graduation),
+//      subtract one semester of tuition (annual ÷ 2)
+function projectAllStudents(students, annualRatePct, options = {}) {
+  const { contribStopAt = 'graduation', cascade = true } = options;
   const meta = students.map(s => {
     const seamDate = s.history?.length ? s.history[s.history.length - 1].date : null;
     let semestersRemaining = COLLEGE_YEARS * 2;
@@ -89,7 +93,12 @@ function projectAllStudents(students, annualRatePct) {
     const graduation_date = (seamDate && s.college_start_date)
       ? deriveGraduationDate(seamDate, s.college_start_date, semestersRemaining)
       : null;
-    return { ...s, seamDate, graduation_date };
+    // The month after which monthly_contribution stops flowing into this
+    // student (and, with cascade on, frees up to the next sibling).
+    const contrib_end_date = (contribStopAt === 'collegeStart' && s.college_start_date)
+      ? s.college_start_date
+      : graduation_date;
+    return { ...s, seamDate, graduation_date, contrib_end_date };
   });
 
   // Inheritance order: by college start date ascending.
@@ -133,12 +142,13 @@ function projectAllStudents(students, annualRatePct) {
     const monthIdx = Number(date.split('-')[1]); // 1..12
     const isSemesterMonth = monthIdx === 1 || monthIdx === 8;
 
-    // At this date, freed pool = sum of own contributions of already-graduated
-    // siblings; recipient = first non-graduated sibling in order.
+    // Freed pool = sum of own contributions of siblings past their
+    // contribution-end date. Recipient = first sibling still before theirs.
     let freedPool = 0;
     let recipient = null;
     for (const s of order) {
-      if (ym > ymOf(s.graduation_date)) {
+      const endRef = s.contrib_end_date;
+      if (endRef && ym > ymOf(endRef)) {
         freedPool += (s.monthly_contribution || 0);
       } else if (!recipient) {
         recipient = s.name;
@@ -152,8 +162,10 @@ function projectAllStudents(students, annualRatePct) {
 
       const st = state.get(s.name);
       st.balance = st.balance * (1 + r);
-      const inherited = (s.name === recipient) ? freedPool : 0;
-      st.balance += (s.monthly_contribution || 0) + inherited;
+      const ownActive = !s.contrib_end_date || ym <= ymOf(s.contrib_end_date);
+      const ownContrib = ownActive ? (s.monthly_contribution || 0) : 0;
+      const inherited = (cascade && s.name === recipient) ? freedPool : 0;
+      st.balance += ownContrib + inherited;
 
       if (s.college_start_date
           && ym >= ymOf(s.college_start_date)
@@ -191,6 +203,10 @@ export default function EducationSavingsView() {
   // Per-student "what-if" delta applied on top of the spreadsheet's monthly
   // contribution. Keyed by student name; value in dollars (-500..+500, step 25).
   const [contribDelta, setContribDelta] = useState({});
+  // Settings toggles. Defaults match the historical behavior so numbers don't
+  // shift on first load.
+  const [contribStopAt, setContribStopAt] = useState('graduation');
+  const [cascade, setCascade] = useState(true);
 
   const reload = useCallback(() => {
     setErrorBody(null);
@@ -218,8 +234,8 @@ export default function EducationSavingsView() {
       ...s,
       monthly_contribution: (s.monthly_contribution || 0) + (contribDelta[s.name] || 0),
     }));
-    return projectAllStudents(adjusted, ratePctSafe);
-  }, [data, ratePctSafe, contribDelta]);
+    return projectAllStudents(adjusted, ratePctSafe, { contribStopAt, cascade });
+  }, [data, ratePctSafe, contribDelta, contribStopAt, cascade]);
 
   // Pivot per-student histories AND projections into a single
   // { date, [name]: balance, [name__proj]: projected } row set so Recharts
@@ -304,19 +320,36 @@ export default function EducationSavingsView() {
       </Card>
 
       <Card>
-        <div className="es__how">
-          <div className="es__how-title">How this projects forward</div>
-          <p>Each month, for every student between today and their graduation, the model:</p>
-          <ol>
-            <li>Grows the balance by <em>annual return ÷ 12</em>.</li>
-            <li>Adds their monthly contribution.</li>
-            <li>In Aug and Jan during college, subtracts one semester of tuition (annual ÷ 2).</li>
-          </ol>
-          <p>When a student graduates, their monthly contribution <strong>rolls forward to the next still-saving sibling</strong>, by college start date — until that sibling graduates too.</p>
-          <p className="es__how-example">
-            <strong>Example.</strong> You're putting $100/mo into each of three kids. When Kid 1 finishes college, that $100 starts going to Kid 2 (now $200/mo effective). When Kid 2 graduates, both freed-up $100s roll to Kid 3 (now $300/mo) until they finish.
-          </p>
-          <p className="es__how-note">Slider adjustments stack on top of the cascade and apply forward only — they don't change historical balances.</p>
+        <div className="es__settings">
+          <div className="es__settings-title">Settings</div>
+          <div className="es__settings-row">
+            <div className="es__settings-label">
+              <div>Contribute until</div>
+              <div className="es__settings-hint">When monthly contributions stop for each student.</div>
+            </div>
+            <Segment
+              options={[
+                { label: 'Start of College', value: 'collegeStart' },
+                { label: 'College Graduation', value: 'graduation' },
+              ]}
+              value={contribStopAt}
+              onChange={setContribStopAt}
+            />
+          </div>
+          <div className="es__settings-row">
+            <div className="es__settings-label">
+              <div>Cascade contribution to next child</div>
+              <div className="es__settings-hint">When a student stops receiving contributions, roll that amount forward to the next still-saving sibling.</div>
+            </div>
+            <Segment
+              options={[
+                { label: 'On', value: 'on' },
+                { label: 'Off', value: 'off' },
+              ]}
+              value={cascade ? 'on' : 'off'}
+              onChange={(v) => setCascade(v === 'on')}
+            />
+          </div>
         </div>
       </Card>
 

@@ -2,11 +2,28 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { resolveProfile } = require('../profile-resolver');
+const { resolveProfile, REPO_ROOT } = require('../profile-resolver');
 
-function moatDir() {
+const DEMO_RESEARCH_DIR = path.join(REPO_ROOT, 'core', 'sample-data', 'research');
+
+// Search order: real profile research dir first, then bundled demo research.
+// Demo files exist for the tickers in the committed Financial Template, so
+// the moat UI is populated even when no user profile has been set up.
+function moatSearchDirs() {
+  const dirs = [];
   const profile = resolveProfile();
-  return profile ? profile.researchDir : null;
+  if (profile && profile.researchDir) dirs.push(profile.researchDir);
+  if (fs.existsSync(DEMO_RESEARCH_DIR)) dirs.push(DEMO_RESEARCH_DIR);
+  return dirs;
+}
+
+function findMoatFile(ticker) {
+  const upper = ticker.toUpperCase();
+  for (const dir of moatSearchDirs()) {
+    const p = path.join(dir, `${upper}.md`);
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
 }
 
 function parseMoatFile(content) {
@@ -58,13 +75,10 @@ function parseMoatFile(content) {
 
 // GET /api/moat/:ticker
 router.get('/:ticker', (req, res) => {
-  const dir = moatDir();
-  if (!dir) return res.status(404).json({ error: 'No moat analysis available' });
-
   const { ticker } = req.params;
-  const filePath = path.join(dir, `${ticker.toUpperCase()}.md`);
+  const filePath = findMoatFile(ticker);
 
-  if (!fs.existsSync(filePath)) {
+  if (!filePath) {
     return res.status(404).json({ error: 'No moat analysis available' });
   }
 
@@ -77,17 +91,17 @@ router.get('/:ticker', (req, res) => {
   }
 });
 
-// GET /api/moat — list all available tickers
+// GET /api/moat — list all available tickers (union of profile + demo dirs)
 router.get('/', (_, res) => {
-  const dir = moatDir();
-  if (!dir || !fs.existsSync(dir)) return res.json([]);
-  try {
-    const files = fs.readdirSync(dir).filter(f => f.endsWith('.md'));
-    const tickers = files.map(f => f.replace('.md', ''));
-    res.json(tickers);
-  } catch {
-    res.json([]);
+  const tickers = new Set();
+  for (const dir of moatSearchDirs()) {
+    try {
+      for (const f of fs.readdirSync(dir)) {
+        if (f.endsWith('.md')) tickers.add(f.replace('.md', ''));
+      }
+    } catch { /* ignore */ }
   }
+  res.json([...tickers]);
 });
 
 module.exports = router;

@@ -50,6 +50,15 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 600;
+  /* Override global `th { white-space: nowrap }` so long headers wrap and
+     reclaim horizontal space; align all wrapped headers to the bottom so
+     the row sits on a shared baseline. */
+  white-space: normal;
+  vertical-align: bottom;
+  line-height: 1.3;
+}
+.es__th-center {
+  text-align: center;
 }
 .es__table td {
   font-size: 14px;

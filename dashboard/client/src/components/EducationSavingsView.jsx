@@ -360,7 +360,7 @@ export default function EducationSavingsView() {
               <th>Student</th>
               <th className="es__num">Current Balance</th>
               <th className="es__num">Monthly Contribution</th>
-              <th>Adjust Monthly</th>
+              <th className="es__th-center">New Monthly</th>
               <th>College Start Date</th>
               <th className="es__num">Annual Tuition</th>
               <th className="es__num">Remaining Tuition</th>
@@ -382,7 +382,7 @@ export default function EducationSavingsView() {
                   <td>
                     <div className="es__slider-cell">
                       <span className={`es__slider-val ${deltaTone}`}>
-                        {fmtUSDSigned(delta)}
+                        {fmtUSD(baseMonthly + delta)}
                       </span>
                       <button
                         type="button"
@@ -431,13 +431,13 @@ export default function EducationSavingsView() {
           </tbody>
           {forecasts.length > 0 && (() => {
             // Per-row, the Monthly Contribution cell shows the *original* monthly
-            // (baseMonthly = monthly_contribution - delta), and Adjust shows the
-            // delta. Sum them the same way so the totals row is internally
-            // consistent with the body. Skipped categorical columns (date, name)
-            // get an em-dash placeholder.
+            // (baseMonthly = monthly_contribution - delta), and New Monthly shows
+            // the adjusted total (baseMonthly + delta = monthly_contribution).
+            // Skipped categorical columns (date, name) get an em-dash placeholder.
             const sum = (fn) => forecasts.reduce((a, s) => a + (fn(s) || 0), 0);
             const totalDelta = forecasts.reduce((a, s) => a + (contribDelta[s.name] || 0), 0);
             const totalBaseMonthly = sum(s => (s.monthly_contribution || 0) - (contribDelta[s.name] || 0));
+            const totalNewMonthly = sum(s => s.monthly_contribution);
             const totalEnd = sum(s => s.end_balance);
             const endTone = totalEnd >= 0 ? 'es__pos' : 'es__neg';
             const deltaTone = totalDelta > 0 ? 'es__pos' : totalDelta < 0 ? 'es__neg' : '';
@@ -447,7 +447,7 @@ export default function EducationSavingsView() {
                   <td>Total</td>
                   <td className="es__num">{fmtUSD(sum(s => s.current_balance))}</td>
                   <td className="es__num">{fmtUSD(totalBaseMonthly)}</td>
-                  <td className={`es__num ${deltaTone}`}>{fmtUSDSigned(totalDelta)}</td>
+                  <td className={`es__th-center ${deltaTone}`}>{fmtUSD(totalNewMonthly)}</td>
                   <td>—</td>
                   <td className="es__num">{fmtUSD(sum(s => s.estimated_tuition))}</td>
                   <td className="es__num">{fmtUSD(sum(s => s.remaining_tuition))}</td>

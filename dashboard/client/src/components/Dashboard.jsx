@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { formatCurrency, formatPct, totalCostBasis, currentValue, gainLoss, gainLossPct, calcCAGR, calcLotsIRR, calcClosedLotsIRR, calcBenchmarkIRR, calcIRR, ds, dc } from '../utils/calculations';
+import { formatCurrency, formatPct, totalCostBasis, currentValue, gainLoss, gainLossPct, calcCAGR, calcLotsIRR, calcClosedLotsIRR, calcBenchmarkIRR, calcIRR, ds, dc, lotProceeds } from '../utils/calculations';
 import { benchmarkPriceOnDate } from '../hooks/usePortfolio';
 import { Button } from '../ui';
 
@@ -78,7 +78,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
     : closedLots.filter(l => selectedAccounts.has(l.account));
 
   const closedCost = filteredClosed.reduce((s, l) => s + ds(l) * dc(l), 0);
-  const closedProceeds = filteredClosed.reduce((s, l) => s + (l.proceeds || 0), 0);
+  const closedProceeds = filteredClosed.reduce((s, l) => s + lotProceeds(l), 0);
   const totalRealizedGL = closedProceeds - closedCost;
 
   // Closed portfolio IRR + Alpha
@@ -94,7 +94,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
 
   const closedAlpha = (closedIRR != null && closedSpyIRR != null) ? closedIRR - closedSpyIRR : null;
   const charitableClosed = filteredClosed.filter(l => l.charitableDonation === 'Yes');
-  const charitableGL = charitableClosed.reduce((s, l) => s + ((l.proceeds || 0) - ds(l) * dc(l)), 0);
+  const charitableGL = charitableClosed.reduce((s, l) => s + (lotProceeds(l) - ds(l) * dc(l)), 0);
   const realizedIsPos = totalRealizedGL >= 0;
   const charitableIsPos = charitableGL >= 0;
   const showClosed = view === 'Closed';
@@ -117,8 +117,9 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
       if (lot.transaction === 'Open') {
         const q = quotes[lot.symbol];
         if (q) terminalValue += ds(lot) * q.price;
-      } else if (lot.dateSold && lot.proceeds) {
-        flows.push({ date: lot.dateSold, amount: lot.proceeds });
+      } else if (lot.dateSold) {
+        const proceeds = lotProceeds(lot);
+        if (proceeds) flows.push({ date: lot.dateSold, amount: proceeds });
       }
     }
     if (flows.length === 0) return null;
@@ -150,7 +151,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
         if (!q) continue;
         lotEnd = ds(lot) * q.price;
       } else {
-        lotEnd = lot.proceeds || 0;
+        lotEnd = lotProceeds(lot);
       }
       const lotCagr = calcCAGR(lotCost, lotEnd, lot.dateAcquired, endDate);
       const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
@@ -169,7 +170,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
     for (const lot of filteredClosed) {
       if (!lot.dateSold) continue;
       const lotCost = ds(lot) * dc(lot);
-      const proceeds = lot.proceeds || 0;
+      const proceeds = lotProceeds(lot);
       const lotCagr = calcCAGR(lotCost, proceeds, lot.dateAcquired, lot.dateSold);
       const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
       const se = benchmarkPriceOnDate(spyLookup, lot.dateSold);

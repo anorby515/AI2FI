@@ -7,6 +7,16 @@
 export function ds(lot) { return lot.displayShares ?? lot.sharesBought; }
 export function dc(lot) { return lot.displayCostBasis ?? lot.costBasis; }
 
+// Lot proceeds derived from per-share Sell Basis × Shares Sold so the rest
+// of the app doesn't depend on the spreadsheet's Proceeds column. Falls back
+// to lot.proceeds (legacy) when sellBasis is missing.
+export function lotProceeds(lot) {
+  if (lot.sellBasis != null && lot.sharesSold != null) {
+    return lot.sellBasis * lot.sharesSold;
+  }
+  return lot.proceeds || 0;
+}
+
 export function totalCostBasis(lots) {
   return lots.reduce((sum, l) => sum + ds(l) * dc(l), 0);
 }
@@ -29,9 +39,10 @@ export function gainLossPct(cost, value) {
 }
 
 export function realizedGain(lot) {
-  if (!lot.proceeds || !lot.sharesBought || !lot.costBasis) return null;
+  const proceeds = lotProceeds(lot);
+  if (!proceeds || !lot.sharesBought || !lot.costBasis) return null;
   const cost = lot.sharesBought * lot.costBasis;
-  return lot.proceeds - cost;
+  return proceeds - cost;
 }
 
 export function formatCurrency(val) {
@@ -161,8 +172,9 @@ export function calcClosedLotsIRR(lots) {
     const cost = shares * dc(lot);
     if (!lot.dateAcquired || cost <= 0) continue;
     flows.push({ date: lot.dateAcquired, amount: -cost });
-    if (lot.dateSold && lot.proceeds) {
-      flows.push({ date: lot.dateSold, amount: lot.proceeds });
+    const proceeds = lotProceeds(lot);
+    if (lot.dateSold && proceeds) {
+      flows.push({ date: lot.dateSold, amount: proceeds });
     }
   }
 
@@ -240,7 +252,7 @@ export function aggregateAllBySymbol(lots) {
       pos.openLots.push(lot);
     } else {
       pos.closedLots.push(lot);
-      pos.totalProceeds += lot.proceeds || 0;
+      pos.totalProceeds += lotProceeds(lot);
       pos.totalClosedCost += ds(lot) * dc(lot);
     }
   }

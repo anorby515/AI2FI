@@ -3,7 +3,7 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { formatCurrency, gainLoss, gainLossPct, calcLotsIRR, calcClosedLotsIRR, calcBenchmarkIRR, ds, dc } from '../utils/calculations';
+import { formatCurrency, gainLoss, gainLossPct, calcLotsIRR, calcClosedLotsIRR, calcBenchmarkIRR, ds, dc, lotProceeds } from '../utils/calculations';
 import { benchmarkPriceOnDate } from '../hooks/usePortfolio';
 
 const PCT_MODES = [
@@ -41,7 +41,7 @@ export default function PortfolioChart({ positions, quotes, spyLookup, view }) {
         const closedLots = p.allLots?.filter(l => l.transaction !== 'Open') || p.closedLots || p.lots || [];
         if (closedLots.length === 0) return null;
         totalCost = closedLots.reduce((s, l) => s + ds(l) * dc(l), 0);
-        const totalReturn = closedLots.reduce((s, l) => s + (l.proceeds || 0), 0);
+        const totalReturn = closedLots.reduce((s, l) => s + lotProceeds(l), 0);
         gl = totalReturn - totalCost;
         glPct = gainLossPct(totalCost, totalReturn);
         cagr = calcClosedLotsIRR(closedLots);

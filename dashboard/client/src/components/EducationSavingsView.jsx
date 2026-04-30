@@ -304,6 +304,23 @@ export default function EducationSavingsView() {
       </Card>
 
       <Card>
+        <div className="es__how">
+          <div className="es__how-title">How this projects forward</div>
+          <p>Each month, for every student between today and their graduation, the model:</p>
+          <ol>
+            <li>Grows the balance by <em>annual return ÷ 12</em>.</li>
+            <li>Adds their monthly contribution.</li>
+            <li>In Aug and Jan during college, subtracts one semester of tuition (annual ÷ 2).</li>
+          </ol>
+          <p>When a student graduates, their monthly contribution <strong>rolls forward to the next still-saving sibling</strong>, by college start date — until that sibling graduates too.</p>
+          <p className="es__how-example">
+            <strong>Example.</strong> You're putting $100/mo into each of three kids. When Kid 1 finishes college, that $100 starts going to Kid 2 (now $200/mo effective). When Kid 2 graduates, both freed-up $100s roll to Kid 3 (now $300/mo) until they finish.
+          </p>
+          <p className="es__how-note">Slider adjustments stack on top of the cascade and apply forward only — they don't change historical balances.</p>
+        </div>
+      </Card>
+
+      <Card>
         <table className="es__table">
           <thead>
             <tr>
@@ -379,6 +396,34 @@ export default function EducationSavingsView() {
               );
             })}
           </tbody>
+          {forecasts.length > 0 && (() => {
+            // Per-row, the Monthly Contribution cell shows the *original* monthly
+            // (baseMonthly = monthly_contribution - delta), and Adjust shows the
+            // delta. Sum them the same way so the totals row is internally
+            // consistent with the body. Skipped categorical columns (date, name)
+            // get an em-dash placeholder.
+            const sum = (fn) => forecasts.reduce((a, s) => a + (fn(s) || 0), 0);
+            const totalDelta = forecasts.reduce((a, s) => a + (contribDelta[s.name] || 0), 0);
+            const totalBaseMonthly = sum(s => (s.monthly_contribution || 0) - (contribDelta[s.name] || 0));
+            const totalEnd = sum(s => s.end_balance);
+            const endTone = totalEnd >= 0 ? 'es__pos' : 'es__neg';
+            const deltaTone = totalDelta > 0 ? 'es__pos' : totalDelta < 0 ? 'es__neg' : '';
+            return (
+              <tfoot>
+                <tr className="es__totals-row">
+                  <td>Total</td>
+                  <td className="es__num">{fmtUSD(sum(s => s.current_balance))}</td>
+                  <td className="es__num">{fmtUSD(totalBaseMonthly)}</td>
+                  <td className={`es__num ${deltaTone}`}>{fmtUSDSigned(totalDelta)}</td>
+                  <td>—</td>
+                  <td className="es__num">{fmtUSD(sum(s => s.estimated_tuition))}</td>
+                  <td className="es__num">{fmtUSD(sum(s => s.remaining_tuition))}</td>
+                  <td className="es__num">{fmtUSD(sum(s => s.projected_at_start))}</td>
+                  <td className={`es__num ${endTone}`}>{fmtUSDSigned(totalEnd)}</td>
+                </tr>
+              </tfoot>
+            );
+          })()}
         </table>
       </Card>
 

@@ -66,6 +66,62 @@
 .es__pos { color: var(--pos); }
 .es__neg { color: var(--neg); }
 
+.es__totals-row td {
+  border-top: 1px solid var(--rule-3);
+  border-bottom: none;
+  font-weight: 600;
+  color: var(--ink);
+  padding-top: var(--gap);
+}
+.es__totals-row td:first-child {
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.es__how {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.55;
+}
+.es__how-title {
+  font-size: 14px;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-bottom: var(--gap-sm);
+}
+.es__how p {
+  margin: 0;
+}
+.es__how ol {
+  margin: 0;
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.es__how em {
+  font-style: normal;
+  font-family: var(--font-mono);
+  color: var(--ink-2);
+}
+.es__how-example {
+  border-left: 2px solid var(--accent);
+  padding-left: var(--gap);
+  color: var(--ink);
+}
+.es__how-note {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
 .es__slider-cell {
   display: flex;
   align-items: center;

@@ -171,15 +171,43 @@
   height: 14px;
 }
 
-/* Excluded rows — greyed and not part of the plan total */
-.th__row--excluded td {
+/* Inactive rows — Shares to Sell is 0; row is visually faded but stays in place */
+.th__row--inactive td {
   color: var(--dim);
-  background: var(--rule-2);
-  opacity: 0.7;
 }
-.th__row--excluded:hover td {
-  background: var(--rule-2);
-  opacity: 0.9;
+.th__row--inactive .th__sym,
+.th__row--inactive .th__term,
+.th__row--inactive .th__moat-pill {
+  opacity: 0.55;
+}
+
+/* Per-row numeric input for Shares to Sell / Share Price */
+.th__input-cell { padding: 4px 6px !important; }
+.th__input {
+  width: 86px;
+  padding: 5px 7px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-chip);
+  text-align: right;
+  -moz-appearance: textfield;
+}
+.th__input::-webkit-outer-spin-button,
+.th__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.th__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-weak);
+}
+.th__num-cell {
+  color: var(--ink-2);
 }
 
 /* Empty state row inside the plan */

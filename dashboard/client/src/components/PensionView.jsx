@@ -13,7 +13,7 @@ const SERIES_COLORS = [
 const TODAY_ISO = new Date().toISOString().slice(0, 10);
 const DEFAULT_RATE_PCT = 6;
 const DEFAULT_INFL_PCT = 3;
-const DEFAULT_FALLBACK_DOD = '2056-01-01';
+const DEFAULT_AGE_OF_DEATH = 90;
 
 function fmtUSD(v) {
   if (v == null || !Number.isFinite(v)) return '—';
@@ -53,6 +53,23 @@ function monthsBetween(isoA, isoB) {
   const [ay, am] = isoA.split('-').map(Number);
   const [by, bm] = isoB.split('-').map(Number);
   return (by - ay) * 12 + (bm - am);
+}
+
+// Age difference between two ISO dates expressed as whole years + months,
+// rolled back when the day-of-month hasn't been reached yet.
+function ageBetween(dobISO, asOfISO) {
+  const [dy, dm, dd] = dobISO.split('-').map(Number);
+  const [ay, am, ad] = asOfISO.split('-').map(Number);
+  let years = ay - dy;
+  let months = am - dm;
+  if (ad < dd) months -= 1;
+  if (months < 0) { years -= 1; months += 12; }
+  return { years: Math.max(0, years), months: Math.max(0, months) };
+}
+
+function fmtAgeYM({ years, months }) {
+  if (months === 0) return `${years} yr`;
+  return `${years} yr, ${months} mo`;
 }
 
 const ymOf = (iso) => iso.slice(0, 7);
@@ -199,9 +216,10 @@ export default function PensionView() {
 
   const [ratePctInput, setRatePctInput] = useState(String(DEFAULT_RATE_PCT));
   const [inflPctInput, setInflPctInput] = useState(String(DEFAULT_INFL_PCT));
-  const [spendInput, setSpendInput] = useState('');         // populated from data
-  const [myDodInput, setMyDodInput] = useState('');         // populated from data
-  const [spouseDodInput, setSpouseDodInput] = useState(''); // populated from data
+  // Ages are integers (years). Date of death is derived from DOB + age,
+  // which keeps the input intuitive when comparing scenarios.
+  const [myAge, setMyAge] = useState(DEFAULT_AGE_OF_DEATH);
+  const [spouseAge, setSpouseAge] = useState(DEFAULT_AGE_OF_DEATH);
   const [hidden, setHidden] = useState(() => new Set());    // option ids hidden from chart
 
   const reload = useCallback(() => {
@@ -218,50 +236,37 @@ export default function PensionView() {
 
   useEffect(() => { reload(); }, [reload]);
 
-  // Seed user-controlled inputs from the spreadsheet once data lands.
-  useEffect(() => {
-    if (!data) return;
-    // Default monthly spend = the SLA amount if we can find it, else $4k.
-    const sla = data.options?.find(o => o.kind === 'annuity' && /single life/i.test(o.label));
-    const defaultSpend = sla?.you_amount ?? 4000;
-    setSpendInput(prev => prev || String(Math.round(defaultSpend)));
-
-    // Default Your DoD = my_dob + 90 if present, else fixed fallback.
-    const myDodDefault = data.header?.my_dob ? addYearsISO(data.header.my_dob, 90) : DEFAULT_FALLBACK_DOD;
-    setMyDodInput(prev => prev || myDodDefault);
-
-    // Default Spouse DoD = beneficiary_dob + 90 if present.
-    const spouseDodDefault = data.header?.beneficiary_dob
-      ? addYearsISO(data.header.beneficiary_dob, 90)
-      : DEFAULT_FALLBACK_DOD;
-    setSpouseDodInput(prev => prev || spouseDodDefault);
-  }, [data]);
-
   const ratePct = Number.parseFloat(ratePctInput);
   const ratePctSafe = Number.isFinite(ratePct) ? ratePct : DEFAULT_RATE_PCT;
   const inflPct = Number.parseFloat(inflPctInput);
   const inflPctSafe = Number.isFinite(inflPct) ? inflPct : DEFAULT_INFL_PCT;
-  const monthlySpend = Number.parseFloat(spendInput);
-  const monthlySpendSafe = Number.isFinite(monthlySpend) ? monthlySpend : 0;
+
+  // Date of death derived from DOB + age. If a DOB isn't available the
+  // simulator can't run for that person — guarded below.
+  const myDoD = data?.header?.my_dob ? addYearsISO(data.header.my_dob, myAge) : null;
+  const spouseDoD = data?.header?.beneficiary_dob ? addYearsISO(data.header.beneficiary_dob, spouseAge) : null;
+  const ageAtStopWorking = (data?.header?.my_dob && data?.header?.stop_working)
+    ? ageBetween(data.header.my_dob, data.header.stop_working)
+    : null;
 
   const forecasts = useMemo(() => {
     if (!data?.options?.length) return [];
-    if (!myDodInput || !spouseDodInput) return [];
+    if (!myDoD || !spouseDoD) return [];
     const horizonStart = data.header?.stop_working || data.header?.benefit_commencement || TODAY_ISO;
-    const spendingStart = data.header?.stop_working || data.header?.benefit_commencement || TODAY_ISO;
-    const horizonEnd = (myDodInput > spouseDodInput) ? myDodInput : spouseDodInput;
+    const horizonEnd = (myDoD > spouseDoD) ? myDoD : spouseDoD;
     return simulate(data.options, data.supplementary, {
       horizonStartISO: horizonStart,
       horizonEndISO: horizonEnd,
-      spendingStartISO: spendingStart,
-      myDoD: myDodInput,
-      spouseDoD: spouseDodInput,
-      monthlySpendToday: monthlySpendSafe,
+      // Per spec: spending is $0 — we're comparing pure time-value of money
+      // across the option cashflows.
+      spendingStartISO: horizonStart,
+      myDoD, spouseDoD,
+      monthlySpendToday: 0,
       ratePct: ratePctSafe,
       inflationPct: inflPctSafe,
       benefitCommencement: data.header?.benefit_commencement,
     });
-  }, [data, myDodInput, spouseDodInput, monthlySpendSafe, ratePctSafe, inflPctSafe]);
+  }, [data, myDoD, spouseDoD, ratePctSafe, inflPctSafe]);
 
   // Pivot per-option series into a wide row per date so Recharts can render
   // every line on a shared x-axis.
@@ -287,12 +292,6 @@ export default function PensionView() {
       return next;
     });
   }
-  function showAll() { setHidden(new Set()); }
-  function hideAll() {
-    if (!forecasts.length) return;
-    setHidden(new Set(forecasts.map(f => f.id)));
-  }
-  const allVisible = forecasts.length > 0 && hidden.size === 0;
 
   if (errorBody) {
     return (
@@ -332,6 +331,9 @@ export default function PensionView() {
           <div className="pn__overview-item">
             <div className="pn__overview-label">Stop Working</div>
             <div className="pn__overview-value">{fmtDate(data.header?.stop_working)}</div>
+            <div className="pn__overview-sub">
+              {ageAtStopWorking ? `Age ${fmtAgeYM(ageAtStopWorking)}` : 'Add Your DOB to see age'}
+            </div>
           </div>
           <div className="pn__overview-item">
             <div className="pn__overview-label">Benefit Commencement</div>
@@ -389,41 +391,60 @@ export default function PensionView() {
             </div>
           </div>
           <div className="pn__input-group">
-            <label className="pn__input-label" htmlFor="pn-spend">Monthly spend (today $)</label>
-            <div className="pn__input-wrap">
-              <span className="pn__input-prefix">$</span>
+            <label className="pn__input-label" htmlFor="pn-myage">Your age of death</label>
+            <div className="pn__input-wrap pn__input-wrap--age">
+              <button
+                type="button"
+                className="pn__bump-btn"
+                aria-label="Decrease age"
+                onClick={() => setMyAge(a => Math.max(0, a - 1))}
+              >−</button>
               <input
-                id="pn-spend"
+                id="pn-myage"
                 className="pn__input pn__input--num"
-                type="number" step="100" min="0"
-                value={spendInput}
-                onChange={(e) => setSpendInput(e.target.value)}
+                type="number" step="1" min="0" max="120"
+                value={myAge}
+                onChange={(e) => {
+                  const n = Number.parseInt(e.target.value, 10);
+                  if (Number.isFinite(n)) setMyAge(Math.max(0, Math.min(120, n)));
+                }}
               />
+              <button
+                type="button"
+                className="pn__bump-btn"
+                aria-label="Increase age"
+                onClick={() => setMyAge(a => Math.min(120, a + 1))}
+              >+</button>
             </div>
+            <div className="pn__input-hint">{myDoD ? fmtDate(myDoD) : 'Add Your DOB to enable'}</div>
           </div>
           <div className="pn__input-group">
-            <label className="pn__input-label" htmlFor="pn-mydod">Your date of death</label>
-            <div className="pn__input-wrap">
+            <label className="pn__input-label" htmlFor="pn-spage">Spouse age of death</label>
+            <div className="pn__input-wrap pn__input-wrap--age">
+              <button
+                type="button"
+                className="pn__bump-btn"
+                aria-label="Decrease age"
+                onClick={() => setSpouseAge(a => Math.max(0, a - 1))}
+              >−</button>
               <input
-                id="pn-mydod"
-                className="pn__input"
-                type="date"
-                value={myDodInput}
-                onChange={(e) => setMyDodInput(e.target.value)}
+                id="pn-spage"
+                className="pn__input pn__input--num"
+                type="number" step="1" min="0" max="120"
+                value={spouseAge}
+                onChange={(e) => {
+                  const n = Number.parseInt(e.target.value, 10);
+                  if (Number.isFinite(n)) setSpouseAge(Math.max(0, Math.min(120, n)));
+                }}
               />
+              <button
+                type="button"
+                className="pn__bump-btn"
+                aria-label="Increase age"
+                onClick={() => setSpouseAge(a => Math.min(120, a + 1))}
+              >+</button>
             </div>
-          </div>
-          <div className="pn__input-group">
-            <label className="pn__input-label" htmlFor="pn-spdod">Spouse date of death</label>
-            <div className="pn__input-wrap">
-              <input
-                id="pn-spdod"
-                className="pn__input"
-                type="date"
-                value={spouseDodInput}
-                onChange={(e) => setSpouseDodInput(e.target.value)}
-              />
-            </div>
+            <div className="pn__input-hint">{spouseDoD ? fmtDate(spouseDoD) : 'Add Beneficiary DOB to enable'}</div>
           </div>
         </div>
       </Card>
@@ -431,16 +452,6 @@ export default function PensionView() {
       <Card>
         <div className="pn__chart-header">
           <div className="pn__section-title">Value over time (today's dollars)</div>
-          <div className="pn__bulk">
-            <button
-              className={`pn__bulk-btn ${allVisible ? 'is-active' : ''}`}
-              onClick={showAll}
-            >Show all</button>
-            <button
-              className={`pn__bulk-btn ${forecasts.length > 0 && hidden.size === forecasts.length ? 'is-active' : ''}`}
-              onClick={hideAll}
-            >Hide all</button>
-          </div>
         </div>
 
         <div className="pn__chart-wrapper">

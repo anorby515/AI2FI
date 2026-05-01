@@ -1,0 +1,270 @@
+.pn {
+  max-width: 1440px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+  padding: var(--pad);
+}
+
+.pn__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+
+.pn__page-header {
+  font-size: 28px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.pn__loading,
+.pn__error {
+  color: var(--ink-2);
+  padding: var(--pad);
+}
+
+.pn__section-title {
+  font-size: 14px;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+/* Plan overview — small label/value grid. */
+.pn__overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--gap);
+}
+.pn__overview-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pn__overview-label {
+  font-size: 12px;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.pn__overview-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  color: var(--ink);
+}
+.pn__overview-sub {
+  font-size: 12px;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inputs grid (rate, inflation, spend, two DoDs). */
+.pn__inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--gap);
+}
+.pn__input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pn__input-label {
+  font-size: 12px;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.pn__input-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  background: var(--card-hi);
+  padding: 8px 12px;
+  border-radius: var(--r-pill);
+}
+.pn__input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+.pn__input--num {
+  text-align: right;
+  -moz-appearance: textfield;
+}
+.pn__input--num::-webkit-outer-spin-button,
+.pn__input--num::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.pn__input-prefix,
+.pn__input-suffix {
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+/* Age input: a tighter pill with bump buttons flanking the number. */
+.pn__input-wrap--age {
+  padding: 4px 6px;
+  gap: 8px;
+}
+.pn__input-wrap--age .pn__input {
+  width: 56px;
+  text-align: center;
+}
+.pn__bump-btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--rule-3);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: var(--r-btn);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  transition: filter var(--t-fast), border-color var(--t-fast);
+}
+.pn__bump-btn:hover {
+  filter: brightness(1.15);
+  border-color: var(--accent);
+}
+.pn__bump-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pn__input-hint {
+  font-size: 11px;
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chart card. */
+.pn__chart-wrapper { width: 100%; }
+
+.pn__chart-empty {
+  color: var(--ink-2);
+  padding: var(--pad);
+  text-align: center;
+  font-size: 13px;
+}
+
+/* Scenario table. */
+.pn__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pn__table th,
+.pn__table td {
+  text-align: left;
+  padding: var(--gap-sm) var(--gap);
+  border-bottom: 1px solid var(--rule);
+}
+.pn__table th {
+  font-size: 12px;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  white-space: normal;
+  vertical-align: bottom;
+  line-height: 1.3;
+}
+.pn__table td {
+  font-size: 14px;
+  color: var(--ink);
+}
+.pn__table tbody tr:last-child td {
+  border-bottom: none;
+}
+.pn__num {
+  text-align: right;
+}
+.pn__table td.pn__num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.pn__pos { color: var(--pos); }
+.pn__neg { color: var(--neg); }
+.pn__dim { color: var(--ink-2); }
+
+/* Toggle column: a chip with the series color + checkbox-ish behavior. */
+.pn__toggle-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+.pn__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-chip);
+  flex-shrink: 0;
+  border: 1px solid var(--rule-3);
+}
+.pn__row-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--rule-3);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.pn__row-toggle:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.pn__row-toggle:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--contrast);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.pn__row--hidden td:not(.pn__toggle-col) {
+  opacity: 0.45;
+}
+
+.pn__chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+  flex-wrap: wrap;
+}
+
+.pn__supplement {
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-top: var(--gap);
+}

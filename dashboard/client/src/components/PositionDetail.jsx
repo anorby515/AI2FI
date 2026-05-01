@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { usePriceHistory, useDividends, useBenchmark, useMoat, benchmarkPriceOnDate } from '../hooks/usePortfolio';
 import MoatCard from './MoatCard';
-import { formatCurrency, formatPct, formatShares, gainLoss, gainLossPct, calcCAGR, calcLotsIRR, calcClosedLotsIRR, calcIRR, calcBenchmarkIRR, ds, dc, taxTerm, estimatedTax } from '../utils/calculations';
+import { formatCurrency, formatPct, formatShares, gainLoss, gainLossPct, calcCAGR, calcLotsIRR, calcClosedLotsIRR, calcIRR, calcBenchmarkIRR, ds, dc, lotProceeds, taxTerm, estimatedTax } from '../utils/calculations';
 
 export default function PositionDetail({ symbol, allPositions, quotes, onBack, selectedAccounts, lotFilter, sortBy, sortDir, toggleSort, taxRates }) {
 
@@ -50,7 +50,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
   const totalOpenShares = openLots.reduce((s, l) => s + ds(l), 0);
   const totalOpenCost = openLots.reduce((s, l) => s + ds(l) * dc(l), 0);
   const totalClosedCost = closedLots.reduce((s, l) => s + ds(l) * dc(l), 0);
-  const totalProceeds = closedLots.reduce((s, l) => s + (l.proceeds || 0), 0);
+  const totalProceeds = closedLots.reduce((s, l) => s + lotProceeds(l), 0);
   const marketValue = price != null ? totalOpenShares * price : null;
   const unrealizedGL = marketValue != null ? marketValue - totalOpenCost : null;
   const realizedGL = totalProceeds - totalClosedCost;
@@ -59,7 +59,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
   // Charitable vs non-charitable realized G/L
   const charitableLots = closedLots.filter(l => l.charitableDonation === 'Yes');
   const charitableCost = charitableLots.reduce((s, l) => s + ds(l) * dc(l), 0);
-  const charitableProceeds = charitableLots.reduce((s, l) => s + (l.proceeds || 0), 0);
+  const charitableProceeds = charitableLots.reduce((s, l) => s + lotProceeds(l), 0);
   const charitableGL = charitableProceeds - charitableCost;
 
   // Total IRR across all lots (open + closed)
@@ -74,8 +74,9 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
       flows.push({ date: lot.dateAcquired, amount: -cost });
       if (lot.transaction === 'Open') {
         if (price != null) terminalValue += ds(lot) * price;
-      } else if (lot.dateSold && lot.proceeds) {
-        flows.push({ date: lot.dateSold, amount: lot.proceeds });
+      } else if (lot.dateSold) {
+        const proceeds = lotProceeds(lot);
+        if (proceeds) flows.push({ date: lot.dateSold, amount: proceeds });
       }
     }
     if (flows.length === 0) return null;
@@ -138,17 +139,20 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
           buyAgg.set(lot.dateAcquired, a);
         }
       }
-      if (lot.dateSold && lot.proceeds && lot.sharesSold) {
-        // Adjust sharesSold from sale-time share count to today's share count
-        // so proceeds/adjShares yields a today-comparable per-share price.
-        const sf = lot.splitFactor || 1;
-        const tsf = lot.totalSplitFactor || 1;
-        const adjShares = lot.sharesSold * (sf / tsf);
-        const target = lot.charitableDonation === 'Yes' ? charityAgg : sellAgg;
-        const a = target.get(lot.dateSold) || { dollars: 0, shares: 0 };
-        a.dollars += lot.proceeds;
-        a.shares  += adjShares;
-        target.set(lot.dateSold, a);
+      if (lot.dateSold && lot.sharesSold) {
+        const proceeds = lotProceeds(lot);
+        if (proceeds) {
+          // Adjust sharesSold from sale-time share count to today's share count
+          // so proceeds/adjShares yields a today-comparable per-share price.
+          const sf = lot.splitFactor || 1;
+          const tsf = lot.totalSplitFactor || 1;
+          const adjShares = lot.sharesSold * (sf / tsf);
+          const target = lot.charitableDonation === 'Yes' ? charityAgg : sellAgg;
+          const a = target.get(lot.dateSold) || { dollars: 0, shares: 0 };
+          a.dollars += proceeds;
+          a.shares  += adjShares;
+          target.set(lot.dateSold, a);
+        }
       }
     }
     const wavg = (m, d) => {
@@ -221,7 +225,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
     for (const lot of closedLots) {
       if (!lot.dateSold) continue;
       const lotCost = ds(lot) * dc(lot);
-      const proceeds = lot.proceeds || 0;
+      const proceeds = lotProceeds(lot);
       const lotCagr = calcCAGR(lotCost, proceeds, lot.dateAcquired, lot.dateSold);
       const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
       const se = benchmarkPriceOnDate(spyLookup, lot.dateSold);
@@ -244,7 +248,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
       const endDate = isOpen ? today : lot.dateSold;
       if (!endDate) continue;
       const lotCost = ds(lot) * dc(lot);
-      const lotEnd = isOpen ? (price != null ? ds(lot) * price : null) : (lot.proceeds || 0);
+      const lotEnd = isOpen ? (price != null ? ds(lot) * price : null) : lotProceeds(lot);
       if (lotEnd == null) continue;
       const lotCagr = calcCAGR(lotCost, lotEnd, lot.dateAcquired, endDate);
       const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
@@ -272,7 +276,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
     : null;
   const estTaxRealized = realizedGL > 0
     ? closedLots.filter(l => l.charitableDonation !== 'Yes').reduce((sum, l) => {
-        const proceeds = l.proceeds || 0;
+        const proceeds = lotProceeds(l);
         const lotGain = proceeds - ds(l) * dc(l);
         if (lotGain <= 0) return sum;
         const term = taxTerm(l.dateAcquired, l.dateSold || today);
@@ -283,7 +287,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
 
   // Tax avoided by charitable donations
   const taxAvoided = charitableLots.reduce((sum, l) => {
-    const proceeds = l.proceeds || 0;
+    const proceeds = lotProceeds(l);
     const lotGain = proceeds - ds(l) * dc(l);
     if (lotGain <= 0) return sum;
     const term = taxTerm(l.dateAcquired, l.dateSold || today);
@@ -477,12 +481,7 @@ function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, togg
       lotGlPct = lotGl != null ? gainLossPct(lotCost, lotValue) : null;
       lotCagr = lotValue != null ? calcCAGR(lotCost, lotValue, lot.dateAcquired, today) : null;
     } else {
-      // Derive proceeds from per-share Sell Basis × Shares Sold so we don't
-      // depend on the spreadsheet's Proceeds column. Falls back to lot.proceeds
-      // when sellBasis is missing (older imports).
-      const proceeds = (lot.sellBasis != null && lot.sharesSold != null)
-        ? lot.sellBasis * lot.sharesSold
-        : (lot.proceeds || 0);
+      const proceeds = lotProceeds(lot);
       lotGl = proceeds - lotCost;
       lotGlPct = gainLossPct(lotCost, proceeds);
       lotCagr = lot.dateSold ? calcCAGR(lotCost, proceeds, lot.dateAcquired, lot.dateSold) : null;

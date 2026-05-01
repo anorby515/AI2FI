@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { formatCurrency, formatPct, formatShares, gainLossPct, calcCAGR, calcClosedLotsIRR, calcBenchmarkIRR, ds, dc, estimatedTax, taxTerm } from '../utils/calculations';
+import { formatCurrency, formatPct, formatShares, gainLossPct, calcCAGR, calcClosedLotsIRR, calcBenchmarkIRR, ds, dc, lotProceeds, estimatedTax, taxTerm } from '../utils/calculations';
 import { benchmarkPriceOnDate, useCurrentQuotes } from '../hooks/usePortfolio';
 
 export default function ClosedPositions({ closedLots, selectedAccounts, spyLookup, onSelectPosition, taxRates }) {
@@ -42,7 +42,7 @@ export default function ClosedPositions({ closedLots, selectedAccounts, spyLooku
       const shares = ds(lot);
       p.totalShares += shares;
       p.totalCost += shares * dc(lot);
-      p.totalProceeds += lot.proceeds || 0;
+      p.totalProceeds += lotProceeds(lot);
       p.lotCount++;
       p.lots.push(lot);
       if (lot.dateAcquired < p.earliestAcquired) p.earliestAcquired = lot.dateAcquired;
@@ -61,7 +61,7 @@ export default function ClosedPositions({ closedLots, selectedAccounts, spyLooku
 
       // Estimated tax on realized gain
       const estTax = p.lots.reduce((sum, lot) => {
-        const lotGain = (lot.proceeds || 0) - ds(lot) * dc(lot);
+        const lotGain = lotProceeds(lot) - ds(lot) * dc(lot);
         if (lotGain <= 0) return sum;
         const term = taxTerm(lot.dateAcquired, lot.dateSold || today);
         const t = estimatedTax(lotGain, term, taxRates);

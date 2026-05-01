@@ -23,6 +23,7 @@ const BASE_NAV = [
   },
   {
     key: 'tools', label: 'Tools', children: [
+      { key: 'tax-harvesting', label: 'Tax Harvesting' },
       { key: 'refinance-calculator', label: 'Refinance Calculator' },
       { key: 'sankey-diagram', label: 'Sankey Diagram' },
       { key: 'tradeoff-calculator', label: 'Trade-off Analysis' },

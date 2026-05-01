@@ -92,7 +92,9 @@ router.get('/:ticker', (req, res) => {
 });
 
 // GET /api/moat — list all available tickers (union of profile + demo dirs)
-router.get('/', (_, res) => {
+// When called with ?summary=1, returns a map of { TICKER: { size, direction, sources } }
+// so callers can render aggregated badges across many symbols without N+1 fetches.
+router.get('/', (req, res) => {
   const tickers = new Set();
   for (const dir of moatSearchDirs()) {
     try {
@@ -101,7 +103,20 @@ router.get('/', (_, res) => {
       }
     } catch { /* ignore */ }
   }
-  res.json([...tickers]);
+  if (!req.query.summary) {
+    return res.json([...tickers]);
+  }
+  const out = {};
+  for (const t of tickers) {
+    const filePath = findMoatFile(t);
+    if (!filePath) continue;
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      const parsed = parseMoatFile(content);
+      out[t] = { size: parsed.size, direction: parsed.direction, sources: parsed.sources };
+    } catch { /* skip unreadable */ }
+  }
+  res.json(out);
 });
 
 module.exports = router;

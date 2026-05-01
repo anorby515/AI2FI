@@ -27,6 +27,13 @@
 .th__title { font-size: 24px; font-weight: 700; letter-spacing: -0.6px; }
 .th__subtitle { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
 
+.th__head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  flex-wrap: wrap;
+}
+
 .th__summary {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

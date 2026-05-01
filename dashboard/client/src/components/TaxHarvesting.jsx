@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react';
-import { Card, Stat } from '../ui';
+import { Card, Stat, Button } from '../ui';
 import { usePortfolio, useMoatSummaries } from '../hooks/usePortfolio';
 import {
   ds, dc, lotProceeds, taxTerm, harvestSavings, estimatedTax,
@@ -340,6 +340,74 @@ export default function TaxHarvesting() {
     setOverrides(new Map());
   }
 
+  // Build the rows the export endpoint will serialize. Only include rows
+  // that contribute something:
+  //   - Realized rows always (history is part of the plan)
+  //   - Option rows only when sharesToSell > 0 (i.e. checkbox checked, and
+  //     the user hasn't typed 0 into the input)
+  function buildExportRows() {
+    const out = [];
+    for (const r of planRows) {
+      if (r.kind === 'option' && (!r.sharesToSell || r.sharesToSell <= 0)) continue;
+      const moat = moats[r.symbol] || moats[(r.symbol || '').toUpperCase()];
+      const moatText = moat
+        ? [moat.size, moat.direction].filter(Boolean).join(' / ')
+        : '';
+      const sharesToSell = r.kind === 'realized' ? (r.sharesSold ?? r.shares) : r.sharesToSell;
+      const sharePrice   = r.kind === 'realized' ? r.sellPrice : r.effectivePrice;
+      const gainPct      = r.kind === 'realized' ? r.glPct : r.effectiveGLPct;
+      out.push({
+        status: r.status,
+        term: r.term === 'long' ? 'LT' : 'ST',
+        symbol: r.symbol,
+        owner: r.owner || '',
+        account: r.account || '',
+        dateAcquired: r.dateAcquired || '',
+        dateSold: r.dateSold || '',
+        gainPct,
+        shares: r.shares,
+        sharesToSell,
+        sharePrice,
+        gainDollar: r.contribution,
+        taxImpact: r.taxImpact,
+        moat: moatText,
+        running: r.running,
+      });
+    }
+    return out;
+  }
+
+  async function handleExport() {
+    const rows = buildExportRows();
+    if (rows.length === 0) {
+      alert('Nothing to export — every option row has Shares to Sell at 0.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/tax-harvesting/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows }),
+      });
+      if (!res.ok) {
+        alert(`Export failed (${res.status})`);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tax-harvesting-plan-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Export failed — see console');
+      console.error(err);
+    }
+  }
+
   if (loading) return <div className="th__loading">Loading portfolio…</div>;
   if (emptyState) return <div className="th__loading">No portfolio data yet — load a profile first.</div>;
 
@@ -356,9 +424,12 @@ export default function TaxHarvesting() {
             at the listed Share Price
           </div>
         </div>
-        {overrides.size > 0 && (
-          <button className="th__chip" onClick={resetAll}>Reset edits</button>
-        )}
+        <div className="th__head-actions">
+          {overrides.size > 0 && (
+            <button className="th__chip" onClick={resetAll}>Reset edits</button>
+          )}
+          <Button variant="primary" onClick={handleExport}>Export to Excel</Button>
+        </div>
       </div>
 
       {(OWNERS.length > 1 || ACCOUNTS.length > 1) && (

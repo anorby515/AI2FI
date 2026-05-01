@@ -29,6 +29,16 @@
   --neg:    #fb7185;
   --warn:   #fbbf24;
 
+  /* Chart series — distinct, theme-stable (used when more than 2-3 lines
+     need to be visually separated; semantic colors above remain canonical). */
+  --series-1: #34d399; /* emerald */
+  --series-2: #60a5fa; /* blue    */
+  --series-3: #a78bfa; /* violet  */
+  --series-4: #fbbf24; /* amber   */
+  --series-5: #fb7185; /* rose    */
+  --series-6: #f472b6; /* pink    */
+  --series-7: #2dd4bf; /* teal    */
+
   /* Accent — emerald default (Bento) */
   --accent:   #34d399;
   --accent-2: #60a5fa;

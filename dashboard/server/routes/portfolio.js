@@ -65,18 +65,31 @@ function parseLookupTables(wb) {
 // from the Accounts sheet. Returns an empty Map if the sheet or expected
 // columns are missing — callers fall back to the raw account number.
 function parseAccountsTab(wb) {
-  const ws = wb.Sheets['Accounts'];
-  if (!ws) return new Map();
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
-  let headerIdx = -1;
-  for (let i = 0; i < Math.min(5, rows.length); i++) {
-    if (rows[i] && rows[i].some(c => c === 'Account')) { headerIdx = i; break; }
+  // Tolerant sheet name match — the user's tab might be 'Accounts', 'Account', etc.
+  const sheetName = wb.SheetNames.find(n => n.trim().toLowerCase().startsWith('account'));
+  if (!sheetName) {
+    console.log('[portfolio] No Accounts-like sheet found. Sheets:', wb.SheetNames);
+    return new Map();
   }
-  if (headerIdx < 0) return new Map();
-  const headers = rows[headerIdx];
-  const acctIdx = headers.indexOf('Account');
-  const nameIdx = headers.indexOf('Account Name');
-  if (acctIdx < 0 || nameIdx < 0) return new Map();
+  const ws = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  const norm = (v) => String(v ?? '').trim().toLowerCase();
+
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
+    if (rows[i] && rows[i].some(c => norm(c) === 'account')) { headerIdx = i; break; }
+  }
+  if (headerIdx < 0) {
+    console.log(`[portfolio] '${sheetName}' tab: no row with cell 'Account' found in first 10 rows.`);
+    return new Map();
+  }
+  const headers = rows[headerIdx].map(norm);
+  const acctIdx = headers.indexOf('account');
+  const nameIdx = headers.indexOf('account name');
+  if (acctIdx < 0 || nameIdx < 0) {
+    console.log(`[portfolio] '${sheetName}' tab: missing 'Account' or 'Account Name' column. Headers:`, rows[headerIdx]);
+    return new Map();
+  }
   const map = new Map();
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const r = rows[i];
@@ -85,6 +98,7 @@ function parseAccountsTab(wb) {
     const n = r[nameIdx];
     if (a && n) map.set(String(a).trim(), String(n).trim());
   }
+  console.log(`[portfolio] Loaded ${map.size} account-name lookups from '${sheetName}' tab.`);
   return map;
 }
 
@@ -95,47 +109,65 @@ function parseSheet(spreadsheetPath) {
   const ws = wb.Sheets['Brokerage Ledger'];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 
-  // Row index 1 (0-based) = header row 2
-  const headers = rows[1];
+  // Row index 1 (0-based) = header row 2; tolerate trim/case differences.
+  const norm = (v) => String(v ?? '').trim().toLowerCase();
+  const headers = rows[1] || [];
   const colIdx = {};
-  headers.forEach((h, i) => { if (h) colIdx[h] = i; });
+  headers.forEach((h, i) => { if (h) colIdx[norm(h)] = i; });
+  const col = (name) => colIdx[norm(name)];
+  if (col('Account') == null) {
+    console.log("[portfolio] Brokerage Ledger has no 'Account' column. Headers:", headers);
+  }
+
+  const get = (row, name) => {
+    const idx = col(name);
+    return idx == null ? undefined : row[idx];
+  };
 
   const holdings = [];
+  let ledgerNumberMisses = 0;
+  let ledgerNumberHits = 0;
   for (let i = 2; i < rows.length; i++) {
     const row = rows[i];
     if (!row) continue;
 
-    const rawSymbol = row[colIdx['Symbol']];
+    const rawSymbol = get(row, 'Symbol');
     if (!rawSymbol) continue;
     const symbol = TICKER_MAP[rawSymbol] || rawSymbol;
 
-    const costBasis = parseFloat(row[colIdx['Cost Basis Per Share']]);
-    const sharesBought = parseFloat(row[colIdx['Shares Bought']]);
+    const costBasis = parseFloat(get(row, 'Cost Basis Per Share'));
+    const sharesBought = parseFloat(get(row, 'Shares Bought'));
     if (isNaN(costBasis) || isNaN(sharesBought)) continue;
 
-    const dateAcq = formatDate(row[colIdx['Date Acquired']]);
-    const accountType = row[colIdx['Account Type']] || '';
-    const accountNumber = row[colIdx['Account']] || '';
-    const accountName = nameByAccount.get(String(accountNumber).trim()) || String(accountNumber || '');
+    const dateAcq = formatDate(get(row, 'Date Acquired'));
+    const accountType = get(row, 'Account Type') || '';
+    const accountNumber = get(row, 'Account') || '';
+    const lookupKey = String(accountNumber).trim();
+    const lookedUp = nameByAccount.get(lookupKey);
+    if (lookupKey) {
+      lookedUp ? ledgerNumberHits++ : ledgerNumberMisses++;
+    }
+    const accountName = lookedUp || String(accountNumber || '');
     holdings.push({
       account: accountType,
       accountTypeGroup: groupByType.get(String(accountType).trim()) || '',
       accountName,
-      owner: row[colIdx['Owner']] || '',
-      transaction: row[colIdx['Transaction']] || '',
+      owner: get(row, 'Owner') || '',
+      transaction: get(row, 'Transaction') || '',
       symbol,
-      description: row[colIdx['Security Description']] || '',
+      description: get(row, 'Security Description') || '',
       dateAcquired: dateAcq,
       taxLot: `${symbol} ${dateAcq}`,
       sharesBought,
       costBasis,
-      dateSold: formatDate(row[colIdx['Date Sold']]) || null,
-      charitableDonation: row[colIdx['Charitable Donation']] || null,
-      sharesSold: parseFloat(row[colIdx['Shares Sold']]) || null,
-      sellBasis: parseFloat(row[colIdx['Sell Basis Per Share']]) || null,
-      proceeds: parseFloat(row[colIdx['Proceeds']]) || null,
+      dateSold: formatDate(get(row, 'Date Sold')) || null,
+      charitableDonation: get(row, 'Charitable Donation') || null,
+      sharesSold: parseFloat(get(row, 'Shares Sold')) || null,
+      sellBasis: parseFloat(get(row, 'Sell Basis Per Share')) || null,
+      proceeds: parseFloat(get(row, 'Proceeds')) || null,
     });
   }
+  console.log(`[portfolio] Brokerage Ledger: ${ledgerNumberHits} rows resolved to a name, ${ledgerNumberMisses} account-number misses (no lookup match).`);
 
   return holdings;
 }

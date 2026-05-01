@@ -129,6 +129,22 @@ export function useCurrentQuotes(symbols) {
   return { quotes, loading, fetch: fetchQuotes };
 }
 
+// Load moat summaries for every ticker that has a research file. Returns
+// { [TICKER]: { size, direction, sources } } so callers can render aggregated
+// badges in tables without fetching each ticker individually.
+export function useMoatSummaries() {
+  const [moats, setMoats] = useState({});
+
+  useEffect(() => {
+    fetch('/api/moat?summary=1')
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => { if (data && typeof data === 'object') setMoats(data); })
+      .catch(() => {});
+  }, []);
+
+  return moats;
+}
+
 export function useMoat(symbol) {
   const [moat, setMoat] = useState(null);
 

@@ -5,7 +5,7 @@ import Dashboard from './components/Dashboard';
 import HoldingsList from './components/HoldingsList';
 import PositionDetail from './components/PositionDetail';
 import ClosedPositions from './components/ClosedPositions';
-import LossHarvesting from './components/LossHarvesting';
+import TaxHarvesting from './components/TaxHarvesting';
 import PortfolioChart from './components/PortfolioChart';
 // import PortfolioPies from './components/PortfolioPies';
 import Sidebar from './components/Sidebar';
@@ -42,7 +42,7 @@ const PORTFOLIO_GROUP_BY_VIEW = {
   esa: 'ESA',
 };
 
-const PORTFOLIO_TABS = ['Holdings', 'Closed', 'Harvest'];
+const PORTFOLIO_TABS = ['Holdings', 'Closed'];
 // Owners and Accounts are derived dynamically from the data below
 const LOT_FILTERS = ['All', 'Open', 'Closed'];
 
@@ -379,18 +379,11 @@ export default function App() {
             />
           )}
 
-          {view === 'Harvest' && (
-            <LossHarvesting
-              openLots={openLots}
-              quotes={quotes}
-              selectedAccounts={selectedAccounts}
-              taxRates={taxRates}
-              onSelectPosition={setSelectedSymbol}
-            />
-          )}
         </>)}
 
-        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', 'moat-analysis', 'sankey-diagram', 'refinance-calculator', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
+        {sidebarView === 'tax-harvesting' && <TaxHarvesting />}
+
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', 'moat-analysis', 'sankey-diagram', 'refinance-calculator', 'tax-harvesting', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

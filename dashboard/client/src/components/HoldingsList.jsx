@@ -60,6 +60,7 @@ export default function HoldingsList({ positions, quotes, selectedAccounts, onSe
             <ColHeader col="description" label="Description" />
             <ColHeader col="price" label="Last Price" />
             <ColHeader col="totalShares" label="Shares" />
+            <ColHeader col="value" label="Current Value" />
             <ColHeader col="gl" label="G/L $" />
             <ColHeader col="glPct" label="G/L %" />
             <ColHeader col="cagr" label="CAGR" />
@@ -79,6 +80,7 @@ export default function HoldingsList({ positions, quotes, selectedAccounts, onSe
                 <td className="desc">{p.description}</td>
                 <td>{p.price != null ? formatCurrency(p.price) : '—'}</td>
                 <td>{formatShares(p.totalShares)}</td>
+                <td>{p.value != null ? formatCurrency(p.value) : '—'}</td>
                 <td className={p.gl != null ? (isPos ? 'positive' : 'negative') : ''}>
                   {p.gl != null ? formatCurrency(p.gl) : '—'}
                 </td>

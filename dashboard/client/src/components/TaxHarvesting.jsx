@@ -12,14 +12,16 @@ import './TaxHarvesting.css';
  *
  * Plan table walks through:
  *   [REALIZED]        — closed lots from this year
- *   [HARVEST OPTIONS] — checked open lots, ordered by an interleaved strategy:
+ *   [HARVEST OPTIONS] — open lots ordered by an interleaved strategy:
  *                         Phase 1 — drop to -$3,000 with losses (ST→LT, biggest first)
  *                         Phase 2 — add largest LT gain, refill losses back to -$3K, repeat
  *                         Phase 3 — any remaining losses (carry-forward)
- *   [EXCLUDED]        — open lots the user has unchecked
+ *                       Rows whose effective gain is $0 (shares-to-sell = 0) sit at
+ *                       the end in their natural potential-gain order.
  *
- * Running Total column shows where the user lands if every checked row above
- * is sold today. Unchecking a row re-runs Phases 1-3 over the remaining set.
+ * Every option row has editable Shares-to-Sell and Share-Price inputs, plus a
+ * checkbox that flips Shares-to-Sell between 0 and the full-lot total. Editing
+ * either input re-runs the order over effective-gain values.
  *
  * Owner and account filters are multi-selectable chips above the table.
  */
@@ -41,21 +43,37 @@ function startOfYear() {
   return `${now.getFullYear()}-01-01`;
 }
 
-// Stable per-lot key for selection state.
+// Stable per-lot key for selection state. Composite to handle multiple lots
+// with the same symbol on the same date in the same account.
 function lotKey(r) {
   return [r.symbol, r.account, r.owner || '', r.dateAcquired, r.shares, r.costPerShare].join('|');
 }
 
-// Interleaved harvest-order algorithm. Returns the rows in display order.
-// Each row keeps its original fields; running total is added downstream.
+// Pull effective shares-to-sell / price / gain from the row + override map.
+function effective(row, overrides) {
+  const o = overrides.get(lotKey(row));
+  const sharesToSell = o?.sharesToSell ?? row.shares;
+  const price        = o?.price        ?? row.price;
+  const gl           = sharesToSell * (price - row.costPerShare);
+  return { sharesToSell, price, gl };
+}
+
+// Interleaved harvest-order algorithm. Operates on rows that have an
+// `effectiveGL` field. Rows with effectiveGL === 0 are returned last in
+// stable potential-gain order so they don't churn around when toggled off.
 function buildHarvestOrder(rows, ytdNet, target = ORD_LOSS_LIMIT) {
-  const losses = rows.filter(r => r.gl < 0).slice().sort((a, b) => {
+  const active   = rows.filter(r => r.effectiveGL !== 0);
+  const inactive = rows.filter(r => r.effectiveGL === 0)
+    .slice()
+    .sort((a, b) => b.potentialGL - a.potentialGL);
+
+  const losses = active.filter(r => r.effectiveGL < 0).slice().sort((a, b) => {
     if (a.term !== b.term) return a.term === 'short' ? -1 : 1; // ST first
-    return a.gl - b.gl;                                          // most negative first
+    return a.effectiveGL - b.effectiveGL;                       // most negative first
   });
-  const gains = rows.filter(r => r.gl >= 0).slice().sort((a, b) => {
-    if (a.term !== b.term) return a.term === 'long' ? -1 : 1;   // LT first
-    return b.gl - a.gl;                                          // largest first
+  const gains = active.filter(r => r.effectiveGL > 0).slice().sort((a, b) => {
+    if (a.term !== b.term) return a.term === 'long' ? -1 : 1;  // LT first
+    return b.effectiveGL - a.effectiveGL;                       // largest first
   });
 
   let current = ytdNet;
@@ -65,18 +83,18 @@ function buildHarvestOrder(rows, ytdNet, target = ORD_LOSS_LIMIT) {
   while (losses.length > 0 && current > target) {
     const loss = losses.shift();
     order.push(loss);
-    current += loss.gl;
+    current += loss.effectiveGL;
   }
 
   // Phase 2 — interleave: add largest gain, refill losses back to target.
   while (gains.length > 0) {
     const gain = gains.shift();
     order.push(gain);
-    current += gain.gl;
+    current += gain.effectiveGL;
     while (losses.length > 0 && current > target) {
       const loss = losses.shift();
       order.push(loss);
-      current += loss.gl;
+      current += loss.effectiveGL;
     }
   }
 
@@ -84,22 +102,22 @@ function buildHarvestOrder(rows, ytdNet, target = ORD_LOSS_LIMIT) {
   while (losses.length > 0) {
     const loss = losses.shift();
     order.push(loss);
-    current += loss.gl;
+    current += loss.effectiveGL;
   }
 
-  return order;
+  return [...order, ...inactive];
 }
 
 export default function TaxHarvesting() {
   const { openLots, closedLots, quotes, loading, emptyState } = usePortfolio();
   const moats = useMoatSummaries();
 
-  const [selectedOwners, setSelectedOwners]     = useState(() => new Set());   // empty = All
-  const [selectedAccounts, setSelectedAccounts] = useState(() => new Set());   // empty = All
-  const [excluded, setExcluded]                 = useState(() => new Set());   // lot keys
+  const [selectedOwners, setSelectedOwners]     = useState(() => new Set());
+  const [selectedAccounts, setSelectedAccounts] = useState(() => new Set());
+  // overrides: Map<lotKey, { sharesToSell?: number, price?: number }>
+  const [overrides, setOverrides] = useState(() => new Map());
   const taxRates = DEFAULT_TAX_RATES;
 
-  // Date references — memoized so render purity is stable and deps don't churn.
   const dateRefs = useMemo(() => {
     const now = new Date();
     return {
@@ -111,7 +129,6 @@ export default function TaxHarvesting() {
   }, []);
   const { today, todayMs, yearStart, thirtyDaysAgo } = dateRefs;
 
-  // Brokerage-only — this tool doesn't apply to tax-deferred accounts.
   const brokerageOpen = useMemo(
     () => openLots.filter(l => l.accountTypeGroup === 'Brokerage'),
     [openLots]
@@ -160,7 +177,7 @@ export default function TaxHarvesting() {
     (selectedAccounts.size === 0 || selectedAccounts.has(l.account))
   )), [brokerageClosed, selectedOwners, selectedAccounts]);
 
-  // Wash-sale lookahead — most-recent purchase per symbol across the open set.
+  // Wash-sale lookahead — most-recent purchase per symbol in the current open set.
   const recentPurchaseMap = useMemo(() => {
     const m = {};
     for (const l of filteredOpen) {
@@ -182,6 +199,9 @@ export default function TaxHarvesting() {
       const taxImpact = gl >= 0
         ? estimatedTax(gl, term, taxRates)
         : -(harvestSavings(gl, term, taxRates) || 0);
+      const shares = ds(lot);
+      const sharesSold = lot.sharesSold ?? shares;
+      const sellPrice  = lot.sellBasis ?? (sharesSold > 0 ? proceeds / sharesSold : null);
       rows.push({
         kind: 'realized',
         status: 'CLOSED',
@@ -190,7 +210,9 @@ export default function TaxHarvesting() {
         account: lot.account,
         dateAcquired: lot.dateAcquired,
         dateSold: lot.dateSold,
-        shares: ds(lot),
+        shares,
+        sharesSold,
+        sellPrice,
         costPerShare: dc(lot),
         term,
         gl,
@@ -202,7 +224,7 @@ export default function TaxHarvesting() {
     return rows;
   }, [filteredClosed, yearStart, taxRates]);
 
-  // ── HARVEST OPTION candidates ──────────────────────────────────────────────
+  // ── HARVEST OPTION candidates (raw, with potential gain at full lot) ──────
   const candidateRows = useMemo(() => {
     const rows = [];
     for (const lot of filteredOpen) {
@@ -212,14 +234,11 @@ export default function TaxHarvesting() {
       const cost = dc(lot);
       const totalCost = shares * cost;
       const currentValue = shares * price;
-      const gl = currentValue - totalCost;
+      const potentialGL = currentValue - totalCost;
       const term = taxTerm(lot.dateAcquired, today);
       const daysToLT = term === 'short' ? daysUntilLT(lot.dateAcquired, new Date(todayMs)) : 0;
-      const taxImpact = gl >= 0
-        ? estimatedTax(gl, term, taxRates)
-        : -(harvestSavings(gl, term, taxRates) || 0);
       const mostRecentBuy = recentPurchaseMap[lot.symbol];
-      const washSaleRisk = gl < 0
+      const washSaleRisk = potentialGL < 0
         && mostRecentBuy >= thirtyDaysAgo
         && mostRecentBuy !== lot.dateAcquired;
       rows.push({
@@ -231,68 +250,96 @@ export default function TaxHarvesting() {
         dateAcquired: lot.dateAcquired,
         shares,
         costPerShare: cost,
+        price,                  // current quote (default for the price input)
         term,
-        gl,
-        glPct: totalCost > 0 ? gl / totalCost : 0,
-        taxImpact,
+        potentialGL,
+        potentialGLPct: totalCost > 0 ? potentialGL / totalCost : 0,
         daysToLT,
         washSaleRisk,
       });
     }
     return rows;
-  }, [filteredOpen, quotes, today, todayMs, taxRates, recentPurchaseMap, thirtyDaysAgo]);
+  }, [filteredOpen, quotes, today, todayMs, recentPurchaseMap, thirtyDaysAgo]);
+
+  // Apply overrides to compute effective shares/price/G-L per row.
+  const enrichedCandidates = useMemo(() => candidateRows.map(r => {
+    const e = effective(r, overrides);
+    const taxImpact = e.gl >= 0
+      ? estimatedTax(e.gl, r.term, taxRates)
+      : -(harvestSavings(e.gl, r.term, taxRates) || 0);
+    return {
+      ...r,
+      sharesToSell: e.sharesToSell,
+      effectivePrice: e.price,
+      effectiveGL: e.gl,
+      effectiveGLPct: r.costPerShare > 0
+        ? (e.price - r.costPerShare) / r.costPerShare
+        : 0,
+      taxImpact,
+    };
+  }), [candidateRows, overrides, taxRates]);
 
   const ytdNet = realizedRows.reduce((s, r) => s + r.gl, 0);
   const ytdSt = realizedRows.filter(r => r.term === 'short').reduce((s, r) => s + r.gl, 0);
   const ytdLt = realizedRows.filter(r => r.term === 'long').reduce((s, r) => s + r.gl, 0);
 
-  // Split candidates into checked (in-plan) and unchecked (excluded).
-  const { checkedCandidates, excludedCandidates } = useMemo(() => {
-    const inPlan = [];
-    const out = [];
-    for (const r of candidateRows) {
-      if (excluded.has(lotKey(r))) out.push(r);
-      else inPlan.push(r);
-    }
-    return { checkedCandidates: inPlan, excludedCandidates: out };
-  }, [candidateRows, excluded]);
-
-  // Build the harvest order over checked candidates.
   const orderedOptions = useMemo(
-    () => buildHarvestOrder(checkedCandidates, ytdNet, ORD_LOSS_LIMIT),
-    [checkedCandidates, ytdNet]
+    () => buildHarvestOrder(enrichedCandidates, ytdNet, ORD_LOSS_LIMIT),
+    [enrichedCandidates, ytdNet]
   );
 
-  // Compose plan rows with running total.
+  // Plan rows with running total. Realized uses gl directly; options use effectiveGL.
   const planRows = useMemo(() => {
-    const all = [...realizedRows, ...orderedOptions];
-    return all.reduce((acc, r) => {
-      const prev = acc.length > 0 ? acc[acc.length - 1].running : 0;
-      acc.push({ ...r, running: prev + r.gl });
-      return acc;
-    }, []);
+    const out = [];
+    let cum = 0;
+    for (const r of realizedRows) {
+      cum += r.gl;
+      out.push({ ...r, contribution: r.gl, running: cum });
+    }
+    for (const r of orderedOptions) {
+      cum += r.effectiveGL;
+      out.push({ ...r, contribution: r.effectiveGL, running: cum });
+    }
+    return out;
   }, [realizedRows, orderedOptions]);
 
   const planEndRunning = planRows.length > 0
     ? planRows[planRows.length - 1].running
     : ytdNet;
 
-  // ST lots maturing into LT soon — useful "wait a bit longer" callout.
+  // ST gains maturing into LT soon — useful "wait a bit longer" callout.
   const maturingSoon = useMemo(() => {
-    return candidateRows
-      .filter(r => r.term === 'short' && r.gl > 0 && r.daysToLT > 0 && r.daysToLT <= MATURITY_WINDOW_DAYS);
-  }, [candidateRows]);
+    return enrichedCandidates
+      .filter(r => r.term === 'short' && r.potentialGL > 0 && r.daysToLT > 0 && r.daysToLT <= MATURITY_WINDOW_DAYS);
+  }, [enrichedCandidates]);
 
-  // Loss-harvest target to hit -$3K from current YTD position.
   const lossToReach3k = ytdNet > ORD_LOSS_LIMIT ? ytdNet - ORD_LOSS_LIMIT : 0;
+  const activeOptionCount = orderedOptions.filter(r => r.effectiveGL !== 0).length;
+  const inactiveOptionCount = orderedOptions.length - activeOptionCount;
 
-  function toggleExclude(row) {
-    const k = lotKey(row);
-    setExcluded(prev => {
-      const next = new Set(prev);
-      if (next.has(k)) next.delete(k); else next.add(k);
+  // ── Override mutators ─────────────────────────────────────────────────────
+  function setOverride(key, patch) {
+    setOverrides(prev => {
+      const next = new Map(prev);
+      const cur = next.get(key) || {};
+      next.set(key, { ...cur, ...patch });
       return next;
     });
+  }
+  function setSharesToSell(row, n) {
+    const clamped = Math.max(0, Math.min(row.shares, Number.isFinite(n) ? n : 0));
+    setOverride(lotKey(row), { sharesToSell: clamped });
+  }
+  function setRowPrice(row, p) {
+    const cleaned = Number.isFinite(p) && p >= 0 ? p : 0;
+    setOverride(lotKey(row), { price: cleaned });
+  }
+  function toggleCheck(row) {
+    const cur = row.sharesToSell;
+    setOverride(lotKey(row), { sharesToSell: cur > 0 ? 0 : row.shares });
+  }
+  function resetAll() {
+    setOverrides(new Map());
   }
 
   if (loading) return <div className="th__loading">Loading portfolio…</div>;
@@ -307,9 +354,13 @@ export default function TaxHarvesting() {
         <div>
           <div className="th__title">Tax Harvesting</div>
           <div className="th__subtitle">
-            Brokerage accounts only · running total assumes every checked row above is sold today
+            Brokerage accounts only · running total assumes every row above is sold today
+            at the listed Share Price
           </div>
         </div>
+        {overrides.size > 0 && (
+          <button className="th__chip" onClick={resetAll}>Reset edits</button>
+        )}
       </div>
 
       {(OWNERS.length > 1 || ACCOUNTS.length > 1) && (
@@ -401,30 +452,32 @@ export default function TaxHarvesting() {
             </Card>
             <Card>
               <Stat
-                label="Plan net (checked rows only)"
+                label="Plan net (active rows)"
                 value={formatCurrency(planEndRunning)}
                 tone={planEndRunning >= 0 ? 'pos' : 'neg'}
-                sub={`${orderedOptions.length} option${orderedOptions.length === 1 ? '' : 's'} · ${excludedCandidates.length} excluded`}
+                sub={`${activeOptionCount} active · ${inactiveOptionCount} held back`}
               />
             </Card>
           </div>
 
           <div className="th__note">
-            <strong>Reading this table.</strong> The plan starts with this year's realized
-            closes and then walks through your open brokerage lots in an interleaved
-            harvest order: drop to <strong>-$3,000</strong> with losses, add the largest
-            LT gain, refill losses back to -$3K, and repeat. The
-            <strong> Running Total</strong> column shows where you land if every checked
-            row above is sold today. Uncheck a row to send it to <em>Excluded</em> — the
-            remaining rows re-order automatically.
+            <strong>Reading this table.</strong> The plan walks through this year's
+            realized closes and then your open brokerage lots in an interleaved harvest
+            order: drop to <strong>-$3,000</strong> with losses, add the largest LT gain,
+            refill losses back to -$3K, repeat. Edit <em>Shares to Sell</em> or
+            <em> Share Price</em> on any row to model partial sales or different prices —
+            the order below re-optimizes automatically. The checkbox flips Shares to
+            Sell between 0 and the full lot; rows at 0 stay in place at the bottom of
+            HARVEST OPTIONS.
           </div>
 
           <Card>
             <PlanTable
               planRows={planRows}
-              excludedCandidates={excludedCandidates}
               moats={moats}
-              onToggleExclude={toggleExclude}
+              onChangeShares={setSharesToSell}
+              onChangePrice={setRowPrice}
+              onToggleCheck={toggleCheck}
             />
           </Card>
 
@@ -442,7 +495,7 @@ export default function TaxHarvesting() {
                   <div key={i} className="th__maturity-row">
                     <span className="th__sym">{r.symbol}</span>
                     <span className="th__dim">{r.account}</span>
-                    <span className="th__num pos">{formatCurrency(r.gl)}</span>
+                    <span className="th__num pos">{formatCurrency(r.potentialGL)}</span>
                     <span className="th__num">{r.daysToLT}d to LT</span>
                   </div>
                 ))}
@@ -456,23 +509,23 @@ export default function TaxHarvesting() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Unified Plan table
+// Plan table — REALIZED then HARVEST OPTIONS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PlanTable({ planRows, excludedCandidates, moats, onToggleExclude }) {
-  if (planRows.length === 0 && excludedCandidates.length === 0) {
+function PlanTable({ planRows, moats, onChangeShares, onChangePrice, onToggleCheck }) {
+  if (planRows.length === 0) {
     return <div className="th__empty">No realized G/L this year and no open brokerage lots to harvest.</div>;
   }
 
   const realized = planRows.filter(r => r.kind === 'realized');
   const options  = planRows.filter(r => r.kind === 'option');
   const showSold = realized.length > 0;
-  // 12 base columns: checkbox, status, term, symbol, owner, account, acquired,
-  // gain %, gain $, est. tax, moat, running total. +1 if Sold column is shown.
-  const totalCols = 12 + (showSold ? 1 : 0);
+  // Base cols: checkbox, status, term, symbol, owner, account, acquired,
+  // gain%, shares, shares to sell, share price, gain $, est tax, moat, running total.
+  // +1 if Sold column is present.
+  const totalCols = 15 + (showSold ? 1 : 0);
 
   // Threshold-crossing dividers within HARVEST OPTIONS.
-  // afterIndex = options[] index AFTER which the divider goes (-1 = before first).
   const dividers = [];
   let lastRunning = realized.length > 0 ? realized[realized.length - 1].running : 0;
   if (lastRunning < 0) {
@@ -516,6 +569,9 @@ function PlanTable({ planRows, excludedCandidates, moats, onToggleExclude }) {
             <th>Acquired</th>
             {showSold && <th>Sold</th>}
             <th className="num">Gain %</th>
+            <th className="num">Shares</th>
+            <th className="num">Shares to Sell</th>
+            <th className="num">Share Price</th>
             <th className="num">Gain $</th>
             <th className="num">Est. Tax</th>
             <th>Moat</th>
@@ -536,23 +592,16 @@ function PlanTable({ planRows, excludedCandidates, moats, onToggleExclude }) {
               row={r}
               moats={moats}
               showSold={showSold}
-              showCheckbox={false}
             />
           ))}
 
           <tr className="th__section">
-            <td colSpan={totalCols}>
-              HARVEST OPTIONS · {options.length} open lot{options.length === 1 ? '' : 's'} (interleaved order)
-            </td>
+            <td colSpan={totalCols}>HARVEST OPTIONS · {options.length} open lot{options.length === 1 ? '' : 's'} (interleaved order)</td>
           </tr>
 
           {options.length === 0 && (
             <tr>
-              <td colSpan={totalCols} className="th__empty-row">
-                {excludedCandidates.length > 0
-                  ? 'All harvest candidates are excluded — re-include rows below to build a plan.'
-                  : 'No open brokerage lots with current quotes.'}
-              </td>
+              <td colSpan={totalCols} className="th__empty-row">No open brokerage lots with current quotes.</td>
             </tr>
           )}
 
@@ -561,14 +610,14 @@ function PlanTable({ planRows, excludedCandidates, moats, onToggleExclude }) {
           ))}
 
           {options.map((r, i) => (
-            <Fragment key={`o${i}`}>
+            <Fragment key={lotKey(r)}>
               <PlanRow
                 row={r}
                 moats={moats}
                 showSold={showSold}
-                showCheckbox={true}
-                checked={true}
-                onToggle={() => onToggleExclude(r)}
+                onChangeShares={onChangeShares}
+                onChangePrice={onChangePrice}
+                onToggleCheck={onToggleCheck}
               />
               {dividers
                 .filter(d => d.afterIndex === i)
@@ -577,53 +626,43 @@ function PlanTable({ planRows, excludedCandidates, moats, onToggleExclude }) {
                 ))}
             </Fragment>
           ))}
-
-          {excludedCandidates.length > 0 && (
-            <tr className="th__section th__section--excluded">
-              <td colSpan={totalCols}>
-                EXCLUDED · {excludedCandidates.length} lot{excludedCandidates.length === 1 ? '' : 's'} held back from the plan
-              </td>
-            </tr>
-          )}
-          {excludedCandidates.map((r, i) => (
-            <PlanRow
-              key={`x${i}`}
-              row={r}
-              moats={moats}
-              showSold={showSold}
-              showCheckbox={true}
-              checked={false}
-              onToggle={() => onToggleExclude(r)}
-              excluded={true}
-            />
-          ))}
         </tbody>
       </table>
     </div>
   );
 }
 
-function PlanRow({ row, moats, showSold, showCheckbox, checked, onToggle, excluded = false }) {
+function PlanRow({ row, moats, showSold, onChangeShares, onChangePrice, onToggleCheck }) {
   const r = row;
-  const isLoss = r.gl < 0;
-  const inCarryForward = r.kind === 'option' && !excluded && r.running < ORD_LOSS_LIMIT;
-  const beyondCap      = r.kind === 'option' && !excluded && r.running < -VIEW_CAP;
+  const isOption  = r.kind === 'option';
+  const checked   = isOption ? r.sharesToSell > 0 : true;
+  const inactive  = isOption && !checked;
+  const inCarryForward = isOption && checked && r.running < ORD_LOSS_LIMIT;
+  const beyondCap      = isOption && checked && r.running < -VIEW_CAP;
+
   const rowCls = [
     'th__row',
-    excluded ? 'th__row--excluded' : '',
+    inactive ? 'th__row--inactive' : '',
     beyondCap ? 'th__row--dim' : '',
     inCarryForward ? 'th__row--carry' : '',
   ].filter(Boolean).join(' ');
 
+  // Display values
+  const displayShares      = r.shares;
+  const displaySharesSold  = isOption ? r.sharesToSell : (r.sharesSold ?? r.shares);
+  const displayPrice       = isOption ? r.effectivePrice : (r.sellPrice ?? null);
+  const displayGain        = isOption ? r.effectiveGL : r.gl;
+  const displayGainPct     = isOption ? r.effectiveGLPct : r.glPct;
+
   return (
     <tr className={rowCls}>
       <td className="th__plan-check">
-        {showCheckbox && (
+        {isOption && (
           <input
             type="checkbox"
-            checked={!!checked}
-            onChange={onToggle}
-            aria-label={checked ? 'Exclude this lot' : 'Include this lot'}
+            checked={checked}
+            onChange={() => onToggleCheck(r)}
+            aria-label={checked ? 'Set Shares to Sell to 0' : 'Restore full Shares to Sell'}
           />
         )}
       </td>
@@ -632,7 +671,7 @@ function PlanRow({ row, moats, showSold, showCheckbox, checked, onToggle, exclud
       </td>
       <td>
         <span className={`th__term th__term--${r.term}`}>{r.term === 'long' ? 'LT' : 'ST'}</span>
-        {r.kind === 'option' && r.term === 'short' && r.daysToLT > 0 && r.daysToLT <= MATURITY_WINDOW_DAYS && (
+        {isOption && r.term === 'short' && r.daysToLT > 0 && r.daysToLT <= MATURITY_WINDOW_DAYS && (
           <span className="th__maturing"> {r.daysToLT}d→LT</span>
         )}
       </td>
@@ -648,14 +687,44 @@ function PlanRow({ row, moats, showSold, showCheckbox, checked, onToggle, exclud
       <td className="th__dim">{r.account}</td>
       <td className="th__dim">{r.dateAcquired}</td>
       {showSold && <td className="th__dim">{r.dateSold || '—'}</td>}
-      <td className={`num ${isLoss ? 'neg' : 'pos'}`}>{formatPct(r.glPct)}</td>
-      <td className={`num ${isLoss ? 'neg' : 'pos'}`}>{formatCurrency(r.gl)}</td>
+      <td className={`num ${displayGain >= 0 ? 'pos' : 'neg'}`}>{formatPct(displayGainPct)}</td>
+      <td className="num th__num-cell">{formatNumberCompact(displayShares)}</td>
+      <td className="num th__input-cell">
+        {isOption ? (
+          <input
+            type="number"
+            min={0}
+            max={r.shares}
+            step="any"
+            className="th__input"
+            value={r.sharesToSell}
+            onChange={e => onChangeShares(r, parseFloat(e.target.value))}
+          />
+        ) : (
+          <span>{formatNumberCompact(displaySharesSold)}</span>
+        )}
+      </td>
+      <td className="num th__input-cell">
+        {isOption ? (
+          <input
+            type="number"
+            min={0}
+            step="any"
+            className="th__input"
+            value={r.effectivePrice}
+            onChange={e => onChangePrice(r, parseFloat(e.target.value))}
+          />
+        ) : (
+          <span>{displayPrice != null ? formatCurrency(displayPrice) : '—'}</span>
+        )}
+      </td>
+      <td className={`num ${displayGain >= 0 ? 'pos' : 'neg'}`}>{formatCurrency(displayGain)}</td>
       <td className={`num ${r.taxImpact != null && r.taxImpact < 0 ? 'pos' : 'dim'}`}>
         {r.taxImpact != null ? formatCurrency(r.taxImpact) : '—'}
       </td>
       <td><MoatBadges moat={moats[r.symbol]} /></td>
-      <td className={`num th__running ${excluded ? 'dim' : (r.running >= 0 ? 'pos' : 'neg')}`}>
-        {excluded ? '—' : formatCurrency(r.running)}
+      <td className={`num th__running ${inactive ? 'dim' : (r.running >= 0 ? 'pos' : 'neg')}`}>
+        {formatCurrency(r.running)}
       </td>
     </tr>
   );
@@ -667,6 +736,12 @@ function DividerRow({ divider, colSpan }) {
       <td colSpan={colSpan}>{divider.label}</td>
     </tr>
   );
+}
+
+function formatNumberCompact(n) {
+  if (n == null || isNaN(n)) return '—';
+  if (Number.isInteger(n)) return n.toLocaleString();
+  return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

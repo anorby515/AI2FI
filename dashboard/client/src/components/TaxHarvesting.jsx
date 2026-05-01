@@ -3,24 +3,26 @@ import { Card, Stat, Segment } from '../ui';
 import { usePortfolio, useMoatSummaries } from '../hooks/usePortfolio';
 import {
   ds, dc, lotProceeds, taxTerm, harvestSavings, estimatedTax,
-  formatCurrency, formatPct, formatShares, DEFAULT_TAX_RATES,
+  formatCurrency, formatPct, DEFAULT_TAX_RATES,
 } from '../utils/calculations';
 import './TaxHarvesting.css';
 
 /**
  * Tax-Harvesting tool — Brokerage-only.
  *
- * Two-column layout:
- *   Left  → highest-gain open lots (gain harvesting; LT-preferred)
- *   Right → highest-loss open lots (loss harvesting; ST-preferred)
+ * Single ordered table:
+ *   [REALIZED]       — closed lots from this year, oldest sale first.
+ *   [HARVEST OPTIONS] — open brokerage lots in a recommended order:
+ *                         ST losses (biggest first) → LT losses
+ *                         → LT gains → ST gains.
  *
- * Both columns share a YTD-realized header and cumulative running totals.
- * The loss side shows the IRS -$3,000 ordinary-income offset marker and
- * the carry-forward zone out to -$10,000.
+ * The running-total column shows the net realized G/L if every row above
+ * is committed. Inline dividers flag the $0 / -$3K / -$10K crossings so
+ * the reader can pick a stopping point that fits their tax plan.
  */
 
 const ORD_LOSS_LIMIT = -3000;        // IRS net cap-loss offset against ordinary income
-const VIEW_CAP = 10000;              // ±$10K cumulative display cap (gain/loss sides)
+const VIEW_CAP = 10000;              // -$10K display cap on the loss side
 const MATURITY_WINDOW_DAYS = 90;     // open ST lots that turn LT within this window
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -89,9 +91,10 @@ export default function TaxHarvesting() {
     return m;
   }, [filteredOpen]);
 
-  // YTD realized G/L from closed lots, split by term.
-  const ytdRealized = useMemo(() => {
-    let stGain = 0, stLoss = 0, ltGain = 0, ltLoss = 0;
+  // ── REALIZED rows ──────────────────────────────────────────────────────────
+  // Closed lots dated this year, oldest sold first.
+  const realizedRows = useMemo(() => {
+    const rows = [];
     for (const lot of filteredClosed) {
       if (!lot.dateSold || lot.dateSold < yearStart) continue;
       const proceeds = lotProceeds(lot);
@@ -99,21 +102,34 @@ export default function TaxHarvesting() {
       if (!proceeds || !cost) continue;
       const gl = proceeds - cost;
       const term = taxTerm(lot.dateAcquired, lot.dateSold);
-      if (term === 'long') {
-        if (gl >= 0) ltGain += gl; else ltLoss += gl;
-      } else {
-        if (gl >= 0) stGain += gl; else stLoss += gl;
-      }
+      const taxImpact = gl >= 0
+        ? estimatedTax(gl, term, taxRates)            // tax owed (positive)
+        : -(harvestSavings(gl, term, taxRates) || 0); // savings (negative)
+      rows.push({
+        kind: 'realized',
+        status: 'CLOSED',
+        symbol: lot.symbol,
+        account: lot.account,
+        dateAcquired: lot.dateAcquired,
+        dateSold: lot.dateSold,
+        term,
+        gl,
+        glPct: cost > 0 ? gl / cost : 0,
+        taxImpact,
+      });
     }
-    const stNet = stGain + stLoss;
-    const ltNet = ltGain + ltLoss;
-    const totalNet = stNet + ltNet;
-    return { stGain, stLoss, ltGain, ltLoss, stNet, ltNet, totalNet };
-  }, [filteredClosed, yearStart]);
+    rows.sort((a, b) => a.dateSold.localeCompare(b.dateSold));
+    return rows;
+  }, [filteredClosed, yearStart, taxRates]);
 
-  // Build harvestable open-lot rows with current value + term + gain/loss + tax impact.
-  const enrichedOpen = useMemo(() => {
-    const rows = [];
+  // ── HARVEST OPTIONS rows ───────────────────────────────────────────────────
+  // Open lots ordered to maximize gain-harvesting headroom:
+  //   1) Losses, ST first (offsets ordinary-rate gains), biggest first.
+  //   2) Losses, LT next, biggest first.
+  //   3) Gains, LT first (preferential rate), biggest first.
+  //   4) Gains, ST last (ordinary rate — generally avoid harvesting).
+  const harvestOptionRows = useMemo(() => {
+    const enriched = [];
     for (const lot of filteredOpen) {
       const price = quotes[lot.symbol]?.price;
       if (price == null) continue;
@@ -123,99 +139,87 @@ export default function TaxHarvesting() {
       const currentValue = shares * price;
       const gl = currentValue - totalCost;
       const term = taxTerm(lot.dateAcquired, today);
-      const daysHeld = Math.floor((todayMs - new Date(lot.dateAcquired).getTime()) / MS_PER_DAY);
       const daysToLT = term === 'short' ? daysUntilLT(lot.dateAcquired, new Date(todayMs)) : 0;
-      rows.push({
-        lot,
+      const taxImpact = gl >= 0
+        ? estimatedTax(gl, term, taxRates)
+        : -(harvestSavings(gl, term, taxRates) || 0);
+      const mostRecentBuy = recentPurchaseMap[lot.symbol];
+      const washSaleRisk = gl < 0
+        && mostRecentBuy >= thirtyDaysAgo
+        && mostRecentBuy !== lot.dateAcquired;
+      enriched.push({
+        kind: 'option',
+        status: 'OPEN',
         symbol: lot.symbol,
-        description: lot.description,
         account: lot.account,
         dateAcquired: lot.dateAcquired,
-        shares,
-        costPerShare: cost,
-        totalCost,
-        price,
-        currentValue,
+        term,
         gl,
         glPct: totalCost > 0 ? gl / totalCost : 0,
-        term,
-        daysHeld,
+        taxImpact,
         daysToLT,
+        washSaleRisk,
       });
     }
-    return rows;
-  }, [filteredOpen, quotes, today, todayMs]);
+    // Bucketed sort: losses first (ST→LT, biggest abs first), gains after (LT→ST, biggest first).
+    function bucket(r) {
+      if (r.gl < 0 && r.term === 'short') return 0;
+      if (r.gl < 0 && r.term === 'long')  return 1;
+      if (r.gl >= 0 && r.term === 'long') return 2;
+      return 3; // ST gains
+    }
+    enriched.sort((a, b) => {
+      const ba = bucket(a);
+      const bb = bucket(b);
+      if (ba !== bb) return ba - bb;
+      // Inside losses: most negative first. Inside gains: largest first.
+      if (a.gl < 0) return a.gl - b.gl;
+      return b.gl - a.gl;
+    });
+    return enriched;
+  }, [filteredOpen, quotes, today, todayMs, taxRates, recentPurchaseMap, thirtyDaysAgo]);
 
-  // Gain side — sort LT first, then largest gain. Tax estimated as cost.
-  const gainRows = useMemo(() => {
-    const gains = enrichedOpen
-      .filter(r => r.gl > 0)
-      .map(r => ({
-        ...r,
-        estTax: estimatedTax(r.gl, r.term, taxRates),
-      }))
-      .sort((a, b) => {
-        if (a.term !== b.term) return a.term === 'long' ? -1 : 1;
-        return b.gl - a.gl;
-      });
-    return gains.reduce((acc, r) => {
-      const prev = acc.length > 0 ? acc[acc.length - 1].cumGain : 0;
-      acc.push({ ...r, cumGain: prev + r.gl });
+  // ── Plan rows: REALIZED + OPTIONS, with running total ──────────────────────
+  const planRows = useMemo(() => {
+    const all = [...realizedRows, ...harvestOptionRows];
+    return all.reduce((acc, r) => {
+      const prev = acc.length > 0 ? acc[acc.length - 1].running : 0;
+      acc.push({ ...r, running: prev + r.gl });
       return acc;
     }, []);
-  }, [enrichedOpen, taxRates]);
+  }, [realizedRows, harvestOptionRows]);
 
-  // Loss side — sort ST first, then largest loss (most negative). Loss is a "savings" opportunity.
-  // Wash-sale check: another lot of same symbol bought within last 30d.
-  const lossRows = useMemo(() => {
-    const losses = enrichedOpen
-      .filter(r => r.gl < 0)
-      .map(r => {
-        const mostRecentBuy = recentPurchaseMap[r.symbol];
-        const washSaleRisk = mostRecentBuy >= thirtyDaysAgo && mostRecentBuy !== r.dateAcquired;
-        return {
-          ...r,
-          savings: harvestSavings(r.gl, r.term, taxRates),
-          washSaleRisk,
-        };
-      })
-      .sort((a, b) => {
-        if (a.term !== b.term) return a.term === 'short' ? -1 : 1;
-        return a.gl - b.gl;
-      });
-    return losses.reduce((acc, r) => {
-      const prev = acc.length > 0 ? acc[acc.length - 1].cumLoss : 0;
-      acc.push({ ...r, cumLoss: prev + r.gl });
-      return acc;
-    }, []);
-  }, [enrichedOpen, taxRates, recentPurchaseMap, thirtyDaysAgo]);
+  // YTD totals (from realized only).
+  const ytdNet = realizedRows.reduce((s, r) => s + r.gl, 0);
+  const ytdSt = realizedRows.filter(r => r.term === 'short').reduce((s, r) => s + r.gl, 0);
+  const ytdLt = realizedRows.filter(r => r.term === 'long').reduce((s, r) => s + r.gl, 0);
 
-  // ST lots that turn LT within MATURITY_WINDOW_DAYS — worth waiting on for gain harvesting.
+  // Plan endpoints — what running total would be if everything is harvested.
+  const planEndRunning = planRows.length > 0 ? planRows[planRows.length - 1].running : ytdNet;
+
+  // ST lots maturing into LT soon — useful "wait a bit longer" callout.
   const maturingSoon = useMemo(() => {
-    return enrichedOpen
-      .filter(r => r.term === 'short' && r.gl > 0 && r.daysToLT > 0 && r.daysToLT <= MATURITY_WINDOW_DAYS)
-      .sort((a, b) => a.daysToLT - b.daysToLT);
-  }, [enrichedOpen]);
+    return harvestOptionRows
+      .filter(r => r.term === 'short' && r.gl > 0 && r.daysToLT > 0 && r.daysToLT <= MATURITY_WINDOW_DAYS);
+  }, [harvestOptionRows]);
 
-  // Free-zone gain budget: how much LT/ST gain can be harvested while still net ≤ 0.
-  // (Gains harvested up to abs(YTD net loss) are fully sheltered $-for-$.)
-  const freeGainBudget = ytdRealized.totalNet < 0 ? Math.abs(ytdRealized.totalNet) : 0;
-  const lossBufferTo3k = ytdRealized.totalNet > ORD_LOSS_LIMIT
-    ? ytdRealized.totalNet - ORD_LOSS_LIMIT // amount of additional NET loss needed to reach -$3K
-    : 0;
+  // Loss-harvest target to hit -$3K from current YTD position.
+  const lossToReach3k = ytdNet > ORD_LOSS_LIMIT ? ytdNet - ORD_LOSS_LIMIT : 0;
 
   if (loading) return <div className="th__loading">Loading portfolio…</div>;
   if (emptyState) return <div className="th__loading">No portfolio data yet — load a profile first.</div>;
 
-  const noQuotes = filteredOpen.length > 0 && enrichedOpen.length === 0;
   const noBrokerage = brokerageOpen.length === 0 && brokerageClosed.length === 0;
+  const noQuotes = filteredOpen.length > 0 && harvestOptionRows.length === 0;
 
   return (
     <div className="th">
       <div className="th__head">
         <div>
           <div className="th__title">Tax Harvesting</div>
-          <div className="th__subtitle">Brokerage accounts only · open lots vs. last cached quote</div>
+          <div className="th__subtitle">
+            Brokerage accounts only · running total assumes every row above is sold today
+          </div>
         </div>
         {brokerageAccounts.length > 1 && (
           <Segment
@@ -230,9 +234,9 @@ export default function TaxHarvesting() {
       {noBrokerage && (
         <Card>
           <div className="th__empty">
-            No brokerage accounts found in the portfolio. This tool is intentionally
-            limited to taxable Brokerage accounts — gain/loss harvesting has no
-            tax effect inside Retirement, HSA, or ESA accounts.
+            No brokerage accounts found. This tool is intentionally limited to taxable
+            Brokerage — gain/loss harvesting has no tax effect inside Retirement, HSA,
+            or ESA accounts.
           </div>
         </Card>
       )}
@@ -251,79 +255,61 @@ export default function TaxHarvesting() {
           <div className="th__summary">
             <Card>
               <Stat
-                label="YTD Realized · ST"
-                value={formatCurrency(ytdRealized.stNet)}
-                tone={ytdRealized.stNet >= 0 ? 'pos' : 'neg'}
-                sub={`Gains ${formatCurrency(ytdRealized.stGain)} · Losses ${formatCurrency(ytdRealized.stLoss)}`}
-              />
-            </Card>
-            <Card>
-              <Stat
-                label="YTD Realized · LT"
-                value={formatCurrency(ytdRealized.ltNet)}
-                tone={ytdRealized.ltNet >= 0 ? 'pos' : 'neg'}
-                sub={`Gains ${formatCurrency(ytdRealized.ltGain)} · Losses ${formatCurrency(ytdRealized.ltLoss)}`}
-              />
-            </Card>
-            <Card>
-              <Stat
                 label="YTD Net Realized"
-                value={formatCurrency(ytdRealized.totalNet)}
-                tone={ytdRealized.totalNet >= 0 ? 'pos' : 'neg'}
-                sub={
-                  freeGainBudget > 0
-                    ? `${formatCurrency(freeGainBudget)} of gains still tax-free`
-                    : ytdRealized.totalNet > 0
-                      ? `Need ${formatCurrency(ytdRealized.totalNet)} of losses to wipe out`
-                      : 'No realized G/L this year'
-                }
-                subTone={freeGainBudget > 0 ? 'pos' : 'neutral'}
+                value={formatCurrency(ytdNet)}
+                tone={ytdNet >= 0 ? 'pos' : 'neg'}
+                sub={`ST ${formatCurrency(ytdSt)} · LT ${formatCurrency(ytdLt)}`}
               />
             </Card>
             <Card>
               <Stat
-                label="Loss Buffer to -$3K"
-                value={lossBufferTo3k > 0 ? formatCurrency(-lossBufferTo3k) : '—'}
+                label="Loss to reach -$3K"
+                value={lossToReach3k > 0 ? formatCurrency(-lossToReach3k) : '—'}
                 tone="neg"
                 sub={
-                  lossBufferTo3k > 0
-                    ? 'Additional NET loss needed to fully use the ordinary-income offset'
-                    : ytdRealized.totalNet <= ORD_LOSS_LIMIT
-                      ? 'Already at -$3K — additional losses will carry forward'
-                      : 'Net is already a gain; losses offset gains first'
+                  lossToReach3k > 0
+                    ? 'Harvest this much to fully use the ordinary-income offset'
+                    : ytdNet <= ORD_LOSS_LIMIT
+                      ? 'Already at -$3K — extra losses carry forward'
+                      : 'YTD already net loss — every $ helps'
                 }
+              />
+            </Card>
+            <Card>
+              <Stat
+                label="Tax-free gain headroom"
+                value={ytdNet < 0 ? formatCurrency(-ytdNet) : '$0'}
+                tone={ytdNet < 0 ? 'pos' : 'neutral'}
+                sub={
+                  ytdNet < 0
+                    ? 'Gains up to here are sheltered by realized losses'
+                    : 'Wipe out YTD gains first to open headroom'
+                }
+              />
+            </Card>
+            <Card>
+              <Stat
+                label="Plan net (if all harvested)"
+                value={formatCurrency(planEndRunning)}
+                tone={planEndRunning >= 0 ? 'pos' : 'neg'}
+                sub={`${planRows.length} lot${planRows.length === 1 ? '' : 's'} in plan`}
               />
             </Card>
           </div>
 
           <div className="th__note">
-            <strong>How tax-loss flows work:</strong> losses first offset gains $-for-$
-            (ST losses → ST gains, LT losses → LT gains, then cross-over). Only the
-            <em> net</em> loss after that is capped at $3,000 against ordinary income.
-            Anything beyond carries forward indefinitely. <strong>Gain harvesting</strong>
-            has no wash-sale rule — sell + immediately rebuy resets cost basis.
+            <strong>Reading this table.</strong> The plan starts with realized closes from
+            this year, then walks through open lots in a suggested harvest order
+            (losses first, ST before LT; then gains, LT before ST). The
+            <strong> Running Total</strong> column shows the net realized G/L if every row
+            above is committed. Pick a stopping point — the marker rows flag where the
+            plan crosses <strong>$0</strong>, <strong>-$3,000</strong> (ordinary-income
+            offset cap), and <strong>-$10,000</strong>.
           </div>
 
-          <div className="th__split">
-            <HarvestColumn
-              side="gain"
-              title="Harvest Gains"
-              subtitle="Long-term first · no wash-sale rule on gains"
-              rows={gainRows}
-              freeBudget={freeGainBudget}
-              cap={VIEW_CAP}
-              moats={moats}
-            />
-            <HarvestColumn
-              side="loss"
-              title="Harvest Losses"
-              subtitle="Short-term first · watch the 30-day wash-sale window"
-              rows={lossRows}
-              ordLossLimit={ORD_LOSS_LIMIT}
-              cap={VIEW_CAP}
-              moats={moats}
-            />
-          </div>
+          <Card>
+            <PlanTable rows={planRows} ytdNet={ytdNet} moats={moats} />
+          </Card>
 
           {maturingSoon.length > 0 && (
             <Card>
@@ -353,148 +339,155 @@ export default function TaxHarvesting() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Column: cumulative chart + table
+// Unified Plan table — REALIZED then HARVEST OPTIONS, with running-total column
 // ─────────────────────────────────────────────────────────────────────────────
 
-function HarvestColumn({ side, title, subtitle, rows, freeBudget = 0, ordLossLimit = 0, cap, moats = {} }) {
-  const isLoss = side === 'loss';
-  const cumKey = isLoss ? 'cumLoss' : 'cumGain';
+function PlanTable({ rows, ytdNet, moats }) {
+  if (rows.length === 0) {
+    return <div className="th__empty">No realized G/L this year and no open brokerage lots to harvest.</div>;
+  }
 
-  const totalGL = rows.reduce((s, r) => s + r.gl, 0);
-  const stCount = rows.filter(r => r.term === 'short').length;
-  const ltCount = rows.filter(r => r.term === 'long').length;
-  const totalSavings = rows.reduce((s, r) => s + (r.savings || 0), 0);
-  const totalEstTax = rows.reduce((s, r) => s + (r.estTax || 0), 0);
+  const realized = rows.filter(r => r.kind === 'realized');
+  const options  = rows.filter(r => r.kind === 'option');
+
+  // Find the index in `options` where running total crosses each threshold.
+  // Crossings are computed against the OPTIONS section so the dividers fall
+  // between option rows, not between realized rows.
+  const optionsStartRunning = realized.length > 0 ? realized[realized.length - 1].running : 0;
+
+  const dividers = []; // { afterIndex (0-based in options, -1 = before first), kind, label }
+  // Pre-options divider when YTD already crossed something.
+  if (ytdNet < 0) {
+    dividers.push({
+      afterIndex: -1,
+      kind: 'pos',
+      label: `↑ YTD already net loss · gains up to ${formatCurrency(-ytdNet)} are tax-free below`,
+    });
+  }
+  let lastRunning = optionsStartRunning;
+  options.forEach((r, idx) => {
+    const cross = (threshold, dir) => (
+      dir === 'down' ? lastRunning > threshold && r.running <= threshold
+      :                lastRunning < threshold && r.running >= threshold
+    );
+    if (cross(0, 'down')) {
+      dividers.push({ afterIndex: idx, kind: 'zero', label: '↑ Net $0 reached · further losses dip into carry-forward space' });
+    }
+    if (cross(0, 'up')) {
+      dividers.push({ afterIndex: idx, kind: 'zero-up', label: '↑ Crossed back above $0 · further gains are taxable' });
+    }
+    if (cross(ORD_LOSS_LIMIT, 'down')) {
+      dividers.push({ afterIndex: idx, kind: 'warn', label: '↑ -$3,000 reached · this is the full ordinary-income offset; extra losses carry forward' });
+    }
+    if (cross(-VIEW_CAP, 'down')) {
+      dividers.push({ afterIndex: idx, kind: 'cap', label: `↑ -$${VIEW_CAP.toLocaleString()} reached · still valid carry-forward, just past display cap` });
+    }
+    lastRunning = r.running;
+  });
+
+  const colSpan = 10 + (realized.length > 0 ? 1 : 0);
 
   return (
-    <Card className={`th__col th__col--${side}`}>
-      <div className="th__col-head">
-        <div>
-          <div className="th__col-title">{title}</div>
-          <div className="th__col-sub">{subtitle}</div>
-        </div>
-        <div className="th__col-stat">
-          <div className={`th__col-stat-val ${isLoss ? 'neg' : 'pos'}`}>
-            {formatCurrency(totalGL)}
-          </div>
-          <div className="th__col-stat-sub">
-            {rows.length} lot{rows.length === 1 ? '' : 's'} · {ltCount} LT · {stCount} ST
-            {isLoss
-              ? ` · Est. savings ${formatCurrency(totalSavings)}`
-              : ` · Est. tax ${formatCurrency(totalEstTax)}`}
-          </div>
-        </div>
-      </div>
+    <div className="th__plan-wrap">
+      <table className="th__plan">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Term</th>
+            <th>Symbol</th>
+            <th className="num">Gain %</th>
+            <th className="num">Gain $</th>
+            <th className="num">Est. Tax</th>
+            <th>Acquired</th>
+            {realized.length > 0 && <th>Sold</th>}
+            <th>Account</th>
+            <th>Moat</th>
+            <th className="num">Running Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {realized.length > 0 && (
+            <tr className="th__section">
+              <td colSpan={colSpan}>
+                REALIZED · {realized.length} closed lot{realized.length === 1 ? '' : 's'} this year
+              </td>
+            </tr>
+          )}
+          {realized.map((r, i) => (
+            <PlanRow key={`r${i}`} row={r} moats={moats} showSold={true} />
+          ))}
 
-      {rows.length === 0 ? (
-        <div className="th__empty">
-          {isLoss
-            ? 'No open positions currently at a loss in brokerage accounts.'
-            : 'No open positions currently at a gain in brokerage accounts.'}
-        </div>
-      ) : (
-        <>
-          <CumulativeChart
-            rows={rows}
-            cumKey={cumKey}
-            cap={cap}
-            isLoss={isLoss}
-            ordLossLimit={ordLossLimit}
-            freeBudget={freeBudget}
-          />
+          <tr className="th__section">
+            <td colSpan={colSpan}>
+              HARVEST OPTIONS · {options.length} open lot{options.length === 1 ? '' : 's'} (suggested order)
+            </td>
+          </tr>
 
-          <div className="th__table-wrap">
-            <table className="th__table">
-              <thead>
-                <tr>
-                  <th>Symbol</th>
-                  <th>Moat</th>
-                  <th>Acct</th>
-                  <th>Acq.</th>
-                  <th>Term</th>
-                  <th className="num">Shares</th>
-                  <th className="num">Cost</th>
-                  <th className="num">Price</th>
-                  <th className="num">{isLoss ? 'Loss $' : 'Gain $'}</th>
-                  <th className="num">{isLoss ? 'Loss %' : 'Gain %'}</th>
-                  <th className="num">Cum.</th>
-                  <th className="num">{isLoss ? 'Savings' : 'Est. Tax'}</th>
-                  {isLoss && <th>Wash</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => {
-                  const cum = r[cumKey];
-                  const crossesOrd = isLoss && cum <= ordLossLimit && (i === 0 || rows[i - 1][cumKey] > ordLossLimit);
-                  const crossesCap = isLoss && cum <= -cap && (i === 0 || rows[i - 1][cumKey] > -cap);
-                  const crossesFree = !isLoss && freeBudget > 0 && cum >= freeBudget && (i === 0 || rows[i - 1][cumKey] < freeBudget);
-                  const inCarryForward = isLoss && cum < ordLossLimit;
-                  const beyondCap = isLoss && cum < -cap;
+          {dividers.filter(d => d.afterIndex === -1).map((d, i) => (
+            <DividerRow key={`d-pre-${i}`} divider={d} colSpan={colSpan} />
+          ))}
 
-                  return (
-                    <Fragment key={i}>
-                      {crossesFree && (
-                        <tr className="th__divider th__divider--pos">
-                          <td colSpan={12}>
-                            ↑ Free zone (offsets YTD net losses) · ↓ Taxable beyond {formatCurrency(freeBudget)}
-                          </td>
-                        </tr>
-                      )}
-                      {crossesOrd && (
-                        <tr className="th__divider th__divider--warn">
-                          <td colSpan={13}>
-                            ↑ Up to -$3,000 offsets ordinary income this year · ↓ Carry-forward zone
-                          </td>
-                        </tr>
-                      )}
-                      {crossesCap && (
-                        <tr className="th__divider">
-                          <td colSpan={13}>
-                            ↓ Beyond -${cap.toLocaleString()} display cap (still valid carry-forward)
-                          </td>
-                        </tr>
-                      )}
-                      <tr className={`th__row ${beyondCap ? 'th__row--dim' : ''} ${inCarryForward ? 'th__row--carry' : ''}`}>
-                        <td className="th__sym">{r.symbol}</td>
-                        <td><MoatBadges moat={moats[r.symbol]} /></td>
-                        <td className="th__dim">{r.account}</td>
-                        <td className="th__dim">{r.dateAcquired}</td>
-                        <td>
-                          <span className={`th__term th__term--${r.term}`}>
-                            {r.term === 'long' ? 'LT' : 'ST'}
-                          </span>
-                          {r.term === 'short' && r.daysToLT > 0 && r.daysToLT <= 90 && (
-                            <span className="th__maturing"> {r.daysToLT}d→LT</span>
-                          )}
-                        </td>
-                        <td className="num">{formatShares(r.shares)}</td>
-                        <td className="num">{formatCurrency(r.costPerShare)}</td>
-                        <td className="num">{formatCurrency(r.price)}</td>
-                        <td className={`num ${isLoss ? 'neg' : 'pos'}`}>{formatCurrency(r.gl)}</td>
-                        <td className={`num ${isLoss ? 'neg' : 'pos'}`}>{formatPct(r.glPct)}</td>
-                        <td className={`num ${isLoss ? 'neg' : 'pos'}`}>{formatCurrency(cum)}</td>
-                        <td className={`num ${isLoss ? 'pos' : 'dim'}`}>
-                          {isLoss
-                            ? r.savings != null ? formatCurrency(r.savings) : '—'
-                            : r.estTax != null ? formatCurrency(r.estTax) : '—'}
-                        </td>
-                        {isLoss && (
-                          <td>
-                            {r.washSaleRisk
-                              ? <span className="th__wash th__wash--risk">⚠</span>
-                              : <span className="th__wash th__wash--ok">OK</span>}
-                          </td>
-                        )}
-                      </tr>
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </Card>
+          {options.map((r, i) => (
+            <Fragment key={`o${i}`}>
+              <PlanRow row={r} moats={moats} showSold={realized.length > 0} />
+              {dividers
+                .filter(d => d.afterIndex === i)
+                .map((d, di) => (
+                  <DividerRow key={`d-${i}-${di}`} divider={d} colSpan={colSpan} />
+                ))}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PlanRow({ row, moats, showSold }) {
+  const r = row;
+  const isLoss = r.gl < 0;
+  const inCarryForward = r.kind === 'option' && r.running < ORD_LOSS_LIMIT;
+  const beyondCap      = r.kind === 'option' && r.running < -VIEW_CAP;
+  return (
+    <tr className={`th__row ${beyondCap ? 'th__row--dim' : ''} ${inCarryForward ? 'th__row--carry' : ''}`}>
+      <td>
+        <span className={`th__status th__status--${r.status.toLowerCase()}`}>{r.status}</span>
+      </td>
+      <td>
+        <span className={`th__term th__term--${r.term}`}>{r.term === 'long' ? 'LT' : 'ST'}</span>
+        {r.kind === 'option' && r.term === 'short' && r.daysToLT > 0 && r.daysToLT <= MATURITY_WINDOW_DAYS && (
+          <span className="th__maturing"> {r.daysToLT}d→LT</span>
+        )}
+      </td>
+      <td className="th__sym">
+        {r.symbol}
+        {r.washSaleRisk && (
+          <span className="th__wash th__wash--risk" title="Same symbol bought within last 30 days — wash-sale risk">
+            ⚠
+          </span>
+        )}
+      </td>
+      <td className={`num ${isLoss ? 'neg' : 'pos'}`}>{formatPct(r.glPct)}</td>
+      <td className={`num ${isLoss ? 'neg' : 'pos'}`}>{formatCurrency(r.gl)}</td>
+      <td className={`num ${r.taxImpact < 0 ? 'pos' : 'dim'}`}>
+        {r.taxImpact != null ? formatCurrency(r.taxImpact) : '—'}
+      </td>
+      <td className="th__dim">{r.dateAcquired}</td>
+      {showSold && <td className="th__dim">{r.dateSold || '—'}</td>}
+      <td className="th__dim">{r.account}</td>
+      <td><MoatBadges moat={moats[r.symbol]} /></td>
+      <td className={`num th__running ${r.running >= 0 ? 'pos' : 'neg'}`}>
+        {formatCurrency(r.running)}
+      </td>
+    </tr>
+  );
+}
+
+function DividerRow({ divider, colSpan }) {
+  return (
+    <tr className={`th__divider th__divider--${divider.kind}`}>
+      <td colSpan={colSpan}>{divider.label}</td>
+    </tr>
   );
 }
 
@@ -507,7 +500,7 @@ const MOAT_DIR_TONE  = { WIDENING: 'pos', STABLE: 'dim', NARROWING: 'neg' };
 const MOAT_DIR_GLYPH = { WIDENING: '↑', STABLE: '→', NARROWING: '↓' };
 
 // Moat values from the markdown files often include decorative emoji
-// (e.g. "Wide 🛡️", "Stable ➡️"). Pull out the first alphabetic token so the
+// (e.g. "Wide 🛡️", "Stable ➡️"). Pull the first alphabetic token so the
 // lookup is robust to that.
 function moatKey(s) {
   if (!s) return '';
@@ -537,93 +530,5 @@ function MoatBadges({ moat }) {
         </span>
       )}
     </span>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Inline cumulative SVG chart with marker lines.
-// X axis = lot index, Y axis = running total. Capped at ±cap for display.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function CumulativeChart({ rows, cumKey, cap, isLoss, ordLossLimit, freeBudget }) {
-  const width = 600;
-  const height = 160;
-  const pad = { t: 16, r: 16, b: 22, l: 64 };
-
-  if (rows.length === 0) return null;
-
-  const yMin = isLoss ? -cap : 0;
-  const yMax = isLoss ? 0 : cap;
-  const plotW = width - pad.l - pad.r;
-  const plotH = height - pad.t - pad.b;
-
-  const x = (i) => pad.l + (rows.length === 1 ? plotW / 2 : (i / (rows.length - 1)) * plotW);
-  const clamp = (v) => Math.max(yMin, Math.min(yMax, v));
-  const y = (v) => pad.t + (1 - (clamp(v) - yMin) / (yMax - yMin)) * plotH;
-
-  const points = rows.map((r, i) => [x(i), y(r[cumKey])]);
-  const baselineY = y(0);
-  const path = points.map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`)).join(' ');
-  const areaPath = `${path} L ${x(rows.length - 1)} ${baselineY} L ${x(0)} ${baselineY} Z`;
-
-  const stroke = isLoss ? 'var(--neg)' : 'var(--pos)';
-
-  // Marker lines
-  const markers = [];
-  if (isLoss) {
-    if (ordLossLimit > yMin) {
-      markers.push({ value: ordLossLimit, label: '-$3K · ord. income limit', cls: 'warn' });
-    }
-    markers.push({ value: -cap, label: `-$${(cap / 1000).toFixed(0)}K · cap`, cls: 'dim' });
-  } else if (freeBudget > 0 && freeBudget < yMax) {
-    markers.push({ value: freeBudget, label: `${formatCurrency(freeBudget)} · free zone`, cls: 'pos' });
-  }
-
-  return (
-    <div className="th__chart">
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="th__chart-svg">
-        {/* Y grid (3 ticks) */}
-        {[0, 0.5, 1].map(t => {
-          const v = yMin + (yMax - yMin) * t;
-          const yy = y(v);
-          return (
-            <g key={t}>
-              <line x1={pad.l} y1={yy} x2={width - pad.r} y2={yy} className="th__grid" />
-              <text x={pad.l - 8} y={yy + 3} textAnchor="end" className="th__axis">
-                {formatCurrency(v)}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Marker lines */}
-        {markers.map((m, i) => {
-          const yy = y(m.value);
-          return (
-            <g key={`m${i}`}>
-              <line x1={pad.l} y1={yy} x2={width - pad.r} y2={yy} className={`th__marker th__marker--${m.cls}`} />
-              <text x={width - pad.r - 4} y={yy - 4} textAnchor="end" className={`th__marker-lbl th__marker-lbl--${m.cls}`}>
-                {m.label}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Area + line */}
-        <path d={areaPath} fill={stroke} fillOpacity="0.12" />
-        <path d={path} fill="none" stroke={stroke} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-
-        {/* Lot dots */}
-        {points.map(([px, py], i) => (
-          <circle key={i} cx={px} cy={py} r="2.5" fill={stroke} />
-        ))}
-
-        {/* X axis label */}
-        <text x={pad.l} y={height - 4} className="th__axis">lot 1</text>
-        <text x={width - pad.r} y={height - 4} textAnchor="end" className="th__axis">
-          lot {rows.length}
-        </text>
-      </svg>
-    </div>
   );
 }

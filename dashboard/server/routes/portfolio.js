@@ -61,9 +61,37 @@ function parseLookupTables(wb) {
   return map;
 }
 
+// Build a map of "Account" (account number) -> "Account Name" (friendly label)
+// from the Accounts sheet. Returns an empty Map if the sheet or expected
+// columns are missing — callers fall back to the raw account number.
+function parseAccountsTab(wb) {
+  const ws = wb.Sheets['Accounts'];
+  if (!ws) return new Map();
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    if (rows[i] && rows[i].some(c => c === 'Account')) { headerIdx = i; break; }
+  }
+  if (headerIdx < 0) return new Map();
+  const headers = rows[headerIdx];
+  const acctIdx = headers.indexOf('Account');
+  const nameIdx = headers.indexOf('Account Name');
+  if (acctIdx < 0 || nameIdx < 0) return new Map();
+  const map = new Map();
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r) continue;
+    const a = r[acctIdx];
+    const n = r[nameIdx];
+    if (a && n) map.set(String(a).trim(), String(n).trim());
+  }
+  return map;
+}
+
 function parseSheet(spreadsheetPath) {
   const wb = XLSX.readFile(spreadsheetPath, { cellDates: false });
   const groupByType = parseLookupTables(wb);
+  const nameByAccount = parseAccountsTab(wb);
   const ws = wb.Sheets['Brokerage Ledger'];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 
@@ -87,10 +115,12 @@ function parseSheet(spreadsheetPath) {
 
     const dateAcq = formatDate(row[colIdx['Date Acquired']]);
     const accountType = row[colIdx['Account Type']] || '';
+    const accountNumber = row[colIdx['Account']] || '';
+    const accountName = nameByAccount.get(String(accountNumber).trim()) || String(accountNumber || '');
     holdings.push({
       account: accountType,
       accountTypeGroup: groupByType.get(String(accountType).trim()) || '',
-      accountName: row[colIdx['Account']] || '',
+      accountName,
       owner: row[colIdx['Owner']] || '',
       transaction: row[colIdx['Transaction']] || '',
       symbol,

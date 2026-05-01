@@ -97,7 +97,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
   const charitableGL = charitableClosed.reduce((s, l) => s + (lotProceeds(l) - ds(l) * dc(l)), 0);
   const realizedIsPos = totalRealizedGL >= 0;
   const charitableIsPos = charitableGL >= 0;
-  const showClosed = view === 'Closed';
+  const showClosed = view === 'Closed Positions';
 
   // Total (open + closed combined)
   const totalCost = cost + closedCost;

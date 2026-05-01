@@ -53,6 +53,7 @@ export default function App() {
   const [selectedSymbol, setSelectedSymbol] = useState(null);
   const [selectedOwners, setSelectedOwners] = useState(new Set());
   const [selectedAccounts, setSelectedAccounts] = useState(new Set());
+  const [selectedAccountNames, setSelectedAccountNames] = useState(new Set());
   const [lotFilter, setLotFilter] = useState('All');
   const [detailSortBy, setDetailSortBy] = useState('dateAcquired');
   const [detailSortDir, setDetailSortDir] = useState('asc');
@@ -85,6 +86,16 @@ export default function App() {
   }
   function clearAccounts() { setSelectedAccounts(new Set()); }
 
+  function toggleAccountName(name) {
+    setSelectedAccountNames(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+  function clearAccountNames() { setSelectedAccountNames(new Set()); }
+
   // Switching sidebar views also clears chip selections — owner/account
   // chips are scoped to the active group, so a Roth IRA selection on the
   // Retirement tab shouldn't carry over to Brokerage.
@@ -93,6 +104,7 @@ export default function App() {
     setSelectedSymbol(null);
     setSelectedOwners(new Set());
     setSelectedAccounts(new Set());
+    setSelectedAccountNames(new Set());
   }
 
   // API status tracking
@@ -171,27 +183,56 @@ export default function App() {
     portfolioGroup ? rawClosedLots.filter(l => l.accountTypeGroup === portfolioGroup) : rawClosedLots
   ), [rawClosedLots, portfolioGroup]);
 
-  // Derive owners and accounts dynamically from the group-filtered data
-  const OWNERS = useMemo(() => [...new Set(groupAllLots.map(l => l.owner).filter(Boolean))].sort(), [groupAllLots]);
-  const ACCOUNTS = useMemo(() => [...new Set(groupAllLots.map(l => l.account).filter(Boolean))].sort(), [groupAllLots]);
-
-  // Apply owner + account filters at the lot level BEFORE aggregation
+  // Apply owner + account + account-name filters at the lot level BEFORE aggregation
   const allOwnersSelected = selectedOwners.size === 0;
   const allSelected = selectedAccounts.size === 0;
+  const allNamesSelected = selectedAccountNames.size === 0;
+
+  // Bidirectional cascade: each chip group's options are derived from lots that
+  // satisfy the OTHER two filters' selections. Currently-selected chips are
+  // unioned in so the user can always deselect them.
+  const ACCOUNTS = useMemo(() => {
+    let lots = groupAllLots;
+    if (!allOwnersSelected) lots = lots.filter(l => selectedOwners.has(l.owner));
+    if (!allNamesSelected) lots = lots.filter(l => selectedAccountNames.has(l.accountName));
+    const available = new Set(lots.map(l => l.account).filter(Boolean));
+    selectedAccounts.forEach(a => available.add(a));
+    return [...available].sort();
+  }, [groupAllLots, selectedOwners, allOwnersSelected, selectedAccountNames, allNamesSelected, selectedAccounts]);
+
+  const ACCOUNT_NAMES = useMemo(() => {
+    let lots = groupAllLots;
+    if (!allOwnersSelected) lots = lots.filter(l => selectedOwners.has(l.owner));
+    if (!allSelected) lots = lots.filter(l => selectedAccounts.has(l.account));
+    const available = new Set(lots.map(l => l.accountName).filter(Boolean));
+    selectedAccountNames.forEach(n => available.add(n));
+    return [...available].sort();
+  }, [groupAllLots, selectedOwners, allOwnersSelected, selectedAccounts, allSelected, selectedAccountNames]);
+
+  const OWNERS = useMemo(() => {
+    let lots = groupAllLots;
+    if (!allSelected) lots = lots.filter(l => selectedAccounts.has(l.account));
+    if (!allNamesSelected) lots = lots.filter(l => selectedAccountNames.has(l.accountName));
+    const available = new Set(lots.map(l => l.owner).filter(Boolean));
+    selectedOwners.forEach(o => available.add(o));
+    return [...available].sort();
+  }, [groupAllLots, selectedAccounts, allSelected, selectedAccountNames, allNamesSelected, selectedOwners]);
 
   const openLots = useMemo(() => {
     let lots = groupOpenLots;
     if (!allOwnersSelected) lots = lots.filter(l => selectedOwners.has(l.owner));
     if (!allSelected) lots = lots.filter(l => selectedAccounts.has(l.account));
+    if (!allNamesSelected) lots = lots.filter(l => selectedAccountNames.has(l.accountName));
     return lots;
-  }, [groupOpenLots, selectedOwners, allOwnersSelected, selectedAccounts, allSelected]);
+  }, [groupOpenLots, selectedOwners, allOwnersSelected, selectedAccounts, allSelected, selectedAccountNames, allNamesSelected]);
 
   const closedLots = useMemo(() => {
     let lots = groupClosedLots;
     if (!allOwnersSelected) lots = lots.filter(l => selectedOwners.has(l.owner));
     if (!allSelected) lots = lots.filter(l => selectedAccounts.has(l.account));
+    if (!allNamesSelected) lots = lots.filter(l => selectedAccountNames.has(l.accountName));
     return lots;
-  }, [groupClosedLots, selectedOwners, allOwnersSelected, selectedAccounts, allSelected]);
+  }, [groupClosedLots, selectedOwners, allOwnersSelected, selectedAccounts, allSelected, selectedAccountNames, allNamesSelected]);
 
   const positions = useMemo(() => {
     return aggregateOpenBySymbol(openLots.map(l => ({ ...l, transaction: 'Open' })));
@@ -282,25 +323,37 @@ export default function App() {
       <header className="app-header">
         <div className="header-filters">
           {isPortfolioView && (<>
-          <nav className="nav-tabs">
-            {PORTFOLIO_TABS.map(v => (
-              <button key={v} className={`nav-tab ${view === v ? 'active' : ''}`} onClick={() => setView(v)}>{v}</button>
-            ))}
-          </nav>
-          <div className="header-separator" />
-          <div className="filter-group">
-            <button className={`tab ${allSelected ? 'active' : ''}`} onClick={clearAccounts}>All</button>
-            {ACCOUNTS.map(a => (
-              <button key={a} className={`tab ${selectedAccounts.has(a) ? 'active' : ''}`} onClick={() => toggleAccount(a)}>{a}</button>
-            ))}
+          <div className="header-filters-row">
+            <nav className="nav-tabs">
+              {PORTFOLIO_TABS.map(v => (
+                <button key={v} className={`nav-tab ${view === v ? 'active' : ''}`} onClick={() => setView(v)}>{v}</button>
+              ))}
+            </nav>
+            <div className="header-separator" />
+            <div className="filter-group">
+              <button className={`tab ${allSelected ? 'active' : ''}`} onClick={clearAccounts}>All</button>
+              {ACCOUNTS.map(a => (
+                <button key={a} className={`tab ${selectedAccounts.has(a) ? 'active' : ''}`} onClick={() => toggleAccount(a)}>{a}</button>
+              ))}
+            </div>
+            <div className="header-separator" />
+            <div className="filter-group">
+              <button className={`tab ${allOwnersSelected ? 'active' : ''}`} onClick={clearOwners}>All</button>
+              {OWNERS.map(o => (
+                <button key={o} className={`tab ${selectedOwners.has(o) ? 'active' : ''}`} onClick={() => toggleOwner(o)}>{o}</button>
+              ))}
+            </div>
           </div>
-          <div className="header-separator" />
-          <div className="filter-group">
-            <button className={`tab ${allOwnersSelected ? 'active' : ''}`} onClick={clearOwners}>All</button>
-            {OWNERS.map(o => (
-              <button key={o} className={`tab ${selectedOwners.has(o) ? 'active' : ''}`} onClick={() => toggleOwner(o)}>{o}</button>
-            ))}
-          </div>
+          {ACCOUNT_NAMES.length > 0 && (
+            <div className="header-filters-row">
+              <div className="filter-group">
+                <button className={`tab ${allNamesSelected ? 'active' : ''}`} onClick={clearAccountNames}>All</button>
+                {ACCOUNT_NAMES.map(n => (
+                  <button key={n} className={`tab ${selectedAccountNames.has(n) ? 'active' : ''}`} onClick={() => toggleAccountName(n)}>{n}</button>
+                ))}
+              </div>
+            </div>
+          )}
           </>)}
         </div>
         <RestartButton />

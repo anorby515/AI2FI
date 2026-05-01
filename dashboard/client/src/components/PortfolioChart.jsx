@@ -12,64 +12,76 @@ const PCT_MODES = [
   { key: 'alpha', label: 'Alpha', color: '#f94f6a' },
 ];
 
-export default function PortfolioChart({ positions, quotes, spyLookup, view }) {
-  const [pctMode, setPctMode] = useState('cagr');
-  const today = new Date().toISOString().slice(0, 10);
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
-  const chartData = useMemo(() => {
-    if (!positions || positions.length === 0) return [];
+function earliestAcquired(p) {
+  const lots = p.lots || p.allLots || [];
+  let min = null;
+  for (const l of lots) {
+    if (!l.dateAcquired) continue;
+    if (min == null || l.dateAcquired < min) min = l.dateAcquired;
+  }
+  return min;
+}
 
-    return positions.map(p => {
-      const q = quotes[p.symbol];
-      const price = q?.price ?? null;
-      const isOpen = view !== 'Closed Positions';
+function buildChartData(positions, quotes, spyLookup, isOpen, today) {
+  if (!positions || positions.length === 0) return [];
+  const benchmarkFn = spyLookup ? (d) => benchmarkPriceOnDate(spyLookup, d) : null;
 
-      let totalCost, gl, glPct, cagr, alpha;
+  return positions.map(p => {
+    const q = quotes[p.symbol];
+    const price = q?.price ?? null;
 
-      const benchmarkFn = spyLookup ? (d) => benchmarkPriceOnDate(spyLookup, d) : null;
+    let totalCost, gl, glPct, cagr, alpha;
 
-      if (isOpen) {
-        totalCost = p.totalCost;
-        const value = price != null ? p.totalShares * price : null;
-        gl = value != null ? gainLoss(totalCost, value) : null;
-        glPct = value != null ? gainLossPct(totalCost, value) : null;
-        cagr = price != null && p.lots ? calcLotsIRR(p.lots, price, today) : null;
-        const spyCagr = benchmarkFn && p.lots ? calcBenchmarkIRR(p.lots, benchmarkFn, today) : null;
-        alpha = (cagr != null && spyCagr != null) ? cagr - spyCagr : null;
-      } else {
-        // Use only closed lots — not the full position which mixes open + closed
-        const closedLots = p.allLots?.filter(l => l.transaction !== 'Open') || p.closedLots || p.lots || [];
-        if (closedLots.length === 0) return null;
-        totalCost = closedLots.reduce((s, l) => s + ds(l) * dc(l), 0);
-        const totalReturn = closedLots.reduce((s, l) => s + lotProceeds(l), 0);
-        gl = totalReturn - totalCost;
-        glPct = gainLossPct(totalCost, totalReturn);
-        cagr = calcClosedLotsIRR(closedLots);
-        const spyCagr = benchmarkFn ? calcBenchmarkIRR(closedLots, benchmarkFn, today) : null;
-        alpha = (cagr != null && spyCagr != null) ? cagr - spyCagr : null;
-      }
+    if (isOpen) {
+      totalCost = p.totalCost;
+      const value = price != null ? p.totalShares * price : null;
+      gl = value != null ? gainLoss(totalCost, value) : null;
+      glPct = value != null ? gainLossPct(totalCost, value) : null;
+      cagr = price != null && p.lots ? calcLotsIRR(p.lots, price, today) : null;
+      const spyCagr = benchmarkFn && p.lots ? calcBenchmarkIRR(p.lots, benchmarkFn, today) : null;
+      alpha = (cagr != null && spyCagr != null) ? cagr - spyCagr : null;
+    } else {
+      const closedLots = p.allLots?.filter(l => l.transaction !== 'Open') || p.closedLots || p.lots || [];
+      if (closedLots.length === 0) return null;
+      totalCost = closedLots.reduce((s, l) => s + ds(l) * dc(l), 0);
+      const totalReturn = closedLots.reduce((s, l) => s + lotProceeds(l), 0);
+      gl = totalReturn - totalCost;
+      glPct = gainLossPct(totalCost, totalReturn);
+      cagr = calcClosedLotsIRR(closedLots);
+      const spyCagr = benchmarkFn ? calcBenchmarkIRR(closedLots, benchmarkFn, today) : null;
+      alpha = (cagr != null && spyCagr != null) ? cagr - spyCagr : null;
+    }
 
-      return {
-        symbol: p.symbol,
-        costBasis: totalCost,
-        gains: gl,
-        gainPct: glPct != null ? glPct * 100 : null,
-        cagr: cagr != null ? cagr * 100 : null,
-        alpha: alpha != null ? alpha * 100 : null,
-      };
-    })
-    .filter(d => d != null && d[pctMode] != null)
-    .sort((a, b) => (b[pctMode] ?? -Infinity) - (a[pctMode] ?? -Infinity));
-  }, [positions, quotes, spyLookup, view, today, pctMode]);
+    return {
+      symbol: p.symbol,
+      costBasis: totalCost,
+      gains: gl,
+      gainPct: glPct != null ? glPct * 100 : null,
+      cagr: cagr != null ? cagr * 100 : null,
+      alpha: alpha != null ? alpha * 100 : null,
+    };
+  }).filter(d => d != null);
+}
 
-  if (chartData.length === 0) return null;
+function ChartSection({ title, data, modes, defaultMode }) {
+  const [pctMode, setPctMode] = useState(defaultMode);
+  const activeMode = modes.find(m => m.key === pctMode) || modes[0];
 
-  const activeMode = PCT_MODES.find(m => m.key === pctMode);
+  const sorted = useMemo(() => (
+    [...data]
+      .filter(d => d[activeMode.key] != null)
+      .sort((a, b) => (b[activeMode.key] ?? -Infinity) - (a[activeMode.key] ?? -Infinity))
+  ), [data, activeMode.key]);
+
+  if (sorted.length === 0) return null;
 
   return (
     <div className="portfolio-chart-wrapper">
+      {title && <div className="chart-section-title">{title}</div>}
       <div className="chart-mode-toggle">
-        {PCT_MODES.map(m => (
+        {modes.map(m => (
           <button
             key={m.key}
             className={`tab ${pctMode === m.key ? 'active' : ''}`}
@@ -81,7 +93,7 @@ export default function PortfolioChart({ positions, quotes, spyLookup, view }) {
         ))}
       </div>
       <ResponsiveContainer width="100%" height={400}>
-        <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: 12, bottom: 60 }}>
+        <ComposedChart data={sorted} margin={{ top: 8, right: 12, left: 12, bottom: 60 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
           <XAxis
             dataKey="symbol"
@@ -112,7 +124,7 @@ export default function PortfolioChart({ positions, quotes, spyLookup, view }) {
           />
           <Tooltip
             contentStyle={{ background: '#1a1a2e', border: '1px solid #444', fontSize: 12, padding: '10px 14px', borderRadius: 6 }}
-            content={({ active, payload, label }) => {
+            content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const d = payload[0]?.payload;
               if (!d) return null;
@@ -126,12 +138,16 @@ export default function PortfolioChart({ positions, quotes, spyLookup, view }) {
                   <div style={{ color: d.gainPct >= 0 ? '#34c78a' : '#f94f6a' }}>
                     G/L %: <strong>{d.gainPct != null ? d.gainPct.toFixed(2) + '%' : '—'}</strong>
                   </div>
-                  <div style={{ color: d.cagr >= 0 ? '#34c78a' : '#f94f6a' }}>
-                    CAGR: <strong>{d.cagr != null ? d.cagr.toFixed(2) + '%' : '—'}</strong>
-                  </div>
-                  <div style={{ color: d.alpha >= 0 ? '#34c78a' : '#f94f6a' }}>
-                    Alpha: <strong>{d.alpha != null ? (d.alpha >= 0 ? '+' : '') + d.alpha.toFixed(2) + '%' : '—'}</strong>
-                  </div>
+                  {modes.some(m => m.key === 'cagr') && (
+                    <div style={{ color: d.cagr >= 0 ? '#34c78a' : '#f94f6a' }}>
+                      CAGR: <strong>{d.cagr != null ? d.cagr.toFixed(2) + '%' : '—'}</strong>
+                    </div>
+                  )}
+                  {modes.some(m => m.key === 'alpha') && (
+                    <div style={{ color: d.alpha >= 0 ? '#34c78a' : '#f94f6a' }}>
+                      Alpha: <strong>{d.alpha != null ? (d.alpha >= 0 ? '+' : '') + d.alpha.toFixed(2) + '%' : '—'}</strong>
+                    </div>
+                  )}
                 </div>
               );
             }}
@@ -153,5 +169,62 @@ export default function PortfolioChart({ positions, quotes, spyLookup, view }) {
         </ComposedChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+export default function PortfolioChart({ positions, quotes, spyLookup, view }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const isOpen = view !== 'Closed Positions';
+
+  const { ltData, stData, fullData } = useMemo(() => {
+    if (!isOpen) {
+      return { ltData: [], stData: [], fullData: buildChartData(positions, quotes, spyLookup, false, today) };
+    }
+    const todayMs = new Date(today).getTime();
+    const lt = [];
+    const st = [];
+    for (const p of positions || []) {
+      const earliest = earliestAcquired(p);
+      const ageMs = earliest ? todayMs - new Date(earliest).getTime() : 0;
+      (ageMs >= ONE_YEAR_MS ? lt : st).push(p);
+    }
+    return {
+      ltData: buildChartData(lt, quotes, spyLookup, true, today),
+      stData: buildChartData(st, quotes, spyLookup, true, today),
+      fullData: [],
+    };
+  }, [positions, quotes, spyLookup, isOpen, today]);
+
+  if (!isOpen) {
+    if (fullData.length === 0) return null;
+    return <ChartSection data={fullData} modes={PCT_MODES} defaultMode="cagr" />;
+  }
+
+  if (ltData.length === 0 && stData.length === 0) return null;
+
+  // Suppress section titles when only one group has data — keeps the UI quiet
+  // for portfolios that are entirely long-term (or entirely short-term).
+  const showTitles = ltData.length > 0 && stData.length > 0;
+  const stModes = PCT_MODES.filter(m => m.key === 'gainPct');
+
+  return (
+    <>
+      {ltData.length > 0 && (
+        <ChartSection
+          title={showTitles ? 'Long-term holdings (≥ 1 year)' : null}
+          data={ltData}
+          modes={PCT_MODES}
+          defaultMode="cagr"
+        />
+      )}
+      {stData.length > 0 && (
+        <ChartSection
+          title={showTitles ? 'Short-term holdings (< 1 year)' : null}
+          data={stData}
+          modes={stModes}
+          defaultMode="gainPct"
+        />
+      )}
+    </>
   );
 }

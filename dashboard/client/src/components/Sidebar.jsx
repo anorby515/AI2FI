@@ -10,6 +10,7 @@ const BASE_NAV = [
       { key: 'budget', label: 'Annual Budget' },
       { key: 'education-savings', label: 'Educational Savings' },
       { key: 'debt-mortgage', label: 'Mortgage Payoff' },
+      { key: 'pension', label: 'Pension' },
     ]
   },
   {

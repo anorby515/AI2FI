@@ -13,6 +13,7 @@ import NetWorthView from './components/NetWorthView';
 import MortgageView from './components/MortgageView';
 import CollegeView from './components/CollegeView';
 import EducationSavingsView from './components/EducationSavingsView';
+import PensionView from './components/PensionView';
 import AnnualBudget from './components/AnnualBudget';
 import ComingSoon from './components/ComingSoon';
 import Welcome from './components/Welcome';
@@ -326,6 +327,7 @@ export default function App() {
         {sidebarView === 'debt-mortgage' && <MortgageView />}
         {sidebarView === 'college' && <CollegeView />}
         {sidebarView === 'education-savings' && <EducationSavingsView />}
+        {sidebarView === 'pension' && <PensionView />}
         {sidebarView === 'budget' && <AnnualBudget />}
         {sidebarView === 'sankey-diagram' && (
           <AnnualBudget
@@ -383,7 +385,7 @@ export default function App() {
 
         {sidebarView === 'tax-harvesting' && <TaxHarvesting />}
 
-        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'budget', 'moat-analysis', 'sankey-diagram', 'refinance-calculator', 'tax-harvesting', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'pension', 'budget', 'moat-analysis', 'sankey-diagram', 'refinance-calculator', 'tax-harvesting', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
           <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
         )}
       </main>

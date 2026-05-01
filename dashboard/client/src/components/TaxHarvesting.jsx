@@ -720,7 +720,7 @@ function PlanRow({ row, moats, showSold, onChangeShares, onChangePrice, onToggle
       <td className={`num ${r.taxImpact != null && r.taxImpact < 0 ? 'pos' : 'dim'}`}>
         {r.taxImpact != null ? formatCurrency(r.taxImpact) : '—'}
       </td>
-      <td><MoatBadges moat={moats[r.symbol]} /></td>
+      <td><MoatBadges moat={moats[r.symbol] || moats[(r.symbol || '').toUpperCase()]} /></td>
       <td className={`num th__running ${inactive ? 'dim' : (r.running >= 0 ? 'pos' : 'neg')}`}>
         {formatCurrency(r.running)}
       </td>

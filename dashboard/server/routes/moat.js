@@ -94,12 +94,14 @@ router.get('/:ticker', (req, res) => {
 // GET /api/moat — list all available tickers (union of profile + demo dirs)
 // When called with ?summary=1, returns a map of { TICKER: { size, direction, sources } }
 // so callers can render aggregated badges across many symbols without N+1 fetches.
+// Tickers are normalized to UPPERCASE so callers can do moats[lot.symbol] regardless
+// of how the .md file happens to be cased on disk (filesystems differ across OSes).
 router.get('/', (req, res) => {
   const tickers = new Set();
   for (const dir of moatSearchDirs()) {
     try {
       for (const f of fs.readdirSync(dir)) {
-        if (f.endsWith('.md')) tickers.add(f.replace('.md', ''));
+        if (f.endsWith('.md')) tickers.add(f.replace(/\.md$/i, '').toUpperCase());
       }
     } catch { /* ignore */ }
   }

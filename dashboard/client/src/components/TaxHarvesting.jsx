@@ -538,13 +538,13 @@ function PlanTable({ planRows, moats, onChangeShares, onChangePrice, onToggleChe
       :                lastRunning < threshold && r.running >= threshold
     );
     if (cross(0, 'down')) {
-      dividers.push({ afterIndex: idx, kind: 'zero', label: '↑ Net $0 reached · further losses dip into carry-forward space' });
+      dividers.push({ afterIndex: idx, kind: 'zero', label: '↑ Net $0 reached · YTD gains fully offset; losses below now reduce ordinary income (up to -$3K)' });
     }
     if (cross(0, 'up')) {
       dividers.push({ afterIndex: idx, kind: 'zero-up', label: '↑ Crossed back above $0 · further gains are taxable' });
     }
     if (cross(ORD_LOSS_LIMIT, 'down')) {
-      dividers.push({ afterIndex: idx, kind: 'warn', label: '↑ -$3,000 reached · this is the full ordinary-income offset; extra losses carry forward' });
+      dividers.push({ afterIndex: idx, kind: 'warn', label: '↑ -$3,000 reached · ordinary-income offset fully claimed; extra losses carry forward to next year' });
     }
     if (cross(-VIEW_CAP, 'down')) {
       dividers.push({ afterIndex: idx, kind: 'cap', label: `↑ -$${VIEW_CAP.toLocaleString()} reached · still valid carry-forward, just past display cap` });

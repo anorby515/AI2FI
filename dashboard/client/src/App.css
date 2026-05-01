@@ -174,7 +174,7 @@ body {
 }
 
 .app-header {
-  height: var(--header-h);
+  min-height: var(--header-h);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -197,6 +197,15 @@ body {
 }
 
 .header-filters {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  flex: 1;
+  padding: 8px 0;
+}
+
+.header-filters-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -889,6 +898,13 @@ td.dim { color: var(--text-dim); }
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 20px;
+}
+.chart-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 10px;
+  letter-spacing: 0.3px;
 }
 /* ─── Portfolio Pies ─────────────────────────────────────────────────── */
 .portfolio-pies {

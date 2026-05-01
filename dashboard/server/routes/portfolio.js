@@ -90,6 +90,7 @@ function parseSheet(spreadsheetPath) {
     holdings.push({
       account: accountType,
       accountTypeGroup: groupByType.get(String(accountType).trim()) || '',
+      accountName: row[colIdx['Account']] || '',
       owner: row[colIdx['Owner']] || '',
       transaction: row[colIdx['Transaction']] || '',
       symbol,

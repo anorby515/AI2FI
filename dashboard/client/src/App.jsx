@@ -43,13 +43,13 @@ const PORTFOLIO_GROUP_BY_VIEW = {
   esa: 'ESA',
 };
 
-const PORTFOLIO_TABS = ['Holdings', 'Closed'];
+const PORTFOLIO_TABS = ['Open Positions', 'Closed Positions'];
 // Owners and Accounts are derived dynamically from the data below
 const LOT_FILTERS = ['All', 'Open', 'Closed'];
 
 export default function App() {
   const [sidebarView, setSidebarView] = useState('getting-started');
-  const [view, setView] = useState('Holdings');
+  const [view, setView] = useState('Open Positions');
   const [selectedSymbol, setSelectedSymbol] = useState(null);
   const [selectedOwners, setSelectedOwners] = useState(new Set());
   const [selectedAccounts, setSelectedAccounts] = useState(new Set());
@@ -282,13 +282,6 @@ export default function App() {
       <header className="app-header">
         <div className="header-filters">
           {isPortfolioView && (<>
-          <div className="filter-group">
-            <button className={`tab ${allOwnersSelected ? 'active' : ''}`} onClick={clearOwners}>All</button>
-            {OWNERS.map(o => (
-              <button key={o} className={`tab ${selectedOwners.has(o) ? 'active' : ''}`} onClick={() => toggleOwner(o)}>{o}</button>
-            ))}
-          </div>
-          <div className="header-separator" />
           <nav className="nav-tabs">
             {PORTFOLIO_TABS.map(v => (
               <button key={v} className={`nav-tab ${view === v ? 'active' : ''}`} onClick={() => setView(v)}>{v}</button>
@@ -299,6 +292,13 @@ export default function App() {
             <button className={`tab ${allSelected ? 'active' : ''}`} onClick={clearAccounts}>All</button>
             {ACCOUNTS.map(a => (
               <button key={a} className={`tab ${selectedAccounts.has(a) ? 'active' : ''}`} onClick={() => toggleAccount(a)}>{a}</button>
+            ))}
+          </div>
+          <div className="header-separator" />
+          <div className="filter-group">
+            <button className={`tab ${allOwnersSelected ? 'active' : ''}`} onClick={clearOwners}>All</button>
+            {OWNERS.map(o => (
+              <button key={o} className={`tab ${selectedOwners.has(o) ? 'active' : ''}`} onClick={() => toggleOwner(o)}>{o}</button>
             ))}
           </div>
           </>)}
@@ -351,9 +351,9 @@ export default function App() {
             onReload={reloadPortfolio}
           />
 
-          {(view === 'Holdings' || view === 'Closed') && (() => {
+          {(view === 'Open Positions' || view === 'Closed Positions') && (() => {
             const filteredPos = (() => {
-              const src = view === 'Holdings' ? positions : allPositions;
+              const src = view === 'Open Positions' ? positions : allPositions;
               return allSelected ? src : src.filter(p => p.accounts.some(a => selectedAccounts.has(a)));
             })();
             return (
@@ -361,7 +361,7 @@ export default function App() {
             );
           })()}
 
-          {view === 'Holdings' && (
+          {view === 'Open Positions' && (
             <HoldingsList
               positions={positions}
               quotes={quotes}
@@ -371,7 +371,7 @@ export default function App() {
             />
           )}
 
-          {view === 'Closed' && (
+          {view === 'Closed Positions' && (
             <ClosedPositions
               closedLots={closedLots}
               selectedAccounts={selectedAccounts}

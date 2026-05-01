@@ -22,7 +22,7 @@ export default function PortfolioChart({ positions, quotes, spyLookup, view }) {
     return positions.map(p => {
       const q = quotes[p.symbol];
       const price = q?.price ?? null;
-      const isOpen = view !== 'Closed';
+      const isOpen = view !== 'Closed Positions';
 
       let totalCost, gl, glPct, cagr, alpha;
 

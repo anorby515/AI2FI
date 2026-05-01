@@ -32,6 +32,7 @@ app.use('/api/splits', require('./routes/splits'));
 app.use('/api/dividends', require('./routes/dividends'));
 app.use('/api/benchmark', require('./routes/benchmark'));
 app.use('/api/moat', require('./routes/moat'));
+app.use('/api/tax-harvesting', require('./routes/taxHarvesting'));
 app.use('/api/networth', require('./routes/networth'));
 app.use('/api/mortgage', require('./routes/mortgage'));
 app.use('/api/education-savings', require('./routes/education-savings'));

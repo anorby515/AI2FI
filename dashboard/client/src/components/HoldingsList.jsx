@@ -58,14 +58,14 @@ export default function HoldingsList({ positions, quotes, selectedAccounts, onSe
           <tr>
             <ColHeader col="symbol" label="Symbol" />
             <ColHeader col="description" label="Description" />
-            <th>Accounts</th>
+            <ColHeader col="price" label="Last Price" />
             <ColHeader col="totalShares" label="Shares" />
-            <ColHeader col="avgCostBasis" label="Cost/Share" />
-            <ColHeader col="totalCost" label="Total Cost" />
             <ColHeader col="gl" label="G/L $" />
             <ColHeader col="glPct" label="G/L %" />
             <ColHeader col="cagr" label="CAGR" />
             <ColHeader col="alpha" label="Alpha" />
+            <ColHeader col="avgCostBasis" label="Avg Cost/Share" />
+            <ColHeader col="totalCost" label="Cost Basis Total" />
           </tr>
         </thead>
         <tbody>
@@ -77,10 +77,8 @@ export default function HoldingsList({ positions, quotes, selectedAccounts, onSe
               <tr key={p.symbol} className="clickable" onClick={() => onSelectPosition(p.symbol)}>
                 <td className="symbol">{p.symbol}</td>
                 <td className="desc">{p.description}</td>
-                <td>{p.accounts.join(', ')}</td>
+                <td>{p.price != null ? formatCurrency(p.price) : '—'}</td>
                 <td>{formatShares(p.totalShares)}</td>
-                <td>{formatCurrency(p.avgCostBasis)}</td>
-                <td>{formatCurrency(p.totalCost)}</td>
                 <td className={p.gl != null ? (isPos ? 'positive' : 'negative') : ''}>
                   {p.gl != null ? formatCurrency(p.gl) : '—'}
                 </td>
@@ -93,6 +91,8 @@ export default function HoldingsList({ positions, quotes, selectedAccounts, onSe
                 <td className={p.alpha != null ? (alphaPos ? 'positive' : 'negative') : ''}>
                   {p.alpha != null ? (p.alpha >= 0 ? '+' : '') + formatPct(p.alpha) : '—'}
                 </td>
+                <td>{formatCurrency(p.avgCostBasis)}</td>
+                <td>{formatCurrency(p.totalCost)}</td>
               </tr>
             );
           })}

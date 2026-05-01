@@ -64,14 +64,15 @@ function effective(row, overrides) {
 // place and just zeros its contribution. The running-total accumulator
 // uses **effective** gain (shares-to-sell × (price − cost)).
 function buildHarvestOrder(rows, ytdNet, target = ORD_LOSS_LIMIT) {
-  const losses = rows.filter(r => r.potentialGL < 0).slice().sort((a, b) => {
-    if (a.term !== b.term) return a.term === 'short' ? -1 : 1;  // ST first
-    return a.potentialGLPct - b.potentialGLPct;                  // most negative % first (-Gain%)
-  });
-  const gains = rows.filter(r => r.potentialGL >= 0).slice().sort((a, b) => {
-    if (a.term !== b.term) return a.term === 'long' ? -1 : 1;  // LT first
-    return b.potentialGLPct - a.potentialGLPct;                 // largest % first (+Gain%)
-  });
+  // Pure Gain % ranking — no term preference. Cross-netting (ST gain vs.
+  // LT loss, etc.) means term doesn't change this year's tax outcome, so
+  // we order purely by depth of percentage move.
+  const losses = rows.filter(r => r.potentialGL < 0).slice().sort(
+    (a, b) => a.potentialGLPct - b.potentialGLPct                // most negative % first
+  );
+  const gains = rows.filter(r => r.potentialGL >= 0).slice().sort(
+    (a, b) => b.potentialGLPct - a.potentialGLPct                // largest % first
+  );
 
   let current = ytdNet;
   const order = [];

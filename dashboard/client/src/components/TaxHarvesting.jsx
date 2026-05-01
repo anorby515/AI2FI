@@ -58,22 +58,19 @@ function effective(row, overrides) {
   return { sharesToSell, price, gl };
 }
 
-// Interleaved harvest-order algorithm. Operates on rows that have an
-// `effectiveGL` field. Rows with effectiveGL === 0 are returned last in
-// stable potential-gain order so they don't churn around when toggled off.
+// Interleaved harvest-order algorithm. Order is decided by each lot's
+// **potential** gain (full-lot at current price) so a row's position is
+// stable across edits — toggling Shares to Sell to 0 leaves the row in
+// place and just zeros its contribution. The running-total accumulator
+// uses **effective** gain (shares-to-sell × (price − cost)).
 function buildHarvestOrder(rows, ytdNet, target = ORD_LOSS_LIMIT) {
-  const active   = rows.filter(r => r.effectiveGL !== 0);
-  const inactive = rows.filter(r => r.effectiveGL === 0)
-    .slice()
-    .sort((a, b) => b.potentialGL - a.potentialGL);
-
-  const losses = active.filter(r => r.effectiveGL < 0).slice().sort((a, b) => {
-    if (a.term !== b.term) return a.term === 'short' ? -1 : 1; // ST first
-    return a.effectiveGL - b.effectiveGL;                       // most negative first
+  const losses = rows.filter(r => r.potentialGL < 0).slice().sort((a, b) => {
+    if (a.term !== b.term) return a.term === 'short' ? -1 : 1;  // ST first
+    return a.potentialGLPct - b.potentialGLPct;                  // most negative % first (-Gain%)
   });
-  const gains = active.filter(r => r.effectiveGL > 0).slice().sort((a, b) => {
+  const gains = rows.filter(r => r.potentialGL >= 0).slice().sort((a, b) => {
     if (a.term !== b.term) return a.term === 'long' ? -1 : 1;  // LT first
-    return b.effectiveGL - a.effectiveGL;                       // largest first
+    return b.potentialGLPct - a.potentialGLPct;                 // largest % first (+Gain%)
   });
 
   let current = ytdNet;
@@ -105,7 +102,7 @@ function buildHarvestOrder(rows, ytdNet, target = ORD_LOSS_LIMIT) {
     current += loss.effectiveGL;
   }
 
-  return [...order, ...inactive];
+  return order;
 }
 
 export default function TaxHarvesting() {
@@ -466,9 +463,9 @@ export default function TaxHarvesting() {
             order: drop to <strong>-$3,000</strong> with losses, add the largest LT gain,
             refill losses back to -$3K, repeat. Edit <em>Shares to Sell</em> or
             <em> Share Price</em> on any row to model partial sales or different prices —
-            the order below re-optimizes automatically. The checkbox flips Shares to
-            Sell between 0 and the full lot; rows at 0 stay in place at the bottom of
-            HARVEST OPTIONS.
+            the running total updates and the order keeps optimizing. The checkbox flips
+            Shares to Sell between 0 and the full lot; rows stay in their position
+            either way.
           </div>
 
           <Card>

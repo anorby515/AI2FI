@@ -50,9 +50,11 @@ function lotKey(r) {
 }
 
 // Pull effective shares-to-sell / price / gain from the row + override map.
+// Shares-to-Sell defaults to 0 — every option starts unchecked, the user
+// opts each lot in.
 function effective(row, overrides) {
   const o = overrides.get(lotKey(row));
-  const sharesToSell = o?.sharesToSell ?? row.shares;
+  const sharesToSell = o?.sharesToSell ?? 0;
   const price        = o?.price        ?? row.price;
   const gl           = sharesToSell * (price - row.costPerShare);
   return { sharesToSell, price, gl };
@@ -350,37 +352,25 @@ export default function TaxHarvesting() {
 
   // Build the rows the export endpoint will serialize. Only include rows
   // that contribute something:
-  //   - Realized rows always (history is part of the plan)
-  //   - Option rows only when sharesToSell > 0 (i.e. checkbox checked, and
-  //     the user hasn't typed 0 into the input)
+  //   - Already-sold (realized) lots are excluded — the export is an action
+  //     sheet for the upcoming sells.
+  //   - Option rows only when sharesToSell > 0 (checkbox checked, user hasn't
+  //     typed 0 into the input).
   function buildExportRows() {
     const out = [];
     for (const r of planRows) {
-      if (r.kind === 'option' && (!r.sharesToSell || r.sharesToSell <= 0)) continue;
-      const moat = moats[r.symbol] || moats[(r.symbol || '').toUpperCase()];
-      const moatText = moat
-        ? [moat.size, moat.direction].filter(Boolean).join(' / ')
-        : '';
-      const sharesToSell = r.kind === 'realized' ? (r.sharesSold ?? r.shares) : r.sharesToSell;
-      const sharePrice   = r.kind === 'realized' ? r.sellPrice : r.effectivePrice;
-      const gainPct      = r.kind === 'realized' ? r.glPct : r.effectiveGLPct;
+      if (r.kind !== 'option') continue;
+      if (!r.sharesToSell || r.sharesToSell <= 0) continue;
       out.push({
-        term: r.term === 'long' ? 'LT' : 'ST',
         symbol: r.symbol,
-        owner: r.owner || '',
         account: r.account || '',
+        owner: r.owner || '',
         dateAcquired: r.dateAcquired || '',
-        dateSold: r.dateSold || '',
-        gainPct,
-        shares: r.shares,
-        sharesToSell,
-        sharePrice,
+        sharesToSell: r.sharesToSell,
+        totalShares: r.shares,
+        sharePrice: r.effectivePrice,
         estimatedProceeds: r.estimatedProceeds,
-        gainDollar: r.contribution,
-        taxImpact: r.taxImpact,
-        running: r.running,
         runningProceeds: r.runningProceeds,
-        moat: moatText,
       });
     }
     return out;
@@ -591,20 +581,24 @@ export default function TaxHarvesting() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PlanTable({ planRows, moats, onChangeShares, onChangePrice, onToggleCheck }) {
-  if (planRows.length === 0) {
-    return <div className="th__empty">No realized G/L this year and no open brokerage lots to harvest.</div>;
-  }
-
+  // Already-realized lots are sold and accounted for; the plan view focuses on
+  // what's still actionable. We keep them in `planRows` so the running totals
+  // continue to factor in YTD net, but we don't render them here.
   const realized = planRows.filter(r => r.kind === 'realized');
   const options  = planRows.filter(r => r.kind === 'option');
-  const showSold = realized.length > 0;
-  // Base cols: checkbox, ticker (with term badge), owner, account, acquired,
+
+  if (options.length === 0) {
+    return <div className="th__empty">No open brokerage lots to harvest.</div>;
+  }
+
+  // Cols: checkbox, ticker (with term badge), owner, account, acquired,
   // gain%, shares, shares to sell, share price, est. proceeds, gain $,
   // est. tax, running harvest, running proceeds, moat.
-  // +1 if Sold column is present.
-  const totalCols = 15 + (showSold ? 1 : 0);
+  const totalCols = 15;
 
-  // Threshold-crossing dividers within HARVEST OPTIONS.
+  // Threshold-crossing dividers within HARVEST OPTIONS. Seed `lastRunning`
+  // from the (hidden) realized tail so the YTD baseline still drives the
+  // first option row's threshold logic.
   const dividers = [];
   let lastRunning = realized.length > 0 ? realized[realized.length - 1].running : 0;
   if (lastRunning < 0) {
@@ -644,7 +638,6 @@ function PlanTable({ planRows, moats, onChangeShares, onChangePrice, onToggleChe
             <th>Owner</th>
             <th>Account</th>
             <th>Acquired</th>
-            {showSold && <th>Sold</th>}
             <th className="num">Gain %</th>
             <th className="num">Shares</th>
             <th className="num">Shares to Sell</th>
@@ -658,22 +651,6 @@ function PlanTable({ planRows, moats, onChangeShares, onChangePrice, onToggleChe
           </tr>
         </thead>
         <tbody>
-          {realized.length > 0 && (
-            <tr className="th__section">
-              <td colSpan={totalCols}>
-                REALIZED · {realized.length} closed lot{realized.length === 1 ? '' : 's'} this year
-              </td>
-            </tr>
-          )}
-          {realized.map((r, i) => (
-            <PlanRow
-              key={`r${i}`}
-              row={r}
-              moats={moats}
-              showSold={showSold}
-            />
-          ))}
-
           <tr className="th__section">
             <td colSpan={totalCols}>HARVEST OPTIONS · {options.length} open lot{options.length === 1 ? '' : 's'} (interleaved order)</td>
           </tr>
@@ -693,7 +670,6 @@ function PlanTable({ planRows, moats, onChangeShares, onChangePrice, onToggleChe
               <PlanRow
                 row={r}
                 moats={moats}
-                showSold={showSold}
                 onChangeShares={onChangeShares}
                 onChangePrice={onChangePrice}
                 onToggleCheck={onToggleCheck}
@@ -711,7 +687,7 @@ function PlanTable({ planRows, moats, onChangeShares, onChangePrice, onToggleChe
   );
 }
 
-function PlanRow({ row, moats, showSold, onChangeShares, onChangePrice, onToggleCheck }) {
+function PlanRow({ row, moats, onChangeShares, onChangePrice, onToggleCheck }) {
   const r = row;
   const isOption  = r.kind === 'option';
   const checked   = isOption ? r.sharesToSell > 0 : true;
@@ -762,7 +738,6 @@ function PlanRow({ row, moats, showSold, onChangeShares, onChangePrice, onToggle
       <td className="th__dim">{r.owner || '—'}</td>
       <td className="th__dim">{r.account}</td>
       <td className="th__dim">{r.dateAcquired}</td>
-      {showSold && <td className="th__dim">{r.dateSold || '—'}</td>}
       <td className={`num ${displayGain >= 0 ? 'pos' : 'neg'}`}>{formatPct(displayGainPct)}</td>
       <td className="num th__num-cell">{formatNumberCompact(displayShares)}</td>
       <td className="num th__input-cell">

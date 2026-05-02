@@ -25,8 +25,45 @@
   flex-wrap: wrap;
 }
 
+.ch__head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .ch__title    { font-size: 24px; font-weight: 700; letter-spacing: -0.6px; }
-.ch__subtitle { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
+.ch__subtitle { font-size: 12.5px; color: var(--ink-2); }
+
+/* Metadata strip — Account / Current Balance pulled from the
+   spreadsheet's Charitable Trust tab header rows. */
+.ch__meta-strip {
+  display: flex;
+  gap: var(--gap-lg);
+  margin-top: var(--gap-sm);
+  flex-wrap: wrap;
+}
+.ch__meta-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ch__meta-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  font-weight: 600;
+}
+.ch__meta-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.ch__meta-asof {
+  font-size: 11.5px;
+  color: var(--dim);
+}
 
 .ch__loading,
 .ch__error {
@@ -36,11 +73,22 @@
   text-align: center;
 }
 
-/* ── Hero — YTD activity panel with three Stat tiles ─────────────────── */
+/* ── Overview row — hero (left) + sector pie (right) ─────────────────── */
+.ch__overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+/* ── Hero — three stacked activity rows (Lifetime / YTD / Last Year) ── */
 .ch__hero {
   padding: var(--pad-lg);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pad);
 }
 .ch__hero::before {
   content: "";
@@ -50,16 +98,24 @@
   background: radial-gradient(circle, var(--accent-weak), transparent 70%);
   pointer-events: none;
 }
+.ch__hero-section {
+  position: relative;
+  z-index: 1;
+}
+.ch__hero-sep {
+  height: 1px;
+  background: var(--rule);
+  position: relative;
+  z-index: 1;
+}
 .ch__hero-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  position: relative;
-  z-index: 1;
-  margin-bottom: var(--pad);
+  margin-bottom: var(--gap);
 }
 .ch__hero-eyebrow {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--ink);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -68,16 +124,14 @@
 .ch__hero-year {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--ink-2);
 }
 .ch__hero-grid {
   display: grid;
   grid-template-columns: 1fr auto 1fr auto 1fr;
-  gap: var(--pad);
+  gap: var(--gap-lg);
   align-items: center;
-  position: relative;
-  z-index: 1;
 }
 .ch__hero-divider {
   width: 1px;
@@ -248,7 +302,7 @@
 }
 
 @media (max-width: 1100px) {
-  .ch__split { grid-template-columns: 1fr; }
+  .ch__overview { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
   .ch__hero-grid {

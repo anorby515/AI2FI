@@ -42,18 +42,73 @@ function formatDate(val) {
   return null;
 }
 
+// Pull free-form metadata key/value pairs from the rows above the table.
+// Recognized labels (case-insensitive, trailing colon optional):
+//   Account            → meta.account            (string)
+//   Timeframe          → meta.timeframe          (string)
+//   Current Balance    → meta.currentBalance     (number) +
+//                        meta.currentBalanceAsOf (ISO date) — pulled from a
+//                        sibling cell that starts with "as of …" if present.
+function parseTrustMeta(rows, headerIdx) {
+  const meta = {};
+  const labelMap = {
+    account:        'account',
+    timeframe:      'timeframe',
+    'current balance': 'currentBalance',
+    balance:        'currentBalance',
+  };
+  for (let i = 0; i < headerIdx; i++) {
+    const row = rows[i] || [];
+    for (let c = 0; c < row.length; c++) {
+      const cell = row[c];
+      if (typeof cell !== 'string') continue;
+      const label = cell.trim().toLowerCase().replace(/:\s*$/, '');
+      const key = labelMap[label];
+      if (!key) continue;
+      // Walk to the right looking for the value (skip blank cells).
+      let valueCell = null;
+      let asOfCell = null;
+      for (let nc = c + 1; nc < row.length; nc++) {
+        const v = row[nc];
+        if (v == null || v === '') continue;
+        if (valueCell == null) {
+          valueCell = v;
+          continue;
+        }
+        // Subsequent non-blank cells: capture an "As of …" tag if present.
+        if (typeof v === 'string' && /^as\s+of\b/i.test(v.trim())) {
+          asOfCell = v.trim().replace(/^as\s+of\s*/i, '');
+          break;
+        }
+      }
+      if (key === 'currentBalance') {
+        const num = Number(valueCell);
+        if (Number.isFinite(num)) meta.currentBalance = num;
+        if (asOfCell) {
+          const iso = formatDate(asOfCell);
+          if (iso) meta.currentBalanceAsOf = iso;
+        }
+      } else {
+        if (valueCell != null) meta[key] = String(valueCell).trim();
+      }
+      break;
+    }
+  }
+  return meta;
+}
+
 function parseDistributions(wb) {
   const sheetName = wb.SheetNames.find(n =>
     TAB_NAME_CANDIDATES.some(c => c.toLowerCase() === n.trim().toLowerCase())
   );
-  if (!sheetName) return { distributions: [], tabFound: false };
+  if (!sheetName) return { distributions: [], meta: {}, tabFound: false };
 
   const ws = wb.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
-  if (!rows.length) return { distributions: [], tabFound: true };
+  if (!rows.length) return { distributions: [], meta: {}, tabFound: true };
 
   // Find header row in the first 10 rows (tolerate leading title/metadata rows
-  // like Account / Timeframe on top of the table).
+  // like Account / Timeframe / Current Balance on top of the table).
   let headerIdx = -1;
   for (let i = 0; i < Math.min(10, rows.length); i++) {
     const r = rows[i] || [];
@@ -62,7 +117,9 @@ function parseDistributions(wb) {
       break;
     }
   }
-  if (headerIdx < 0) return { distributions: [], tabFound: true };
+  if (headerIdx < 0) return { distributions: [], meta: parseTrustMeta(rows, rows.length), tabFound: true };
+
+  const meta = parseTrustMeta(rows, headerIdx);
 
   const headers = rows[headerIdx];
   const iDate   = findHeaderIdx(headers, 'date');
@@ -84,7 +141,7 @@ function parseDistributions(wb) {
       amount,
     });
   }
-  return { distributions, tabFound: true };
+  return { distributions, meta, tabFound: true };
 }
 
 // Contributions: charitable stock sales from the Brokerage Ledger. Each lot
@@ -146,9 +203,9 @@ function parseContributions(wb) {
 
 function parseCharitable(spreadsheetPath) {
   const wb = XLSX.readFile(spreadsheetPath, { cellDates: false });
-  const { distributions, tabFound } = parseDistributions(wb);
+  const { distributions, meta, tabFound } = parseDistributions(wb);
   const contributions = parseContributions(wb);
-  return { contributions, distributions, distributionsTabFound: tabFound };
+  return { contributions, distributions, meta: meta || {}, distributionsTabFound: tabFound };
 }
 
 router.get('/', (_req, res) => {

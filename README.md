@@ -36,13 +36,13 @@ Three ways, ranked by least friction. All end with the dashboard running at `htt
 
 **Option A — one-line Terminal install (recommended):**
 ```
-curl -L https://github.com/anorby515/AI2FI/archive/refs/heads/main.tar.gz | tar xz && cd AI2FI-main && bash dashboard/setup.command
+curl -L https://github.com/anorby515/AI2FI/archive/refs/heads/release.tar.gz | tar xz && cd AI2FI-release && bash dashboard/setup.command
 ```
 Downloads, unpacks, installs. No Gatekeeper prompt, no rename. This is how Homebrew, rustup, and nvm all ship.
 
 **Option B — git clone:**
 ```
-git clone https://github.com/anorby515/AI2FI.git
+git clone --branch release https://github.com/anorby515/AI2FI.git
 cd AI2FI
 bash dashboard/setup.command
 ```
@@ -50,7 +50,7 @@ Good if you already have `git`. Files cloned via git aren't quarantined, so doub
 
 **Option C — ZIP download + Finder:**
 
-Download [AI2FI.zip](https://github.com/anorby515/AI2FI/archive/refs/heads/main.zip), unzip it, and **double-click `Install-AI2FI.html`** at the top level. That page has a path-aware install command and walks through the rest.
+Download [AI2FI.zip](https://github.com/anorby515/AI2FI/archive/refs/heads/release.zip), unzip it, and **double-click `Install-AI2FI.html`** at the top level. That page has a path-aware install command and walks through the rest.
 
 > **Finder path hits Gatekeeper.** If you try to double-click `dashboard/setup.command` directly from a ZIP download on macOS 15+, you'll see a "cannot be opened" dialog. Options A and B above avoid this entirely. If you hit it: **System Settings → Privacy & Security** → scroll down → **Open Anyway**.
 

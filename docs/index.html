@@ -87,7 +87,27 @@
       color: var(--fg-bright);
       letter-spacing: 0.05em;
       line-height: 1.25;
-      margin: 0 0 1.25rem;
+      margin: 0 0 0.6rem;
+    }
+    .version-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--fg-dim);
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.15rem 0.65rem;
+      margin: 0 0 1rem;
+    }
+    .version-pill .vp-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--dot-green);
+      box-shadow: 0 0 6px rgba(39, 201, 63, 0.55);
     }
     .tagline {
       font-family: var(--mono);
@@ -185,6 +205,8 @@
     }
     details[open] { padding-bottom: 0.9rem; }
     summary { cursor: pointer; font-weight: 500; padding: 0.25rem 0; color: var(--fg-bright); }
+
+    /* ── What's new (changelog) ────────────────────────────── */
     #changelog-content h2 {
       font-size: 1rem;
       margin-top: 1.5rem;
@@ -195,6 +217,79 @@
     #changelog-content h3 { font-size: 0.95rem; color: var(--fg-dim); }
     #changelog-content ul { margin-top: 0.3rem; }
     #changelog-status { color: var(--fg-dim); font-size: 0.92rem; }
+
+    /* ── Download card ─────────────────────────────────────── */
+    .download-card {
+      background: var(--term-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem 1.4rem;
+      margin: 0.9rem 0 0.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    .download-card .dl-meta {
+      flex: 1 1 220px;
+      min-width: 200px;
+    }
+    .download-card .dl-version {
+      font-family: var(--mono);
+      font-size: 1.05rem;
+      color: var(--fg-bright);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .download-card .dl-released {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--fg-dim);
+      margin-top: 0.15rem;
+    }
+    .download-card .dl-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .btn.primary-cta {
+      font-size: 1rem;
+      padding: 0.65rem 1.35rem;
+    }
+
+    /* ── Screenshots ───────────────────────────────────────── */
+    .shots {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin: 1rem 0 0.5rem;
+    }
+    @media (min-width: 600px) {
+      .shots { grid-template-columns: repeat(2, 1fr); }
+      .shots .shot:first-child { grid-column: 1 / -1; }
+    }
+    .shot {
+      background: var(--term-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .shot img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: var(--code-bg);
+    }
+    .shot figcaption {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--fg-dim);
+      padding: 0.6rem 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+
     footer {
       margin-top: 4rem;
       padding-top: 1.5rem;
@@ -228,12 +323,17 @@
     </div>
     <div class="term-body">
       <div class="wordmark">AI2FI</div>
+      <div class="version-pill" id="hero-version">
+        <span class="vp-dot" aria-hidden="true"></span>
+        <span id="hero-version-text">Loading version&hellip;</span>
+      </div>
       <p class="tagline">Your AI co-pilot for financial strategy.</p>
       <nav class="term-nav" aria-label="Sections">
-        <a href="#download">1. Install</a>
-        <a href="#setup">2. After install</a>
-        <a href="#start">3. Start coaching</a>
-        <a href="#whats-new">4. What's new</a>
+        <a href="#whats-new">1. What's new</a>
+        <a href="#download">2. Download release</a>
+        <a href="#install">3. Install</a>
+        <a href="#start">4. Start coaching</a>
+        <a href="#screenshots">5. Screenshots</a>
       </nav>
     </div>
   </div>
@@ -243,47 +343,73 @@
 
 <hr class="section-divider" />
 
-<section id="download">
-  <h2>1. Install</h2>
-  <p>Three ways, ranked by least friction. All of them end with the dashboard running at <code>http://localhost:3001</code> and auto-starting at login. Nothing is uploaded — the whole install is local.</p>
-
-  <h3>Option A &mdash; One-line Terminal install <span class="muted">(recommended)</span></h3>
-  <p>Open Terminal (<code>&#8984;-Space</code>, type "Terminal") and paste:</p>
-  <pre><code>curl -L https://github.com/anorby515/AI2FI/archive/refs/heads/main.tar.gz | tar xz &amp;&amp; cd AI2FI-main &amp;&amp; bash dashboard/setup.command</code></pre>
-  <p class="muted">Downloads, unpacks, installs. No Gatekeeper prompt, no rename step. The script runs Homebrew and Node checks, installs dependencies, builds the client, registers the login agent, and opens the dashboard in your browser. First run takes a couple of minutes.</p>
-
-  <h3>Option B &mdash; Git clone</h3>
-  <pre><code>git clone https://github.com/anorby515/AI2FI.git
-cd AI2FI
-bash dashboard/setup.command</code></pre>
-  <p class="muted">Good if you already have <code>git</code>. Files cloned via git aren't quarantined, so double-clicking <code>setup.command</code> from Finder also works with no Gatekeeper dance.</p>
-
-  <h3>Option C &mdash; ZIP download + Finder</h3>
-  <p>
-    <a class="btn secondary" href="https://github.com/anorby515/AI2FI/archive/refs/heads/main.zip">Download AI2FI.zip</a>
+<section id="whats-new">
+  <h2>1. What's new</h2>
+  <p class="muted">Release notes for AI2FI. The most recent release is at the top; <code>Unreleased</code> lists work on <code>main</code> not yet cut to a release.</p>
+  <div id="changelog-status">Loading release notes&hellip;</div>
+  <div id="changelog-content" hidden></div>
+  <p class="muted" style="margin-top:1rem;">
+    Source: <a id="changelog-source-link" href="https://github.com/anorby515/AI2FI/blob/release/CHANGELOG.md">CHANGELOG.md</a> &middot;
+    <a href="https://github.com/anorby515/AI2FI/releases">All GitHub releases</a>
   </p>
-  <p class="muted">Unzip, then in Finder open <code>AI2FI-main/dashboard/</code> and double-click <code>setup.command</code>.</p>
-
-  <div class="callout">
-    <strong>Finder path hits Gatekeeper.</strong> macOS 15+ blocks <code>.command</code> files downloaded from the internet. You'll see a "cannot be opened" dialog &mdash; click <strong>Done</strong>, open <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll to the Security section, click <strong>Open Anyway</strong>, and enter your password. Option A avoids this entirely.
-  </div>
 </section>
 
 <hr class="section-divider" />
 
-<section id="setup">
-  <h2>2. After install</h2>
+<section id="download">
+  <h2>2. Download release</h2>
+  <p>Grab the latest published release of AI2FI. Everything is local &mdash; downloading and running the dashboard does not transmit any of your data.</p>
+
+  <div class="download-card" id="download-card">
+    <div class="dl-meta">
+      <div class="dl-version" id="dl-version">AI2FI v&mdash;</div>
+      <div class="dl-released" id="dl-released">released &mdash;</div>
+    </div>
+    <div class="dl-actions">
+      <a class="btn primary-cta" id="dl-zip" href="https://github.com/anorby515/AI2FI/archive/refs/heads/release.zip">Download ZIP</a>
+      <a class="btn secondary" id="dl-releases" href="https://github.com/anorby515/AI2FI/releases">All releases</a>
+    </div>
+  </div>
+  <p class="muted">The ZIP always tracks the latest <code>release</code> branch. For a specific version, see <a href="https://github.com/anorby515/AI2FI/releases">All releases</a>.</p>
+</section>
+
+<hr class="section-divider" />
+
+<section id="install">
+  <h2>3. Installation</h2>
+  <p>Three ways, ranked by least friction. All of them end with the dashboard running at <code>http://localhost:3001</code> and auto-starting at login. Nothing is uploaded &mdash; the whole install is local.</p>
+
+  <h3>Option A &mdash; One-line Terminal install <span class="muted">(recommended)</span></h3>
+  <p>Open Terminal (<code>&#8984;-Space</code>, type "Terminal") and paste:</p>
+  <pre><code>curl -L https://github.com/anorby515/AI2FI/archive/refs/heads/release.tar.gz | tar xz &amp;&amp; cd AI2FI-release &amp;&amp; bash dashboard/setup.command</code></pre>
+  <p class="muted">Downloads, unpacks, installs. No Gatekeeper prompt, no rename step. The script runs Homebrew and Node checks, installs dependencies, builds the client, registers the login agent, and opens the dashboard in your browser. First run takes a couple of minutes.</p>
+
+  <h3>Option B &mdash; Git clone</h3>
+  <pre><code>git clone --branch release https://github.com/anorby515/AI2FI.git
+cd AI2FI
+bash dashboard/setup.command</code></pre>
+  <p class="muted">Tracks the <code>release</code> branch so <code>git pull</code> picks up new releases. Files cloned via git aren't quarantined, so double-clicking <code>setup.command</code> from Finder also works with no Gatekeeper dance.</p>
+
+  <h3>Option C &mdash; ZIP download + Finder</h3>
+  <p>
+    <a class="btn secondary" href="https://github.com/anorby515/AI2FI/archive/refs/heads/release.zip">Download AI2FI.zip</a>
+  </p>
+  <p class="muted">Unzip, then in Finder open <code>AI2FI-release/dashboard/</code> and double-click <code>setup.command</code>.</p>
+
+  <div class="callout">
+    <strong>Finder path hits Gatekeeper.</strong> macOS 15+ blocks <code>.command</code> files downloaded from the internet. You'll see a "cannot be opened" dialog &mdash; click <strong>Done</strong>, open <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll to the Security section, click <strong>Open Anyway</strong>, and enter your password. Option A avoids this entirely.
+  </div>
+
+  <h3>After install</h3>
   <p>When the installer finishes, your browser opens <a href="http://localhost:3001">http://localhost:3001</a> and you're looking at the dashboard. It auto-starts every time you log into your Mac.</p>
 
-  <h3>Drop in your spreadsheet</h3>
   <p>The dashboard reads a local spreadsheet to render portfolio, net worth, and benchmark views. Put yours at:</p>
   <pre><code>user-profiles/&lt;your-name&gt;/private/Finances.xlsx</code></pre>
   <p class="muted">Start from <code>user-profiles/example/</code> as a template if you want the expected shape. Everything under <code>user-profiles/&lt;your-name&gt;/</code> is gitignored &mdash; it never leaves your machine.</p>
 
   <h3>To uninstall</h3>
-  <p>From the repo root:</p>
   <pre><code>bash dashboard/uninstall.command</code></pre>
-  <p class="muted">Unloads the login agent, removes the plist, kills anything on port 3001. Your files, spreadsheet, and profile are untouched. (Double-clicking <code>uninstall.command</code> in Finder works too, if it isn't blocked by Gatekeeper.)</p>
+  <p class="muted">Unloads the login agent, removes the plist, kills anything on port 3001. Your files, spreadsheet, and profile are untouched.</p>
 
   <details>
     <summary>Non-Mac / run it manually</summary>
@@ -292,14 +418,14 @@ bash dashboard/setup.command</code></pre>
 npm install
 cd client &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; cd ..
 npm start</code></pre>
-    <p>Then open <a href="http://localhost:3001">http://localhost:3001</a>. Full details and the dev workflow are in <a href="https://github.com/anorby515/AI2FI/blob/main/dashboard/README.md">dashboard/README.md</a>.</p>
+    <p>Then open <a href="http://localhost:3001">http://localhost:3001</a>. Full details and the dev workflow are in <a href="https://github.com/anorby515/AI2FI/blob/release/dashboard/README.md">dashboard/README.md</a>.</p>
   </details>
 </section>
 
 <hr class="section-divider" />
 
 <section id="start">
-  <h2>3. Start coaching with Claude</h2>
+  <h2>4. Start coaching with Claude</h2>
   <p>The dashboard is the "seeing" half. Claude is the "thinking" half &mdash; and that's where the work happens. The entry point is a single skill.</p>
 
   <h3>Open Claude in this folder</h3>
@@ -323,21 +449,29 @@ npm start</code></pre>
 
 <hr class="section-divider" />
 
-<section id="whats-new">
-  <h2>4. What's new</h2>
-  <p class="muted">Release notes for AI2FI. The most recent release is at the top; <code>Unreleased</code> lists work on <code>main</code> not yet tagged.</p>
-  <div id="changelog-status">Loading release notes&hellip;</div>
-  <div id="changelog-content" hidden></div>
-  <p class="muted" style="margin-top:1rem;">
-    Source: <a href="https://github.com/anorby515/AI2FI/blob/main/CHANGELOG.md">CHANGELOG.md</a> &middot;
-    <a href="https://github.com/anorby515/AI2FI/releases">All GitHub releases</a>
-  </p>
+<section id="screenshots">
+  <h2>5. Screenshots</h2>
+  <p class="muted">A few views from the local dashboard. All data shown is from the example template &mdash; your own data never leaves your machine.</p>
+  <div class="shots">
+    <figure class="shot">
+      <img src="screenshots/networth.png" alt="Net Worth view: composition donut and value grid" loading="lazy" />
+      <figcaption>Net Worth &mdash; composition donut + cash, debt, assets, retirement at a glance.</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="screenshots/portfolio.png" alt="Portfolio chart with sign-colored returns" loading="lazy" />
+      <figcaption>Portfolio &mdash; performance chart with sign-colored dots and benchmark overlay.</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="screenshots/moat.png" alt="Moat Analysis card showing competitive position" loading="lazy" />
+      <figcaption>Moat Analysis &mdash; per-position competitive read and quality scoring.</figcaption>
+    </figure>
+  </div>
 </section>
 
 <footer>
   <a href="https://github.com/anorby515/AI2FI">GitHub</a> &middot;
-  <a href="https://github.com/anorby515/AI2FI/blob/main/ai-to-fi-architecture.md">Architecture</a> &middot;
-  <a href="https://github.com/anorby515/AI2FI/blob/main/RELEASING.md">Release process</a>
+  <a href="https://github.com/anorby515/AI2FI/blob/release/ai-to-fi-architecture.md">Architecture</a> &middot;
+  <a href="https://github.com/anorby515/AI2FI/blob/release/RELEASING.md">Release process</a>
   <br />
   Nothing on this page, nor anywhere in AI2FI, transmits your financial data.
 </footer>
@@ -347,13 +481,39 @@ npm start</code></pre>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script>
 (function () {
+  // Pages source = `release` branch. Fetch version + changelog from there
+  // so unreleased work on `main` is never visible on the public page.
+  var RELEASE_BRANCH = 'release';
+  var RAW_BASE = 'https://raw.githubusercontent.com/anorby515/AI2FI/' + RELEASE_BRANCH + '/';
+
+  // ── Version (hero pill + download card) ────────────────────
+  var heroVersionText = document.getElementById('hero-version-text');
+  var dlVersion = document.getElementById('dl-version');
+  var dlReleased = document.getElementById('dl-released');
+  var dlZip = document.getElementById('dl-zip');
+  var dlReleases = document.getElementById('dl-releases');
+
+  fetch(RAW_BASE + 'version.json', { cache: 'no-cache' })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (v) {
+      var label = 'v' + v.version;
+      if (heroVersionText) heroVersionText.textContent = label + ' · released ' + v.released;
+      if (dlVersion) dlVersion.textContent = 'AI2FI ' + label;
+      if (dlReleased) dlReleased.textContent = 'released ' + v.released;
+      if (dlZip && v.downloadUrl) dlZip.href = v.downloadUrl;
+      if (dlReleases && v.releasesUrl) dlReleases.href = v.releasesUrl;
+    })
+    .catch(function () {
+      if (heroVersionText) heroVersionText.textContent = 'latest release';
+    });
+
+  // ── Changelog ──────────────────────────────────────────────
   var statusEl = document.getElementById('changelog-status');
   var contentEl = document.getElementById('changelog-content');
-  var rawUrl = 'https://raw.githubusercontent.com/anorby515/AI2FI/main/CHANGELOG.md';
 
   function showFallback(msg) {
     statusEl.innerHTML =
-      msg + ' View the latest notes on <a href="https://github.com/anorby515/AI2FI/blob/main/CHANGELOG.md">GitHub</a>.';
+      msg + ' View the latest notes on <a href="https://github.com/anorby515/AI2FI/blob/' + RELEASE_BRANCH + '/CHANGELOG.md">GitHub</a>.';
   }
 
   if (typeof marked === 'undefined') {
@@ -361,11 +521,8 @@ npm start</code></pre>
     return;
   }
 
-  fetch(rawUrl, { cache: 'no-cache' })
-    .then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.text();
-    })
+  fetch(RAW_BASE + 'CHANGELOG.md', { cache: 'no-cache' })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
     .then(function (md) {
       var firstH1 = md.indexOf('\n# ');
       var body = firstH1 >= 0 ? md.slice(md.indexOf('\n', firstH1 + 1) + 1) : md;

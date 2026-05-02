@@ -17,7 +17,7 @@ Note on Node: if you use `nvm`, see the caveat at the bottom. The short version 
 The path with the least friction is a one-line Terminal install from the repo root:
 
 ```
-curl -L https://github.com/anorby515/AI2FI/archive/refs/heads/main.tar.gz | tar xz && cd AI2FI-main && bash dashboard/setup.command
+curl -L https://github.com/anorby515/AI2FI/archive/refs/heads/release.tar.gz | tar xz && cd AI2FI-release && bash dashboard/setup.command
 ```
 
 This downloads, unpacks, and runs setup in one step. No Gatekeeper prompt, no rename.

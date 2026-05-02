@@ -4,23 +4,40 @@ This document describes how to cut a release and how a release flows through
 to the public welcome page at
 [anorby515.github.io/AI2FI](https://anorby515.github.io/AI2FI/).
 
-Keep this process boring on purpose. The welcome page, the `CHANGELOG.md`, and
-a git tag are the only moving parts.
+Keep this process boring on purpose. The welcome page, the `CHANGELOG.md`,
+the `VERSION` / `version.json` files, the `release` branch, and a git tag
+are the only moving parts.
 
 ---
 
 ## What "a release" means here
 
-AI2FI ships as a git repository — users clone or download a ZIP of `main`.
-A release is therefore just:
+AI2FI ships as a git repository — users clone or download a ZIP of the
+`release` branch. A release is therefore:
 
-1. A state of `main` that is worth telling users about.
-2. A tag on that commit.
+1. A state of `main` that is worth telling users about, fast-forwarded onto
+   the long-lived `release` branch.
+2. A tag (`vX.Y.Z`) on that commit.
 3. A GitHub Release attached to the tag, with notes.
-4. An updated `CHANGELOG.md` that describes what changed.
+4. An updated `CHANGELOG.md`, `VERSION`, and `version.json` that describe
+   what changed and what version the public is now seeing.
 
-There is no build artifact. There is no package registry. There is nothing to
-publish anywhere else.
+There is no build artifact. There is no package registry. The welcome page
+and the release ZIP are both served straight from the `release` branch.
+
+---
+
+## Branch model
+
+| Branch | Role |
+|---|---|
+| `main` | Active development. May contain unreleased work. **Not** the source for the public welcome page. |
+| `release` | Long-lived. Always points at the latest published release. GitHub Pages serves from here. The "Download ZIP" button on the welcome page is `archive/refs/heads/release.zip`. |
+| `vX.Y.Z` (tags) | Immutable snapshots of `release` at each version. |
+
+The benefit of separating `release` from `main`: the public site only ever
+shows shipped notes and shipped code. Anything in `[Unreleased]` on `main`
+is invisible to users until the release branch is fast-forwarded.
 
 ---
 
@@ -54,53 +71,87 @@ Run through this every time.
    - Leave an empty `[Unreleased]` block at the top with the standard
      subheadings (`### Added`, `### Changed`, `### Fixed`, `### Removed`).
    - Update the compare links at the bottom of the file.
-4. **Commit** with message `release: vX.Y.Z`.
-5. **Tag** the commit: `git tag -a vX.Y.Z -m "AI2FI vX.Y.Z"`.
-6. **Push** the branch and the tag: `git push && git push --tags`.
-7. **Create the GitHub Release.** In the GitHub UI, "Draft a new release" →
+4. **Bump `VERSION` and `version.json`** at the repo root:
+   - `VERSION` — single line, e.g. `0.2.0`.
+   - `version.json` — update `version`, `released` (today's date), and
+     `tag` (`vX.Y.Z`). Leave `branch`, `downloadUrl`, `tarballUrl`,
+     `releasesUrl`, and `changelogUrl` alone — they reference the
+     `release` branch and don't change between versions.
+5. **Commit on `main`** with message `release: vX.Y.Z`.
+6. **Fast-forward `release` to `main`:**
+
+   ```sh
+   git checkout release
+   git merge --ff-only main
+   git checkout main
+   ```
+
+   If `release` has diverged (it shouldn't), investigate before forcing.
+7. **Tag the commit:** `git tag -a vX.Y.Z -m "AI2FI vX.Y.Z"`.
+8. **Push everything:** `git push origin main release && git push --tags`.
+9. **Create the GitHub Release.** In the GitHub UI, "Draft a new release" →
    pick the tag → title `AI2FI vX.Y.Z` → paste the matching section from
    `CHANGELOG.md` as the body (or click "Generate release notes" and
    reconcile).
-8. **Verify the welcome page.** Visit
-   [anorby515.github.io/AI2FI](https://anorby515.github.io/AI2FI/) and confirm
-   the "What's new" section reflects the new release. GitHub Pages usually
-   updates within a minute or two.
+10. **Verify the welcome page.** Visit
+    [anorby515.github.io/AI2FI](https://anorby515.github.io/AI2FI/) and
+    confirm:
+    - The version pill in the hero reads `vX.Y.Z · released YYYY-MM-DD`.
+    - The "Download release" card shows the new version.
+    - The "What's new" section includes the new release at the top.
+
+    GitHub Pages usually updates within a minute or two.
 
 ---
 
-## How the welcome page picks up the notes
+## How the welcome page picks up the release
 
 The welcome page is static HTML at `docs/index.html`, served by GitHub Pages
-from the `main` branch `/docs` folder. It does **not** need to be rebuilt when
-the changelog changes.
+from the `release` branch's `/docs` folder. It does **not** need to be
+rebuilt when the changelog or version changes.
 
 At page load it runs:
 
 ```
-fetch('https://raw.githubusercontent.com/anorby515/AI2FI/main/CHANGELOG.md')
+fetch('https://raw.githubusercontent.com/anorby515/AI2FI/release/version.json')
+fetch('https://raw.githubusercontent.com/anorby515/AI2FI/release/CHANGELOG.md')
 ```
 
-and renders the result with [marked](https://marked.js.org/) (loaded from a
-CDN). Two consequences:
+and renders the result. Three consequences:
 
-- Updating `CHANGELOG.md` on `main` is sufficient to update the public notes.
-  No HTML edit, no rebuild.
-- If the fetch fails (offline, CDN down, raw.githubusercontent.com blocked),
-  the section falls back to a link to `CHANGELOG.md` on GitHub.
+- Updating `CHANGELOG.md` and `version.json` on `release` is sufficient to
+  update the public surface. No HTML edit, no rebuild.
+- The page only sees what is on `release` — anything on `main` that hasn't
+  been fast-forwarded into `release` is invisible to users.
+- If a fetch fails (offline, CDN down, raw.githubusercontent.com blocked),
+  the affected section falls back to a sensible default and a link to
+  GitHub.
 
 ---
 
 ## First-time GitHub Pages setup
 
-Do this once, then never again.
+Do this once after creating the `release` branch, then never again.
 
-1. Go to the repo → **Settings** → **Pages**.
-2. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
-3. Set **Branch** to `main` and the folder to `/docs`. Click **Save**.
-4. Wait ~1–2 minutes. The URL will be
+1. Create the `release` branch locally and push it:
+
+   ```sh
+   git checkout -b release
+   git push -u origin release
+   git checkout main
+   ```
+
+2. Go to the repo → **Settings** → **Pages**.
+3. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
+4. Set **Branch** to `release` and the folder to `/docs`. Click **Save**.
+5. Wait ~1–2 minutes. The URL will be
    `https://anorby515.github.io/AI2FI/`.
-5. Optional: add that URL to the repo's "About" sidebar on the main GitHub
+6. Optional: add that URL to the repo's "About" sidebar on the main GitHub
    page so it's discoverable.
+
+If you previously had Pages serving from `main` / `/docs`, this step
+**replaces** that configuration. The same URL keeps working; only the
+source branch changes.
 
 ---
 
@@ -108,7 +159,7 @@ Do this once, then never again.
 
 - **Anything under `user-profiles/<name>/`.** That's user data, gitignored,
   never committed. The template `user-profiles/example/` is the only profile
-  path that lives on `main`.
+  path that lives on `main` or `release`.
 - **`internal/`.** Dev backlog, drafts, working notes. Gitignored.
 - **Build output, logs, caches.** See `.gitignore`.
 
@@ -127,3 +178,7 @@ curriculum file):
 1. Branch from `main`, fix, open a PR, merge.
 2. Follow the same checklist above with a `PATCH` bump.
 3. In the release body, lead with what was broken and the user-visible impact.
+
+If the fix is so urgent it can't wait for the next planned release, that's
+fine — the checklist is the same regardless of how much else is in the
+release.

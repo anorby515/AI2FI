@@ -11,6 +11,16 @@ every edit here updates the public notes without a rebuild.
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.2.0] - 2026-05-02
+
+### Added
 - **Net Worth view: pie composition + 2x4 value grid.**
   `dashboard/client/src/components/NetWorthView.jsx` now renders the
   composition as a Recharts donut pie with percent labels, sized to a
@@ -190,5 +200,6 @@ Initial public layout of the project.
 - `user-profiles/example/` template; all other profile folders gitignored.
 - Architecture doc (`ai-to-fi-architecture.md`) as the design source of truth.
 
-[Unreleased]: https://github.com/anorby515/AI2FI/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/anorby515/AI2FI/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/anorby515/AI2FI/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/anorby515/AI2FI/releases/tag/v0.1.0

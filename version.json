@@ -1,0 +1,10 @@
+{
+  "version": "0.2.0",
+  "released": "2026-05-02",
+  "tag": "v0.2.0",
+  "branch": "release",
+  "downloadUrl": "https://github.com/anorby515/AI2FI/archive/refs/heads/release.zip",
+  "tarballUrl": "https://github.com/anorby515/AI2FI/archive/refs/heads/release.tar.gz",
+  "releasesUrl": "https://github.com/anorby515/AI2FI/releases",
+  "changelogUrl": "https://github.com/anorby515/AI2FI/blob/release/CHANGELOG.md"
+}

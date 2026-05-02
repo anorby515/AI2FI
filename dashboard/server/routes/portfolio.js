@@ -67,10 +67,7 @@ function parseLookupTables(wb) {
 function parseAccountsTab(wb) {
   // Tolerant sheet name match — the user's tab might be 'Accounts', 'Account', etc.
   const sheetName = wb.SheetNames.find(n => n.trim().toLowerCase().startsWith('account'));
-  if (!sheetName) {
-    console.log('[portfolio] No Accounts-like sheet found. Sheets:', wb.SheetNames);
-    return new Map();
-  }
+  if (!sheetName) return new Map();
   const ws = wb.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
   const norm = (v) => String(v ?? '').trim().toLowerCase();
@@ -79,17 +76,11 @@ function parseAccountsTab(wb) {
   for (let i = 0; i < Math.min(10, rows.length); i++) {
     if (rows[i] && rows[i].some(c => norm(c) === 'account')) { headerIdx = i; break; }
   }
-  if (headerIdx < 0) {
-    console.log(`[portfolio] '${sheetName}' tab: no row with cell 'Account' found in first 10 rows.`);
-    return new Map();
-  }
+  if (headerIdx < 0) return new Map();
   const headers = rows[headerIdx].map(norm);
   const acctIdx = headers.indexOf('account');
   const nameIdx = headers.indexOf('account name');
-  if (acctIdx < 0 || nameIdx < 0) {
-    console.log(`[portfolio] '${sheetName}' tab: missing 'Account' or 'Account Name' column. Headers:`, rows[headerIdx]);
-    return new Map();
-  }
+  if (acctIdx < 0 || nameIdx < 0) return new Map();
   const map = new Map();
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const r = rows[i];
@@ -98,7 +89,6 @@ function parseAccountsTab(wb) {
     const n = r[nameIdx];
     if (a && n) map.set(String(a).trim(), String(n).trim());
   }
-  console.log(`[portfolio] Loaded ${map.size} account-name lookups from '${sheetName}' tab.`);
   return map;
 }
 
@@ -115,9 +105,6 @@ function parseSheet(spreadsheetPath) {
   const colIdx = {};
   headers.forEach((h, i) => { if (h) colIdx[norm(h)] = i; });
   const col = (name) => colIdx[norm(name)];
-  if (col('Account') == null) {
-    console.log("[portfolio] Brokerage Ledger has no 'Account' column. Headers:", headers);
-  }
 
   const get = (row, name) => {
     const idx = col(name);
@@ -125,8 +112,6 @@ function parseSheet(spreadsheetPath) {
   };
 
   const holdings = [];
-  let ledgerNumberMisses = 0;
-  let ledgerNumberHits = 0;
   for (let i = 2; i < rows.length; i++) {
     const row = rows[i];
     if (!row) continue;
@@ -142,12 +127,7 @@ function parseSheet(spreadsheetPath) {
     const dateAcq = formatDate(get(row, 'Date Acquired'));
     const accountType = get(row, 'Account Type') || '';
     const accountNumber = get(row, 'Account') || '';
-    const lookupKey = String(accountNumber).trim();
-    const lookedUp = nameByAccount.get(lookupKey);
-    if (lookupKey) {
-      lookedUp ? ledgerNumberHits++ : ledgerNumberMisses++;
-    }
-    const accountName = lookedUp || String(accountNumber || '');
+    const accountName = nameByAccount.get(String(accountNumber).trim()) || String(accountNumber || '');
     holdings.push({
       account: accountType,
       accountTypeGroup: groupByType.get(String(accountType).trim()) || '',
@@ -167,7 +147,6 @@ function parseSheet(spreadsheetPath) {
       proceeds: parseFloat(get(row, 'Proceeds')) || null,
     });
   }
-  console.log(`[portfolio] Brokerage Ledger: ${ledgerNumberHits} rows resolved to a name, ${ledgerNumberMisses} account-number misses (no lookup match).`);
 
   return holdings;
 }

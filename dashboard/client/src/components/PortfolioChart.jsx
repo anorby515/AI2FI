@@ -1,10 +1,24 @@
 import { useState, useMemo } from 'react';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer,
+  Tooltip, Legend, ReferenceLine, ResponsiveContainer,
 } from 'recharts';
 import { formatCurrency, gainLoss, gainLossPct, calcLotsIRR, calcClosedLotsIRR, calcBenchmarkIRR, ds, dc, lotProceeds } from '../utils/calculations';
 import { benchmarkPriceOnDate } from '../hooks/usePortfolio';
+
+// Resolve design-system tokens at runtime so the chart picks up theme changes
+// without baking hex values into JSX (per dashboard CLAUDE.md design rules).
+function readTokens() {
+  if (typeof window === 'undefined') {
+    return { pos: '#34d399', neg: '#fb7185', ink: '#f1f3fb' };
+  }
+  const cs = getComputedStyle(document.documentElement);
+  return {
+    pos: cs.getPropertyValue('--pos').trim() || '#34d399',
+    neg: cs.getPropertyValue('--neg').trim() || '#fb7185',
+    ink: cs.getPropertyValue('--ink').trim() || '#f1f3fb',
+  };
+}
 
 const PCT_MODES = [
   { key: 'gainPct', label: 'Gain %', color: '#34c78a' },
@@ -68,6 +82,7 @@ function buildChartData(positions, quotes, spyLookup, isOpen, today) {
 function ChartSection({ title, data, modes, defaultMode }) {
   const [pctMode, setPctMode] = useState(defaultMode);
   const activeMode = modes.find(m => m.key === pctMode) || modes[0];
+  const tokens = readTokens();
 
   const sorted = useMemo(() => (
     [...data]
@@ -76,6 +91,15 @@ function ChartSection({ title, data, modes, defaultMode }) {
   ), [data, activeMode.key]);
 
   if (sorted.length === 0) return null;
+
+  // Color each dot by sign so positive returns read green and negative red.
+  const renderSignedDot = (props) => {
+    const { cx, cy, payload } = props;
+    const v = payload?.[activeMode.key];
+    if (v == null || cx == null || cy == null) return null;
+    const fill = v >= 0 ? tokens.pos : tokens.neg;
+    return <circle cx={cx} cy={cy} r={3.5} fill={fill} stroke={fill} />;
+  };
 
   return (
     <div className="portfolio-chart-wrapper">
@@ -157,13 +181,23 @@ function ChartSection({ title, data, modes, defaultMode }) {
           <Bar yAxisId="dollar" dataKey="costBasis" name="Cost Basis" fill="#34c78a" opacity={0.7} stackId="value" />
           <Bar yAxisId="dollar" dataKey="gains" name="Gains $" fill="#4f9cf9" opacity={0.7} stackId="value" />
 
+          <ReferenceLine
+            yAxisId="pct"
+            y={0}
+            stroke={tokens.ink}
+            strokeWidth={2}
+            strokeDasharray="4 4"
+            ifOverflow="extendDomain"
+          />
+
           <Line
             yAxisId="pct"
             dataKey={activeMode.key}
             name={activeMode.label}
             stroke={activeMode.color}
             strokeWidth={2}
-            dot={{ fill: activeMode.color, r: 3 }}
+            dot={renderSignedDot}
+            activeDot={renderSignedDot}
             connectNulls
           />
         </ComposedChart>

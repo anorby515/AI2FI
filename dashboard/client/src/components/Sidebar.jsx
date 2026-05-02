@@ -19,6 +19,7 @@ const BASE_NAV = [
       { key: 'retirement', label: 'Retirement' },
       { key: 'esa', label: 'ESA' },
       { key: 'brokerage', label: 'Brokerage' },
+      { key: 'rsus', label: 'RSUs' },
       { key: 'moat-analysis', label: 'Moat Analysis' },
     ]
   },

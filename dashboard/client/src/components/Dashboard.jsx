@@ -135,6 +135,35 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
 
   const totalAlpha = (totalIRR != null && totalSpyIRR != null) ? totalIRR - totalSpyIRR : null;
 
+  // Suppress aggregate CAGR/Alpha when the underlying lot set's earliest
+  // acquisition is < 1 year ago — annualized returns aren't meaningful for
+  // brand-new portfolios. The IRRs themselves still compute (so they remain
+  // available to anything downstream); we just gate what's rendered.
+  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+  const earliestLotMs = (lots) => {
+    let min = null;
+    for (const l of lots) {
+      if (!l.dateAcquired) continue;
+      const t = new Date(l.dateAcquired).getTime();
+      if (min == null || t < min) min = t;
+    }
+    return min;
+  };
+  const lotsHitOneYear = (lots) => {
+    const e = earliestLotMs(lots);
+    return e != null && (Date.now() - e) >= ONE_YEAR_MS;
+  };
+  const openMeetsYear = lotsHitOneYear(filteredLots);
+  const closedMeetsYear = lotsHitOneYear(filteredClosed);
+  const totalMeetsYear = lotsHitOneYear([...filteredLots, ...filteredClosed]);
+
+  const displayPortfolioIRR = openMeetsYear ? portfolioIRR : null;
+  const displayPortfolioAlpha = openMeetsYear ? portfolioAlpha : null;
+  const displayClosedIRR = closedMeetsYear ? closedIRR : null;
+  const displayClosedAlpha = closedMeetsYear ? closedAlpha : null;
+  const displayTotalIRR = totalMeetsYear ? totalIRR : null;
+  const displayTotalAlpha = totalMeetsYear ? totalAlpha : null;
+
   // All lots % Alpha > 0
   const allBeatingSP = useMemo(() => {
     if (!spyLookup) return null;
@@ -190,7 +219,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
           <div className="stat stat-price-tower">
             <div className="price-tower-value">{value > 0 ? formatCurrency(value) : '—'}</div>
             <div className={`price-tower-shares ${isPositive ? 'positive' : 'negative'}`}>{value > 0 ? formatCurrency(gl) : '—'}</div>
-            <div className="price-tower-cagr">{portfolioIRR != null ? formatPct(portfolioIRR) : '—'} <span>CAGR</span></div>
+            <div className="price-tower-cagr">{displayPortfolioIRR != null ? formatPct(displayPortfolioIRR) : '—'} <span>CAGR</span></div>
             <div className="price-tower-cagr">{value > 0 ? formatPct(glPct) : '—'} <span>Gain</span></div>
             <div className="price-tower-date">As of {today}</div>
           </div>
@@ -215,8 +244,8 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
               <div className="position-stats total-row">
                 <Stat value={formatCurrency(totalGL)} accent={totalGL >= 0 ? 'positive' : 'negative'} />
                 <Stat value={formatPct(totalGlPct)} accent={totalGL >= 0 ? 'positive' : 'negative'} />
-                <Stat value={totalIRR != null ? formatPct(totalIRR) : '—'} accent={totalIRR != null ? (totalIRR >= 0 ? 'positive' : 'negative') : null} />
-                <Stat value={totalAlpha != null ? (totalAlpha >= 0 ? '+' : '') + formatPct(totalAlpha) : '—'} accent={totalAlpha != null ? (totalAlpha >= 0 ? 'positive' : 'negative') : null} />
+                <Stat value={displayTotalIRR != null ? formatPct(displayTotalIRR) : '—'} accent={displayTotalIRR != null ? (displayTotalIRR >= 0 ? 'positive' : 'negative') : null} />
+                <Stat value={displayTotalAlpha != null ? (displayTotalAlpha >= 0 ? '+' : '') + formatPct(displayTotalAlpha) : '—'} accent={displayTotalAlpha != null ? (displayTotalAlpha >= 0 ? 'positive' : 'negative') : null} />
                 <Stat value={allBeatingSP != null ? formatPct(allBeatingSP.pct) : '—'} sub={allBeatingSP != null ? `${allBeatingSP.beat} of ${allBeatingSP.total}` : null} accent={allBeatingSP != null ? (allBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
                 <Stat label="Charity" value={charitableClosed.length > 0 ? formatCurrency(charitableGL) : '—'} sub={charitableClosed.length > 0 ? `${charitableClosed.length} donations` : null} accent={charitableClosed.length > 0 ? (charitableIsPos ? 'positive' : 'negative') : null} />
                 <div className="stat-action">
@@ -231,8 +260,8 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
               <div className="position-stats">
                 <Stat value={value > 0 ? formatCurrency(gl) : '—'} accent={isPositive ? 'positive' : 'negative'} />
                 <Stat value={value > 0 ? formatPct(glPct) : '—'} accent={isPositive ? 'positive' : 'negative'} />
-                <Stat value={portfolioIRR != null ? formatPct(portfolioIRR) : '—'} accent={portfolioIRR != null ? (portfolioIRR >= 0 ? 'positive' : 'negative') : null} />
-                <Stat value={portfolioAlpha != null ? (portfolioAlpha >= 0 ? '+' : '') + formatPct(portfolioAlpha) : '—'} accent={portfolioAlpha != null ? (alphaPos ? 'positive' : 'negative') : null} />
+                <Stat value={displayPortfolioIRR != null ? formatPct(displayPortfolioIRR) : '—'} accent={displayPortfolioIRR != null ? (displayPortfolioIRR >= 0 ? 'positive' : 'negative') : null} />
+                <Stat value={displayPortfolioAlpha != null ? (displayPortfolioAlpha >= 0 ? '+' : '') + formatPct(displayPortfolioAlpha) : '—'} accent={displayPortfolioAlpha != null ? (displayPortfolioAlpha >= 0 ? 'positive' : 'negative') : null} />
                 <Stat value={openBeatingSP != null ? formatPct(openBeatingSP.pct) : '—'} sub={openBeatingSP != null ? `${openBeatingSP.beat} of ${openBeatingSP.total}` : null} accent={openBeatingSP != null ? (openBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
                 <div className="stat" />
                 <div />
@@ -246,8 +275,8 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                 <div className="position-stats">
                   <Stat value={formatCurrency(totalRealizedGL)} accent={realizedIsPos ? 'positive' : 'negative'} />
                   <Stat value={closedCost > 0 ? formatPct(totalRealizedGL / closedCost) : '—'} accent={realizedIsPos ? 'positive' : 'negative'} />
-                  <Stat value={closedIRR != null ? formatPct(closedIRR) : '—'} accent={closedIRR != null ? (closedIRR >= 0 ? 'positive' : 'negative') : null} />
-                  <Stat value={closedAlpha != null ? (closedAlpha >= 0 ? '+' : '') + formatPct(closedAlpha) : '—'} accent={closedAlpha != null ? (closedAlpha >= 0 ? 'positive' : 'negative') : null} />
+                  <Stat value={displayClosedIRR != null ? formatPct(displayClosedIRR) : '—'} accent={displayClosedIRR != null ? (displayClosedIRR >= 0 ? 'positive' : 'negative') : null} />
+                  <Stat value={displayClosedAlpha != null ? (displayClosedAlpha >= 0 ? '+' : '') + formatPct(displayClosedAlpha) : '—'} accent={displayClosedAlpha != null ? (displayClosedAlpha >= 0 ? 'positive' : 'negative') : null} />
                   <Stat value={closedBeatingSP != null ? formatPct(closedBeatingSP.pct) : '—'} sub={closedBeatingSP != null ? `${closedBeatingSP.beat} of ${closedBeatingSP.total}` : null} accent={closedBeatingSP != null ? (closedBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
                   <div className="stat" />
                   <div />

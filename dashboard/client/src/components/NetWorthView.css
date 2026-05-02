@@ -118,3 +118,99 @@
     min-height: 320px;
   }
 }
+
+/* ── Quarterly running table ───────────────────────────────────────────── */
+.nw__qtable-card { padding: var(--pad-lg); }
+
+.nw__qtable-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.nw__qtable-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.nw__qtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.nw__qtable th,
+.nw__qtable td {
+  padding: var(--gap-sm) var(--gap);
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.nw__qtable th {
+  font-size: 11px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  text-align: right;
+  vertical-align: bottom;
+}
+
+.nw__qtable th.nw__qtable-rowhead {
+  text-align: left;
+}
+
+.nw__qtable td.nw__qtable-rowhead {
+  color: var(--ink);
+  font-size: 12.5px;
+}
+
+.nw__qtable th.nw__qtable-rowhead,
+.nw__qtable td.nw__qtable-rowhead {
+  position: sticky;
+  left: 0;
+  background: var(--card);
+  z-index: 1;
+}
+
+.nw__qtable-num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.nw__qtable-pos    { color: var(--pos); }
+.nw__qtable-neg    { color: var(--neg); }
+.nw__qtable-strong { font-weight: 600; }
+
+.nw__qtable-total-row td {
+  border-top: 1px solid var(--rule-3);
+  border-bottom: 1px solid var(--rule-3);
+  background: var(--card-hi);
+}
+.nw__qtable-total-row td.nw__qtable-rowhead {
+  background: var(--card-hi);
+}
+
+.nw__qtable-yoy-th,
+.nw__qtable-yoy-cell {
+  border-left: 1px solid var(--rule-3);
+}
+.nw__qtable-yoy-th {
+  color: var(--accent);
+}
+
+.nw__qtable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.nw__qtable-empty {
+  color: var(--dim);
+  font-size: 13px;
+  padding: 32px var(--pad);
+  text-align: center;
+}

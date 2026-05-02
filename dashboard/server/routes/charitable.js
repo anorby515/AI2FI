@@ -11,10 +11,10 @@ const { resolveSpreadsheet, noProfileResponse } = require('../profile-resolver')
 
 const TAB_NAME_CANDIDATES = ['Charitable Trust', 'Charitable', 'Charity'];
 const HEADER_ALIASES = {
-  date:         ['date', 'distribution date', 'gift date'],
+  date:         ['date', 'distribution', 'distribution date', 'gift date'],
   organization: ['organization', 'charity', 'recipient', 'org'],
-  sector:       ['sector', 'category', 'cause'],
-  amount:       ['amount', 'distribution', 'gift'],
+  sector:       ['sector', 'charitable sector', 'category', 'cause'],
+  amount:       ['amount', 'gift'],
 };
 
 function normHeader(s) { return String(s ?? '').trim().toLowerCase(); }
@@ -52,9 +52,10 @@ function parseDistributions(wb) {
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
   if (!rows.length) return { distributions: [], tabFound: true };
 
-  // Find header row in the first 5 rows (tolerate a leading title row).
+  // Find header row in the first 10 rows (tolerate leading title/metadata rows
+  // like Account / Timeframe on top of the table).
   let headerIdx = -1;
-  for (let i = 0; i < Math.min(5, rows.length); i++) {
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
     const r = rows[i] || [];
     if (findHeaderIdx(r, 'date') >= 0 && findHeaderIdx(r, 'amount') >= 0) {
       headerIdx = i;

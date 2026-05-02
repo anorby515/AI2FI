@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, Stat, Button, Segment } from '../ui';
+import { DEFAULT_TAX_RATES } from '../utils/calculations';
 import './CharitableView.css';
 
 // Charitable Tracking — pairs Brokerage Ledger charitable stock sales
@@ -95,7 +96,9 @@ function quartersBetween(startISO, endISO) {
 export default function CharitableView() {
   const [data, setData] = useState(null);
   const [errorBody, setErrorBody] = useState(null);
-  const [range, setRange] = useState('1Y');
+  // Default to All so the explore tables show every ticker/org out of the box;
+  // the YTD hero is locked to current calendar year regardless.
+  const [range, setRange] = useState('All');
 
   const reload = useCallback(() => {
     setErrorBody(null);
@@ -137,6 +140,42 @@ export default function CharitableView() {
     const all = [...(data?.contributions || []), ...(data?.distributions || [])];
     if (!all.length) return null;
     return all.reduce((min, e) => (min == null || e.date < min) ? e.date : min, null);
+  }, [data]);
+
+  // YTD snapshot for the hero — always shows current calendar year regardless
+  // of the time-range segment (which scopes the lower analytical sections).
+  // Taxes saved approximates LT capital gains avoided by donating appreciated
+  // stock instead of selling: (proceeds − cost basis) × LT rate, only counted
+  // for lots held more than a year (donating short-term gains caps the
+  // deduction at basis, so the tax benefit is much smaller).
+  const ytd = useMemo(() => {
+    const year = new Date().getFullYear();
+    const yearStart = `${year}-01-01`;
+    const yearEnd   = `${year}-12-31`;
+    const inYear = (e) => e.date >= yearStart && e.date <= yearEnd;
+
+    const contribs = (data?.contributions || []).filter(inYear);
+    const distribs = (data?.distributions || []).filter(inYear);
+
+    const ONE_YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
+    let taxesSaved = 0;
+    for (const c of contribs) {
+      if (c.costBasis == null || !c.dateAcquired) continue;
+      const heldMs = new Date(c.date) - new Date(c.dateAcquired);
+      const isLT = heldMs >= ONE_YEAR_MS;
+      const gain = c.amount - c.costBasis;
+      if (gain <= 0 || !isLT) continue;
+      taxesSaved += gain * DEFAULT_TAX_RATES.lt;
+    }
+
+    return {
+      year,
+      contribTotal: contribs.reduce((s, e) => s + (e.amount || 0), 0),
+      contribCount: contribs.length,
+      distribTotal: distribs.reduce((s, e) => s + (e.amount || 0), 0),
+      distribCount: distribs.length,
+      taxesSaved,
+    };
   }, [data]);
 
   // Quarter-by-quarter pivot. Every quarter between the earliest and latest
@@ -300,34 +339,47 @@ export default function CharitableView() {
           <div className="ch__subtitle">{subtitle}</div>
         </div>
         <div className="ch__head-right">
-          <Segment options={RANGE_OPTIONS} value={range} onChange={setRange} mono />
           <Button variant="ghost" onClick={reload}>Reload from sheet</Button>
         </div>
       </div>
 
       <Card variant="grad" className="ch__hero">
-        <Stat
-          label="Net in trust"
-          value={fmtUSDSigned(netInTrust)}
-          size="lg"
-          tone={netInTrust >= 0 ? 'pos' : 'neg'}
-        />
-        <div className="ch__hero-stats">
-          <span className="ch__delta-pos">
-            ↑ {fmtUSDK(contribTotal)}
-            <span className="ch__delta-label">
-              contributions · {filtered.contributions.length} stock sale{filtered.contributions.length === 1 ? '' : 's'}
-            </span>
-          </span>
-          <span className="ch__delta-neg">
-            ↓ {fmtUSDK(distribTotal)}
-            <span className="ch__delta-label">
-              distributions · {filtered.distributions.length} grant{filtered.distributions.length === 1 ? '' : 's'}
-            </span>
-          </span>
-          <span className="ch__delta-range">{rangeLabel(range)}</span>
+        <div className="ch__hero-head">
+          <div className="ch__hero-eyebrow">YTD Activity</div>
+          <div className="ch__hero-year">{ytd.year}</div>
+        </div>
+        <div className="ch__hero-grid">
+          <Stat
+            label="Contributions"
+            value={fmtUSD(ytd.contribTotal)}
+            sub={`${ytd.contribCount} contribution${ytd.contribCount === 1 ? '' : 's'}`}
+            size="lg"
+            tone={ytd.contribTotal > 0 ? 'pos' : 'neutral'}
+          />
+          <div className="ch__hero-divider" />
+          <Stat
+            label="Taxes saved"
+            value={fmtUSD(ytd.taxesSaved)}
+            sub={`Est. LT cap-gains @ ${(DEFAULT_TAX_RATES.lt * 100).toFixed(1)}%`}
+            size="lg"
+            tone={ytd.taxesSaved > 0 ? 'pos' : 'neutral'}
+          />
+          <div className="ch__hero-divider" />
+          <Stat
+            label="Distributions"
+            value={fmtUSD(ytd.distribTotal)}
+            sub={`${ytd.distribCount} grant${ytd.distribCount === 1 ? '' : 's'}`}
+            size="lg"
+            tone={ytd.distribTotal > 0 ? 'neg' : 'neutral'}
+          />
         </div>
       </Card>
+
+      <div className="ch__filter-bar">
+        <span className="ch__filter-label">Explore activity over</span>
+        <Segment options={RANGE_OPTIONS} value={range} onChange={setRange} mono />
+        <span className="ch__filter-tag">{rangeLabel(range)} · net {fmtUSDSigned(netInTrust)}</span>
+      </div>
 
       {tabMissing && (
         <Card>

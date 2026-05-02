@@ -762,7 +762,9 @@ function DonationPlanner() {
     [openLots],
   );
 
-  // Build candidate rows: only lots with quotes and positive gains.
+  // Build candidate rows: only LT lots with quotes and positive gains.
+  // ST appreciated stock isn't a tax-favored donation — the deduction is
+  // limited to cost basis, so we don't surface those as suggestions.
   const candidates = useMemo(() => {
     const rows = [];
     for (const lot of brokerageOpen) {
@@ -773,11 +775,12 @@ function DonationPlanner() {
       if (!Number.isFinite(shares) || !Number.isFinite(cost) || shares <= 0) continue;
       const gainPerShare = price - cost;
       if (gainPerShare <= 0) continue;
+      const term = taxTerm(lot.dateAcquired, today);
+      if (term !== 'long') continue;
       const totalCost = shares * cost;
       const gainDollar = shares * gainPerShare;
       const gainPct = totalCost > 0 ? gainDollar / totalCost : 0;
-      const term = taxTerm(lot.dateAcquired, today);
-      const rate = term === 'long' ? taxRates.lt : taxRates.st;
+      const rate = taxRates.lt;
       const taxAvoidedFull = gainDollar * rate;
       rows.push({
         key: plannerLotKey(lot),
@@ -884,7 +887,8 @@ function DonationPlanner() {
         <div>
           <div className="ch__section-title">Donation planner · open brokerage lots</div>
           <div className="ch__planner-sub">
-            Open lots with unrealized gains, ranked by tax avoided if donated.
+            Long-term lots with unrealized gains, ranked by tax avoided if donated.
+            Short-term lots are excluded — donating them caps the deduction at cost basis.
             Type into <em>Shares to Sell</em> to model the running total flowing into the trust.
           </div>
         </div>
@@ -926,7 +930,7 @@ function DonationPlanner() {
 
       {planRows.length === 0 ? (
         <div className="ch__empty">
-          No open brokerage lots with unrealized gains in the current filter.
+          No long-term open brokerage lots with unrealized gains in the current filter.
         </div>
       ) : (
         <div className="ch__planner-wrap">

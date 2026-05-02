@@ -34,13 +34,18 @@ const COMING_SOON_TITLES = {
 
 // Sidebar keys that route to the portfolio screens. The parent
 // (`portfolio-analysis`) shows the aggregate; each child filters by
-// `accountTypeGroup` from the spreadsheet's Lookup Tables tab.
-const PORTFOLIO_VIEW_KEYS = ['portfolio-analysis', 'retirement', 'brokerage', 'hsa', 'esa'];
+// `accountTypeGroup` from the spreadsheet's Lookup Tables tab. The RSUs
+// view is a special case that filters by the 'RSU' Account Type
+// directly (not a Group) since RSUs aren't a separate group bucket.
+const PORTFOLIO_VIEW_KEYS = ['portfolio-analysis', 'retirement', 'brokerage', 'hsa', 'esa', 'rsus'];
 const PORTFOLIO_GROUP_BY_VIEW = {
   retirement: 'Retirement',
   brokerage: 'Brokerage',
   hsa: 'HSA',
   esa: 'ESA',
+};
+const PORTFOLIO_ACCOUNT_TYPE_BY_VIEW = {
+  rsus: 'RSU',
 };
 
 const PORTFOLIO_TABS = ['Open Positions', 'Closed Positions'];
@@ -169,19 +174,20 @@ export default function App() {
   // Active portfolio sub-view (parent = aggregate, children filter by group).
   const isPortfolioView = PORTFOLIO_VIEW_KEYS.includes(sidebarView);
   const portfolioGroup = PORTFOLIO_GROUP_BY_VIEW[sidebarView] || null;
+  const portfolioAccountType = PORTFOLIO_ACCOUNT_TYPE_BY_VIEW[sidebarView] || null;
 
   // Apply the broad-group filter first; everything downstream (owner/account
   // chips, aggregations) operates on this pre-filtered set so chips only show
-  // values that exist within the active group.
-  const groupAllLots = useMemo(() => (
-    portfolioGroup ? allLots.filter(l => l.accountTypeGroup === portfolioGroup) : allLots
-  ), [allLots, portfolioGroup]);
-  const groupOpenLots = useMemo(() => (
-    portfolioGroup ? rawOpenLots.filter(l => l.accountTypeGroup === portfolioGroup) : rawOpenLots
-  ), [rawOpenLots, portfolioGroup]);
-  const groupClosedLots = useMemo(() => (
-    portfolioGroup ? rawClosedLots.filter(l => l.accountTypeGroup === portfolioGroup) : rawClosedLots
-  ), [rawClosedLots, portfolioGroup]);
+  // values that exist within the active group. Account-type-scoped views
+  // (e.g. RSUs) filter on `account` instead.
+  const matchesScope = (l) => (
+    portfolioGroup ? l.accountTypeGroup === portfolioGroup
+    : portfolioAccountType ? l.account === portfolioAccountType
+    : true
+  );
+  const groupAllLots = useMemo(() => allLots.filter(matchesScope), [allLots, portfolioGroup, portfolioAccountType]);
+  const groupOpenLots = useMemo(() => rawOpenLots.filter(matchesScope), [rawOpenLots, portfolioGroup, portfolioAccountType]);
+  const groupClosedLots = useMemo(() => rawClosedLots.filter(matchesScope), [rawClosedLots, portfolioGroup, portfolioAccountType]);
 
   // Apply owner + account + account-name filters at the lot level BEFORE aggregation
   const allOwnersSelected = selectedOwners.size === 0;

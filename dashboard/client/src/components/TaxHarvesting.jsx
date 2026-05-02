@@ -205,7 +205,6 @@ export default function TaxHarvesting() {
       const sellPrice  = lot.sellBasis ?? (sharesSold > 0 ? proceeds / sharesSold : null);
       rows.push({
         kind: 'realized',
-        status: 'CLOSED',
         symbol: lot.symbol,
         owner: lot.owner,
         account: lot.account,
@@ -244,7 +243,6 @@ export default function TaxHarvesting() {
         && mostRecentBuy !== lot.dateAcquired;
       rows.push({
         kind: 'option',
-        status: 'OPEN',
         symbol: lot.symbol,
         owner: lot.owner,
         account: lot.account,
@@ -289,17 +287,24 @@ export default function TaxHarvesting() {
     [enrichedCandidates, ytdNet]
   );
 
-  // Plan rows with running total. Realized uses gl directly; options use effectiveGL.
+  // Plan rows with running totals. Realized uses gl directly; options use
+  // effectiveGL. Estimated proceeds = shares-to-sell × share-price; running
+  // proceeds is the cumulative sum across realized + options.
   const planRows = useMemo(() => {
     const out = [];
-    let cum = 0;
+    let cumGain = 0;
+    let cumProceeds = 0;
     for (const r of realizedRows) {
-      cum += r.gl;
-      out.push({ ...r, contribution: r.gl, running: cum });
+      const proceeds = (r.sharesSold ?? r.shares) * (r.sellPrice ?? 0);
+      cumGain += r.gl;
+      cumProceeds += proceeds;
+      out.push({ ...r, contribution: r.gl, running: cumGain, estimatedProceeds: proceeds, runningProceeds: cumProceeds });
     }
     for (const r of orderedOptions) {
-      cum += r.effectiveGL;
-      out.push({ ...r, contribution: r.effectiveGL, running: cum });
+      const proceeds = (r.sharesToSell || 0) * (r.effectivePrice || 0);
+      cumGain += r.effectiveGL;
+      cumProceeds += proceeds;
+      out.push({ ...r, contribution: r.effectiveGL, running: cumGain, estimatedProceeds: proceeds, runningProceeds: cumProceeds });
     }
     return out;
   }, [realizedRows, orderedOptions]);
@@ -360,7 +365,6 @@ export default function TaxHarvesting() {
       const sharePrice   = r.kind === 'realized' ? r.sellPrice : r.effectivePrice;
       const gainPct      = r.kind === 'realized' ? r.glPct : r.effectiveGLPct;
       out.push({
-        status: r.status,
         term: r.term === 'long' ? 'LT' : 'ST',
         symbol: r.symbol,
         owner: r.owner || '',
@@ -371,10 +375,12 @@ export default function TaxHarvesting() {
         shares: r.shares,
         sharesToSell,
         sharePrice,
+        estimatedProceeds: r.estimatedProceeds,
         gainDollar: r.contribution,
         taxImpact: r.taxImpact,
-        moat: moatText,
         running: r.running,
+        runningProceeds: r.runningProceeds,
+        moat: moatText,
       });
     }
     return out;
@@ -592,8 +598,9 @@ function PlanTable({ planRows, moats, onChangeShares, onChangePrice, onToggleChe
   const realized = planRows.filter(r => r.kind === 'realized');
   const options  = planRows.filter(r => r.kind === 'option');
   const showSold = realized.length > 0;
-  // Base cols: checkbox, status, term, symbol, owner, account, acquired,
-  // gain%, shares, shares to sell, share price, gain $, est tax, moat, running total.
+  // Base cols: checkbox, ticker (with term badge), owner, account, acquired,
+  // gain%, shares, shares to sell, share price, est. proceeds, gain $,
+  // est. tax, running harvest, running proceeds, moat.
   // +1 if Sold column is present.
   const totalCols = 15 + (showSold ? 1 : 0);
 
@@ -633,9 +640,7 @@ function PlanTable({ planRows, moats, onChangeShares, onChangePrice, onToggleChe
         <thead>
           <tr>
             <th className="th__plan-check"></th>
-            <th>Status</th>
-            <th>Term</th>
-            <th>Symbol</th>
+            <th>Ticker</th>
             <th>Owner</th>
             <th>Account</th>
             <th>Acquired</th>
@@ -644,10 +649,12 @@ function PlanTable({ planRows, moats, onChangeShares, onChangePrice, onToggleChe
             <th className="num">Shares</th>
             <th className="num">Shares to Sell</th>
             <th className="num">Share Price</th>
+            <th className="num">Est. Proceeds</th>
             <th className="num">Gain $</th>
             <th className="num">Est. Tax</th>
+            <th className="num">Running Harvest</th>
+            <th className="num">Running Proceeds</th>
             <th>Moat</th>
-            <th className="num">Running Total</th>
           </tr>
         </thead>
         <tbody>
@@ -726,6 +733,8 @@ function PlanRow({ row, moats, showSold, onChangeShares, onChangePrice, onToggle
   const displayGain        = isOption ? r.effectiveGL : r.gl;
   const displayGainPct     = isOption ? r.effectiveGLPct : r.glPct;
 
+  const proceeds = r.estimatedProceeds ?? 0;
+
   return (
     <tr className={rowCls}>
       <td className="th__plan-check">
@@ -738,17 +747,12 @@ function PlanRow({ row, moats, showSold, onChangeShares, onChangePrice, onToggle
           />
         )}
       </td>
-      <td>
-        <span className={`th__status th__status--${r.status.toLowerCase()}`}>{r.status}</span>
-      </td>
-      <td>
-        <span className={`th__term th__term--${r.term}`}>{r.term === 'long' ? 'LT' : 'ST'}</span>
-        {isOption && r.term === 'short' && r.daysToLT > 0 && r.daysToLT <= MATURITY_WINDOW_DAYS && (
-          <span className="th__maturing"> {r.daysToLT}d→LT</span>
-        )}
-      </td>
       <td className="th__sym">
         {r.symbol}
+        <span className={`th__term th__term--${r.term}`}>{r.term === 'long' ? 'LT' : 'ST'}</span>
+        {isOption && r.term === 'short' && r.daysToLT > 0 && r.daysToLT <= MATURITY_WINDOW_DAYS && (
+          <span className="th__maturing">{r.daysToLT}d→LT</span>
+        )}
         {r.washSaleRisk && (
           <span className="th__wash th__wash--risk" title="Same symbol bought within last 30 days — wash-sale risk">
             ⚠
@@ -790,14 +794,16 @@ function PlanRow({ row, moats, showSold, onChangeShares, onChangePrice, onToggle
           <span>{displayPrice != null ? formatCurrency(displayPrice) : '—'}</span>
         )}
       </td>
+      <td className="num">{proceeds > 0 ? formatCurrency(proceeds) : '—'}</td>
       <td className={`num ${displayGain >= 0 ? 'pos' : 'neg'}`}>{formatCurrency(displayGain)}</td>
       <td className={`num ${r.taxImpact != null && r.taxImpact < 0 ? 'pos' : 'dim'}`}>
         {r.taxImpact != null ? formatCurrency(r.taxImpact) : '—'}
       </td>
-      <td><MoatBadges moat={moats[r.symbol] || moats[(r.symbol || '').toUpperCase()]} /></td>
       <td className={`num th__running ${inactive ? 'dim' : (r.running >= 0 ? 'pos' : 'neg')}`}>
         {formatCurrency(r.running)}
       </td>
+      <td className="num th__running">{formatCurrency(r.runningProceeds ?? 0)}</td>
+      <td><MoatBadges moat={moats[r.symbol] || moats[(r.symbol || '').toUpperCase()]} /></td>
     </tr>
   );
 }

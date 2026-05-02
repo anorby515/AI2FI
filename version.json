@@ -6,5 +6,5 @@
   "downloadUrl": "https://github.com/anorby515/AI2FI/archive/refs/heads/release.zip",
   "tarballUrl": "https://github.com/anorby515/AI2FI/archive/refs/heads/release.tar.gz",
   "releasesUrl": "https://github.com/anorby515/AI2FI/releases",
-  "changelogUrl": "https://github.com/anorby515/AI2FI/blob/release/CHANGELOG.md"
+  "releaseNotesUrl": "https://github.com/anorby515/AI2FI/blob/release/RELEASE.md"
 }

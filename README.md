@@ -81,7 +81,7 @@ Other skills you can call directly:
 
 ## 5. What's new
 
-Release notes are in [`CHANGELOG.md`](./CHANGELOG.md). The local `Install-AI2FI.html` renders them automatically; the [hosted welcome](https://anorby515.github.io/AI2FI/) fetches the latest.
+The current release is summarized in [`RELEASE.md`](./RELEASE.md). The [hosted welcome page](https://anorby515.github.io/AI2FI/) fetches and renders it on load.
 
 ## Layout
 
@@ -91,7 +91,7 @@ AI2FI/
 ├── Start-Demo.command          # Right-click → Open to spin up the demo (no install)
 ├── Install-AI2FI.html          # Double-click for the full install (auto-start at login)
 ├── README.md                   # You are here
-├── CHANGELOG.md                # Release notes (rendered by the welcome pages)
+├── RELEASE.md                  # Current release summary (rendered by the welcome page)
 ├── RELEASING.md                # How to cut a release
 ├── ai-to-fi-architecture.md    # Source of truth — read first
 ├── core/                       # Platform-wide content (assessment, order of operations, temperament tracker)

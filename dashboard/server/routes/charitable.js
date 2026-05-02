@@ -101,11 +101,13 @@ function parseContributions(wb) {
 
   const iCharity = col('Charitable Donation');
   const iSold    = col('Date Sold');
+  const iAcq     = col('Date Acquired');
   const iSym     = col('Symbol');
   const iAcct    = col('Account Type');
   const iOwner   = col('Owner');
   const iShSold  = col('Shares Sold');
   const iSellBas = col('Sell Basis Per Share');
+  const iCostBas = col('Cost Basis Per Share');
   if (iCharity == null || iSold == null) return [];
 
   const out = [];
@@ -121,6 +123,13 @@ function parseContributions(wb) {
     if (!Number.isFinite(shares) || !Number.isFinite(basis)) continue;
     const amount = shares * basis;
     if (!Number.isFinite(amount) || amount <= 0) continue;
+
+    // Cost basis of the donated portion (pro-rata) and holding period — both
+    // feed the client's "taxes saved" estimate (LT cap gains avoided).
+    const dateAcquired = iAcq != null ? formatDate(row[iAcq]) : null;
+    const costPerShare = iCostBas != null ? Number(row[iCostBas]) : null;
+    const costBasis = Number.isFinite(costPerShare) ? costPerShare * shares : null;
+
     out.push({
       date,
       symbol: iSym != null ? row[iSym] : null,
@@ -128,6 +137,8 @@ function parseContributions(wb) {
       owner: iOwner != null ? row[iOwner] : null,
       shares,
       amount,
+      dateAcquired,
+      costBasis,
     });
   }
   return out;

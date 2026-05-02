@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, Stat, Button, Segment } from '../ui';
-import { DEFAULT_TAX_RATES } from '../utils/calculations';
+import { usePortfolio } from '../hooks/usePortfolio';
+import { ds, dc, taxTerm, DEFAULT_TAX_RATES } from '../utils/calculations';
 import './CharitableView.css';
 
 // Charitable Tracking — pairs Brokerage Ledger charitable stock sales
@@ -667,6 +668,8 @@ export default function CharitableView() {
           )}
         </>
       )}
+
+      <DonationPlanner />
     </div>
   );
 }
@@ -730,4 +733,287 @@ function ActivityRow({ eyebrow, tag, agg }) {
       </div>
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Donation Planner — open brokerage tax lots with positive gains, ordered by
+// the tax that would be avoided by donating the full lot (gain × LT/ST rate).
+// Each row has a Shares-to-Sell input (default 0); Estimated Proceeds, Est.
+// Tax avoided, and a Running Total of proceeds compound as the user dials in
+// shares to donate.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function plannerLotKey(lot) {
+  return [lot.symbol, lot.account, lot.owner || '', lot.dateAcquired, ds(lot), dc(lot)].join('|');
+}
+
+function DonationPlanner() {
+  const { openLots, quotes, loading, emptyState } = usePortfolio();
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const taxRates = DEFAULT_TAX_RATES;
+
+  const [selectedOwners, setSelectedOwners] = useState(() => new Set());
+  const [selectedAccounts, setSelectedAccounts] = useState(() => new Set());
+  // overrides: Map<lotKey, sharesToSell>
+  const [overrides, setOverrides] = useState(() => new Map());
+
+  const brokerageOpen = useMemo(
+    () => openLots.filter(l => l.accountTypeGroup === 'Brokerage'),
+    [openLots],
+  );
+
+  // Build candidate rows: only lots with quotes and positive gains.
+  const candidates = useMemo(() => {
+    const rows = [];
+    for (const lot of brokerageOpen) {
+      const price = quotes[lot.symbol]?.price;
+      if (price == null) continue;
+      const shares = ds(lot);
+      const cost = dc(lot);
+      if (!Number.isFinite(shares) || !Number.isFinite(cost) || shares <= 0) continue;
+      const gainPerShare = price - cost;
+      if (gainPerShare <= 0) continue;
+      const totalCost = shares * cost;
+      const gainDollar = shares * gainPerShare;
+      const gainPct = totalCost > 0 ? gainDollar / totalCost : 0;
+      const term = taxTerm(lot.dateAcquired, today);
+      const rate = term === 'long' ? taxRates.lt : taxRates.st;
+      const taxAvoidedFull = gainDollar * rate;
+      rows.push({
+        key: plannerLotKey(lot),
+        symbol: lot.symbol,
+        owner: lot.owner || '',
+        account: lot.account || '',
+        dateAcquired: lot.dateAcquired,
+        shares,
+        costPerShare: cost,
+        price,
+        term,
+        rate,
+        gainDollar,
+        gainPct,
+        taxAvoidedFull,
+      });
+    }
+    return rows;
+  }, [brokerageOpen, quotes, today, taxRates]);
+
+  // Filter chips draw from the unfiltered candidate set so the user always
+  // sees the full owner/account universe even after narrowing.
+  const OWNERS = useMemo(
+    () => [...new Set(candidates.map(r => r.owner).filter(Boolean))].sort(),
+    [candidates],
+  );
+  const ACCOUNTS = useMemo(
+    () => [...new Set(candidates.map(r => r.account).filter(Boolean))].sort(),
+    [candidates],
+  );
+
+  const allOwnersSelected = selectedOwners.size === 0;
+  const allAccountsSelected = selectedAccounts.size === 0;
+
+  function toggleOwner(o) {
+    setSelectedOwners(prev => {
+      const next = new Set(prev);
+      if (next.has(o)) next.delete(o); else next.add(o);
+      return next;
+    });
+  }
+  function toggleAccount(a) {
+    setSelectedAccounts(prev => {
+      const next = new Set(prev);
+      if (next.has(a)) next.delete(a); else next.add(a);
+      return next;
+    });
+  }
+  function clearOwners()   { setSelectedOwners(new Set()); }
+  function clearAccounts() { setSelectedAccounts(new Set()); }
+
+  // Sort by tax avoided descending — combines "largest gain" with "most tax
+  // avoidance" (LT lots get 23.8%, ST lots 40.8%). Ties broken by gain $.
+  const ordered = useMemo(() => {
+    const filtered = candidates.filter(r => (
+      (selectedOwners.size === 0   || selectedOwners.has(r.owner)) &&
+      (selectedAccounts.size === 0 || selectedAccounts.has(r.account))
+    ));
+    return filtered.slice().sort((a, b) => {
+      if (b.taxAvoidedFull !== a.taxAvoidedFull) return b.taxAvoidedFull - a.taxAvoidedFull;
+      return b.gainDollar - a.gainDollar;
+    });
+  }, [candidates, selectedOwners, selectedAccounts]);
+
+  // Apply Shares-to-Sell overrides (default 0) and compute running proceeds.
+  const planRows = useMemo(() => {
+    let cumProceeds = 0;
+    return ordered.map(r => {
+      const sharesToSell = Math.max(0, Math.min(r.shares, overrides.get(r.key) ?? 0));
+      const proceeds = sharesToSell * r.price;
+      const sellGain = sharesToSell * (r.price - r.costPerShare);
+      const taxAvoided = sellGain * r.rate;
+      cumProceeds += proceeds;
+      return {
+        ...r,
+        sharesToSell,
+        estimatedProceeds: proceeds,
+        taxAvoided,
+        runningTotal: cumProceeds,
+      };
+    });
+  }, [ordered, overrides]);
+
+  function setSharesToSell(row, n) {
+    const clamped = Math.max(0, Math.min(row.shares, Number.isFinite(n) ? n : 0));
+    setOverrides(prev => {
+      const next = new Map(prev);
+      if (clamped === 0) next.delete(row.key);
+      else next.set(row.key, clamped);
+      return next;
+    });
+  }
+  function resetAll() { setOverrides(new Map()); }
+
+  if (loading || emptyState) return null;
+
+  const totalProceeds = planRows.reduce((s, r) => s + r.estimatedProceeds, 0);
+  const totalTaxAvoided = planRows.reduce((s, r) => s + r.taxAvoided, 0);
+  const activeRows = planRows.filter(r => r.sharesToSell > 0).length;
+
+  return (
+    <Card>
+      <div className="ch__planner-head">
+        <div>
+          <div className="ch__section-title">Donation planner · open brokerage lots</div>
+          <div className="ch__planner-sub">
+            Open lots with unrealized gains, ranked by tax avoided if donated.
+            Type into <em>Shares to Sell</em> to model the running total flowing into the trust.
+          </div>
+        </div>
+        {overrides.size > 0 && (
+          <button className="ch__planner-reset" onClick={resetAll}>Reset</button>
+        )}
+      </div>
+
+      {(OWNERS.length > 1 || ACCOUNTS.length > 1) && (
+        <div className="ch__planner-filters">
+          {ACCOUNTS.length > 1 && (
+            <div className="ch__planner-filter-group">
+              <span className="ch__planner-filter-label">Account</span>
+              <button className={`ch__planner-chip ${allAccountsSelected ? 'is-active' : ''}`} onClick={clearAccounts}>All</button>
+              {ACCOUNTS.map(a => (
+                <button
+                  key={a}
+                  className={`ch__planner-chip ${selectedAccounts.has(a) ? 'is-active' : ''}`}
+                  onClick={() => toggleAccount(a)}
+                >{a}</button>
+              ))}
+            </div>
+          )}
+          {OWNERS.length > 1 && (
+            <div className="ch__planner-filter-group">
+              <span className="ch__planner-filter-label">Owner</span>
+              <button className={`ch__planner-chip ${allOwnersSelected ? 'is-active' : ''}`} onClick={clearOwners}>All</button>
+              {OWNERS.map(o => (
+                <button
+                  key={o}
+                  className={`ch__planner-chip ${selectedOwners.has(o) ? 'is-active' : ''}`}
+                  onClick={() => toggleOwner(o)}
+                >{o}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {planRows.length === 0 ? (
+        <div className="ch__empty">
+          No open brokerage lots with unrealized gains in the current filter.
+        </div>
+      ) : (
+        <div className="ch__planner-wrap">
+          <table className="ch__planner-table">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Owner</th>
+                <th>Account</th>
+                <th>Acquired</th>
+                <th className="ch__num">Gain %</th>
+                <th className="ch__num">Gain $</th>
+                <th className="ch__num">Shares</th>
+                <th className="ch__num">Share Price</th>
+                <th className="ch__num">Shares to Sell</th>
+                <th className="ch__num">Estimated Proceeds</th>
+                <th className="ch__num">Est. Tax</th>
+                <th className="ch__num">Running Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {planRows.map(r => {
+                const active = r.sharesToSell > 0;
+                return (
+                  <tr key={r.key} className={`ch__planner-row ${active ? '' : 'ch__planner-row--inactive'}`}>
+                    <td className="ch__planner-sym">
+                      {r.symbol}
+                      <span className={`ch__planner-term ch__planner-term--${r.term}`}>{r.term === 'long' ? 'LT' : 'ST'}</span>
+                    </td>
+                    <td className="ch__planner-dim">{r.owner || '—'}</td>
+                    <td className="ch__planner-dim">{r.account || '—'}</td>
+                    <td className="ch__planner-dim">{r.dateAcquired || '—'}</td>
+                    <td className="ch__num ch__pos">{(r.gainPct * 100).toFixed(2)}%</td>
+                    <td className="ch__num ch__pos">{fmtUSD(r.gainDollar)}</td>
+                    <td className="ch__num">{fmtSharesPrec(r.shares)}</td>
+                    <td className="ch__num">{fmtPrice(r.price)}</td>
+                    <td className="ch__num ch__planner-input-cell">
+                      <input
+                        type="number"
+                        min={0}
+                        max={r.shares}
+                        step="any"
+                        className="ch__planner-input"
+                        value={r.sharesToSell}
+                        onChange={e => setSharesToSell(r, parseFloat(e.target.value))}
+                      />
+                    </td>
+                    <td className={`ch__num ${active ? '' : 'ch__dim'}`}>
+                      {r.estimatedProceeds > 0 ? fmtUSD(r.estimatedProceeds) : '—'}
+                    </td>
+                    <td className={`ch__num ${active ? 'ch__pos' : 'ch__dim'}`}>
+                      {r.taxAvoided > 0 ? fmtUSD(r.taxAvoided) : '—'}
+                    </td>
+                    <td className="ch__num ch__planner-running">
+                      {r.runningTotal > 0 ? fmtUSD(r.runningTotal) : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="ch__totals-row">
+                <td colSpan={8}>
+                  Total · {activeRows} lot{activeRows === 1 ? '' : 's'} selected
+                </td>
+                <td className="ch__num"></td>
+                <td className="ch__num">{totalProceeds > 0 ? fmtUSD(totalProceeds) : '—'}</td>
+                <td className="ch__num ch__pos">{totalTaxAvoided > 0 ? fmtUSD(totalTaxAvoided) : '—'}</td>
+                <td className="ch__num">{totalProceeds > 0 ? fmtUSD(totalProceeds) : '—'}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function fmtSharesPrec(n) {
+  if (!Number.isFinite(n)) return '—';
+  if (Number.isInteger(n)) return n.toLocaleString();
+  return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+}
+
+function fmtPrice(n) {
+  if (!Number.isFinite(n)) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(n);
 }

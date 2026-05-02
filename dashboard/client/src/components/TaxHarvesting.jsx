@@ -289,17 +289,17 @@ export default function TaxHarvesting() {
 
   // Plan rows with running totals. Realized uses gl directly; options use
   // effectiveGL. Estimated proceeds = shares-to-sell × share-price; running
-  // proceeds is the cumulative sum across realized + options.
+  // proceeds tracks only the harvest options (already-realized closes are
+  // money in hand and don't count toward the projected proceeds total).
   const planRows = useMemo(() => {
     const out = [];
     let cumGain = 0;
-    let cumProceeds = 0;
     for (const r of realizedRows) {
       const proceeds = (r.sharesSold ?? r.shares) * (r.sellPrice ?? 0);
       cumGain += r.gl;
-      cumProceeds += proceeds;
-      out.push({ ...r, contribution: r.gl, running: cumGain, estimatedProceeds: proceeds, runningProceeds: cumProceeds });
+      out.push({ ...r, contribution: r.gl, running: cumGain, estimatedProceeds: proceeds, runningProceeds: null });
     }
+    let cumProceeds = 0;
     for (const r of orderedOptions) {
       const proceeds = (r.sharesToSell || 0) * (r.effectivePrice || 0);
       cumGain += r.effectiveGL;
@@ -802,7 +802,9 @@ function PlanRow({ row, moats, showSold, onChangeShares, onChangePrice, onToggle
       <td className={`num th__running ${inactive ? 'dim' : (r.running >= 0 ? 'pos' : 'neg')}`}>
         {formatCurrency(r.running)}
       </td>
-      <td className="num th__running">{formatCurrency(r.runningProceeds ?? 0)}</td>
+      <td className="num th__running">
+        {r.runningProceeds != null ? formatCurrency(r.runningProceeds) : '—'}
+      </td>
       <td><MoatBadges moat={moats[r.symbol] || moats[(r.symbol || '').toUpperCase()]} /></td>
     </tr>
   );

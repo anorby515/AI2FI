@@ -185,9 +185,12 @@ export default function TaxHarvesting() {
   }, [filteredOpen]);
 
   // ── REALIZED rows ──────────────────────────────────────────────────────────
+  // Charitable donations are excluded — they aren't taxable realizations and
+  // shouldn't count against YTD net or the harvest plan.
   const realizedRows = useMemo(() => {
     const rows = [];
     for (const lot of filteredClosed) {
+      if (lot.charitableDonation === 'Yes') continue;
       if (!lot.dateSold || lot.dateSold < yearStart) continue;
       const proceeds = lotProceeds(lot);
       const cost = ds(lot) * dc(lot);

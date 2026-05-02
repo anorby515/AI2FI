@@ -38,6 +38,7 @@ app.use('/api/mortgage', require('./routes/mortgage'));
 app.use('/api/education-savings', require('./routes/education-savings'));
 app.use('/api/pension', require('./routes/pension'));
 app.use('/api/budget', require('./routes/budget'));
+app.use('/api/charitable', require('./routes/charitable'));
 app.use('/api/quotes', require('./routes/quotes'));
 app.use('/api/import/csv', require('./routes/csvImport'));
 app.use('/api/profile', require('./routes/profile'));

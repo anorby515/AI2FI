@@ -20,30 +20,22 @@ router.post('/export', (req, res) => {
   }
 
   const headers = [
-    'Ticker', 'Owner', 'Account',
-    'Acquired', 'Sold',
-    'Gain %', 'Shares', 'Shares to Sell', 'Share Price', 'Est. Proceeds',
-    'Gain $', 'Est. Tax', 'Running Harvest', 'Running Proceeds', 'Moat',
+    'Symbol', 'Account', 'Owner', 'Acquire Date',
+    'Shares to Sell / Total Shares',
+    'Share Price', 'Estimated Proceeds', 'Running Total',
   ];
 
   const data = [
     headers,
     ...rows.map(r => [
-      r.term ? `${r.symbol || ''} (${r.term})` : (r.symbol || ''),
-      r.owner || '',
+      r.symbol || '',
       r.account || '',
+      r.owner || '',
       r.dateAcquired || '',
-      r.dateSold || '',
-      r.gainPct != null ? Number(r.gainPct) : '',
-      r.shares != null ? Number(r.shares) : '',
-      r.sharesToSell != null ? Number(r.sharesToSell) : '',
+      `${r.sharesToSell ?? 0} / ${r.totalShares ?? 0}`,
       r.sharePrice != null ? Number(r.sharePrice) : '',
       r.estimatedProceeds != null ? Number(r.estimatedProceeds) : '',
-      r.gainDollar != null ? Number(r.gainDollar) : '',
-      r.taxImpact != null ? Number(r.taxImpact) : '',
-      r.running != null ? Number(r.running) : '',
       r.runningProceeds != null ? Number(r.runningProceeds) : '',
-      r.moat || '',
     ]),
   ];
 
@@ -51,20 +43,15 @@ router.post('/export', (req, res) => {
 
   // Apply column widths (rough character-width hints, not pixels).
   ws['!cols'] = [
-    { wch: 12 }, { wch: 10 }, { wch: 12 },
-    { wch: 11 }, { wch: 11 },
-    { wch: 8 },  { wch: 9 },  { wch: 14 }, { wch: 12 }, { wch: 14 },
-    { wch: 11 }, { wch: 11 }, { wch: 16 }, { wch: 16 }, { wch: 24 },
+    { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
+    { wch: 24 }, { wch: 12 }, { wch: 16 }, { wch: 16 },
   ];
 
   // Apply number formats column-by-column. Header is row 0, data starts at row 1.
   const fmt = {
-    5:  '0.00%',     // Gain %
-    9:  '$#,##0.00', // Est. Proceeds
-    10: '$#,##0.00', // Gain $
-    11: '$#,##0.00', // Est. Tax
-    12: '$#,##0.00', // Running Harvest
-    13: '$#,##0.00', // Running Proceeds
+    5: '$#,##0.00', // Share Price
+    6: '$#,##0.00', // Estimated Proceeds
+    7: '$#,##0.00', // Running Total
   };
   for (let r = 1; r < data.length; r++) {
     for (const colIdx of Object.keys(fmt)) {

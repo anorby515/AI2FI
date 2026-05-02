@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { formatCurrency, formatPct, formatShares, gainLossPct, calcCAGR, calcClosedLotsIRR, calcBenchmarkIRR, ds, dc, lotProceeds, estimatedTax, taxTerm } from '../utils/calculations';
+import { formatCurrency, formatPct, formatShares, gainLossPct, calcCAGR, calcClosedLotsIRR, calcBenchmarkIRR, ds, dc, lotProceeds, estimatedTax, taxTerm, lifetimeDividends } from '../utils/calculations';
 import { benchmarkPriceOnDate, useCurrentQuotes } from '../hooks/usePortfolio';
 
-export default function ClosedPositions({ closedLots, selectedAccounts, spyLookup, onSelectPosition, taxRates }) {
+export default function ClosedPositions({ closedLots, selectedAccounts, spyLookup, onSelectPosition, taxRates, dividendEvents }) {
   const [sortBy, setSortBy] = useState('gl');
   const [sortDir, setSortDir] = useState('desc');
   const [showIfNotSold, setShowIfNotSold] = useState(false);
@@ -50,12 +50,16 @@ export default function ClosedPositions({ closedLots, selectedAccounts, spyLooku
     }
 
     return Object.values(map).map(p => {
+      const events = dividendEvents?.[p.symbol] || null;
+      const divs = events ? lifetimeDividends(p.lots, events) : 0;
       const gl = p.totalProceeds - p.totalCost;
       const glPct = gainLossPct(p.totalCost, p.totalProceeds);
       const avgCost = p.totalShares > 0 ? p.totalCost / p.totalShares : 0;
-      const cagr = calcClosedLotsIRR(p.lots);
+      // Total-return CAGR — folds dividend cash flows into the IRR.
+      const cagr = calcClosedLotsIRR(p.lots, events);
 
-      const benchmarkFn = spyLookup ? (d) => benchmarkPriceOnDate(spyLookup, d) : null;
+      // Total-return SPY benchmark via adjClose
+      const benchmarkFn = spyLookup ? (d) => benchmarkPriceOnDate(spyLookup, d, 'adjClose') : null;
       const spyCagr = benchmarkFn ? calcBenchmarkIRR(p.lots, benchmarkFn, today) : null;
       const alpha = (cagr != null && spyCagr != null) ? cagr - spyCagr : null;
 
@@ -90,6 +94,7 @@ export default function ClosedPositions({ closedLots, selectedAccounts, spyLooku
         glPct,
         cagr,
         alpha,
+        divs,
         estTax,
         currentPrice,
         hypValue,
@@ -101,7 +106,7 @@ export default function ClosedPositions({ closedLots, selectedAccounts, spyLooku
         moneyDelta,
       };
     });
-  }, [filtered, spyLookup, currentQuotes, taxRates, today]);
+  }, [filtered, spyLookup, currentQuotes, taxRates, today, dividendEvents]);
 
   // "If Not Sold" aggregate summary
   const ifNotSoldSummary = useMemo(() => {
@@ -178,6 +183,7 @@ export default function ClosedPositions({ closedLots, selectedAccounts, spyLooku
             <ColHeader col="glPct" label="G/L %" />
             <ColHeader col="cagr" label="CAGR" />
             <ColHeader col="alpha" label="Alpha" />
+            <ColHeader col="divs" label="Dividends" />
             <ColHeader col="estTax" label="Est. Tax" />
             {showIfNotSold && <ColHeader col="currentPrice" label="Current Price" />}
             {showIfNotSold && <ColHeader col="hypGL" label="Hyp. G/L $" />}
@@ -209,6 +215,9 @@ export default function ClosedPositions({ closedLots, selectedAccounts, spyLooku
                 </td>
                 <td className={p.alpha != null ? (alphaPos ? 'positive' : 'negative') : ''}>
                   {p.alpha != null ? (p.alpha >= 0 ? '+' : '') + formatPct(p.alpha) : '—'}
+                </td>
+                <td className={p.divs > 0 ? 'positive' : ''}>
+                  {p.divs > 0 ? formatCurrency(p.divs) : '—'}
                 </td>
                 <td className={p.estTax ? 'negative' : ''}>
                   {p.estTax ? formatCurrency(p.estTax) : '—'}

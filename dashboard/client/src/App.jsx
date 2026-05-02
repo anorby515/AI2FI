@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { usePortfolio, useBenchmark } from './hooks/usePortfolio';
+import { usePortfolio, useBenchmark, usePortfolioDividends } from './hooks/usePortfolio';
 import { DEFAULT_TAX_RATES, aggregateOpenBySymbol, aggregateAllBySymbol } from './utils/calculations';
 import Dashboard from './components/Dashboard';
 import HoldingsList from './components/HoldingsList';
@@ -249,6 +249,13 @@ export default function App() {
   }, [openLots, closedLots]);
   const { lookup: spyLookup } = useBenchmark('SPY');
 
+  // Batch-fetch dividend events for every ticker in the portfolio so CAGR/Alpha
+  // and the Dividends column reflect total return without per-position fetches.
+  const allSymbols = useMemo(() => {
+    return [...new Set(allLots.map(l => l.symbol).filter(Boolean))];
+  }, [allLots]);
+  const dividendEvents = usePortfolioDividends(allSymbols);
+
   if (loading) return <div className="loading-screen">Loading portfolio...</div>;
   if (emptyState) return <OnboardingEmptyState info={emptyState} />;
   if (error) return <div className="error-screen">Error: {error}<br />Make sure the server is running at localhost:3001</div>;
@@ -406,6 +413,7 @@ export default function App() {
             quotes={quotes}
             selectedAccounts={selectedAccounts}
             spyLookup={spyLookup}
+            dividendEvents={dividendEvents}
             view={view}
             onReload={reloadPortfolio}
           />
@@ -427,6 +435,7 @@ export default function App() {
               selectedAccounts={selectedAccounts}
               onSelectPosition={setSelectedSymbol}
               spyLookup={spyLookup}
+              dividendEvents={dividendEvents}
             />
           )}
 
@@ -437,6 +446,7 @@ export default function App() {
               spyLookup={spyLookup}
               onSelectPosition={setSelectedSymbol}
               taxRates={taxRates}
+              dividendEvents={dividendEvents}
             />
           )}
 

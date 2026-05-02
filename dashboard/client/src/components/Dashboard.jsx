@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import { formatCurrency, formatPct, totalCostBasis, currentValue, gainLoss, gainLossPct, calcCAGR, calcLotsIRR, calcClosedLotsIRR, calcBenchmarkIRR, calcIRR, ds, dc, lotProceeds } from '../utils/calculations';
+import { formatCurrency, formatPct, totalCostBasis, currentValue, gainLoss, gainLossPct, calcCAGR, calcBenchmarkIRR, calcIRR, ds, dc, lotProceeds, dividendCashFlowsForSymbols, lifetimeDividendsForSymbols, lifetimeDividends } from '../utils/calculations';
 import { benchmarkPriceOnDate } from '../hooks/usePortfolio';
 import { Button } from '../ui';
 
-export default function Dashboard({ positions, openLots, closedLots, quotes, quotesLoading, selectedAccounts, spyLookup, view, onReload }) {
+export default function Dashboard({ positions, openLots, closedLots, quotes, quotesLoading, selectedAccounts, spyLookup, dividendEvents, view, onReload }) {
   const allSelected = selectedAccounts.size === 0;
   const filteredLots = allSelected
     ? openLots
@@ -21,7 +21,9 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
 
   // Portfolio-level alpha using IRR across all open lots
   const today = new Date().toISOString().slice(0, 10);
-  const benchmarkFn = spyLookup ? (d) => benchmarkPriceOnDate(spyLookup, d) : null;
+  // Total-return alpha uses SPY adjClose (dividend-adjusted) so both sides
+  // of the comparison count reinvested dividends.
+  const benchmarkFn = spyLookup ? (d) => benchmarkPriceOnDate(spyLookup, d, 'adjClose') : null;
 
   const portfolioIRR = useMemo(() => {
     if (value <= 0) return null;
@@ -38,19 +40,26 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
     }
     if (flows.length === 0 || terminalValue <= 0) return null;
     flows.push({ date: today, amount: terminalValue });
+    // Fold per-symbol dividend cash flows into total return.
+    flows.push(...dividendCashFlowsForSymbols(filteredLots, dividendEvents));
     flows.sort((a, b) => a.date.localeCompare(b.date));
     return calcIRR(flows);
-  }, [filteredLots, quotes, value, today]);
+  }, [filteredLots, quotes, value, today, dividendEvents]);
 
   const portfolioSpyIRR = useMemo(() => {
     if (!benchmarkFn || value <= 0) return null;
     return calcBenchmarkIRR(filteredLots, benchmarkFn, today);
   }, [filteredLots, benchmarkFn, value, today]);
 
+  const unrealizedDivs = useMemo(
+    () => lifetimeDividendsForSymbols(filteredLots, dividendEvents),
+    [filteredLots, dividendEvents],
+  );
+
   const portfolioAlpha = (portfolioIRR != null && portfolioSpyIRR != null) ? portfolioIRR - portfolioSpyIRR : null;
   const alphaPos = portfolioAlpha != null && portfolioAlpha >= 0;
 
-  // % of open lots beating S&P (per-lot)
+  // % of open lots beating S&P (per-lot, total return — both sides count dividends)
   const openBeatingSP = useMemo(() => {
     if (!filteredLots.length || !spyLookup || value <= 0) return null;
     let beat = 0;
@@ -59,10 +68,12 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
       const q = quotes[lot.symbol];
       if (!q) continue;
       const lotCost = ds(lot) * dc(lot);
-      const lotValue = ds(lot) * q.price;
+      const events = dividendEvents?.[lot.symbol];
+      const divs = events ? lifetimeDividends([lot], events) : 0;
+      const lotValue = ds(lot) * q.price + divs;
       const lotCagr = calcCAGR(lotCost, lotValue, lot.dateAcquired, today);
-      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
-      const se = benchmarkPriceOnDate(spyLookup, today);
+      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired, 'adjClose');
+      const se = benchmarkPriceOnDate(spyLookup, today, 'adjClose');
       const sc = (sb && se) ? calcCAGR(sb, se, lot.dateAcquired, today) : null;
       if (lotCagr != null && sc != null) {
         total++;
@@ -70,7 +81,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
       }
     }
     return total > 0 ? { beat, total, pct: beat / total } : null;
-  }, [filteredLots, quotes, spyLookup, value, today]);
+  }, [filteredLots, quotes, spyLookup, value, today, dividendEvents]);
 
   // Closed view stats
   const filteredClosed = allSelected
@@ -81,11 +92,23 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
   const closedProceeds = filteredClosed.reduce((s, l) => s + lotProceeds(l), 0);
   const totalRealizedGL = closedProceeds - closedCost;
 
-  // Closed portfolio IRR + Alpha
+  // Closed portfolio IRR + Alpha — dividends earned while the lot was held
+  // before sale are positive cash flows.
   const closedIRR = useMemo(() => {
     if (!filteredClosed.length) return null;
-    return calcClosedLotsIRR(filteredClosed);
-  }, [filteredClosed]);
+    const flows = [];
+    for (const lot of filteredClosed) {
+      const cost = ds(lot) * dc(lot);
+      if (!lot.dateAcquired || cost <= 0) continue;
+      flows.push({ date: lot.dateAcquired, amount: -cost });
+      const proceeds = lotProceeds(lot);
+      if (lot.dateSold && proceeds) flows.push({ date: lot.dateSold, amount: proceeds });
+    }
+    if (flows.length < 2) return null;
+    flows.push(...dividendCashFlowsForSymbols(filteredClosed, dividendEvents));
+    flows.sort((a, b) => a.date.localeCompare(b.date));
+    return calcIRR(flows);
+  }, [filteredClosed, dividendEvents]);
 
   const closedSpyIRR = useMemo(() => {
     if (!benchmarkFn || !filteredClosed.length) return null;
@@ -104,7 +127,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
   const totalGL = gl + totalRealizedGL;
   const totalGlPct = totalCost > 0 ? totalGL / totalCost : 0;
 
-  // Total IRR across all lots
+  // Total IRR across all lots — total return (price + dividends).
   const totalIRR = useMemo(() => {
     const allFilteredLots = [...filteredLots, ...filteredClosed];
     if (!allFilteredLots.length) return null;
@@ -124,9 +147,18 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
     }
     if (flows.length === 0) return null;
     if (terminalValue > 0) flows.push({ date: today, amount: terminalValue });
+    flows.push(...dividendCashFlowsForSymbols(allFilteredLots, dividendEvents));
     flows.sort((a, b) => a.date.localeCompare(b.date));
     return calcIRR(flows);
-  }, [filteredLots, filteredClosed, quotes, today]);
+  }, [filteredLots, filteredClosed, quotes, today, dividendEvents]);
+
+  const totalDivs = useMemo(() => {
+    return lifetimeDividendsForSymbols([...filteredLots, ...filteredClosed], dividendEvents);
+  }, [filteredLots, filteredClosed, dividendEvents]);
+  const closedDivs = useMemo(
+    () => lifetimeDividendsForSymbols(filteredClosed, dividendEvents),
+    [filteredClosed, dividendEvents],
+  );
 
   const totalSpyIRR = useMemo(() => {
     if (!benchmarkFn) return null;
@@ -164,7 +196,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
   const displayTotalIRR = totalMeetsYear ? totalIRR : null;
   const displayTotalAlpha = totalMeetsYear ? totalAlpha : null;
 
-  // All lots % Alpha > 0
+  // All lots % Alpha > 0 — total return on both sides
   const allBeatingSP = useMemo(() => {
     if (!spyLookup) return null;
     const allLots = [...filteredLots, ...filteredClosed];
@@ -174,24 +206,26 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
       const endDate = isOpen ? today : lot.dateSold;
       if (!endDate || !lot.dateAcquired) continue;
       const lotCost = ds(lot) * dc(lot);
+      const events = dividendEvents?.[lot.symbol];
+      const divs = events ? lifetimeDividends([lot], events) : 0;
       let lotEnd;
       if (isOpen) {
         const q = quotes[lot.symbol];
         if (!q) continue;
-        lotEnd = ds(lot) * q.price;
+        lotEnd = ds(lot) * q.price + divs;
       } else {
-        lotEnd = lotProceeds(lot);
+        lotEnd = lotProceeds(lot) + divs;
       }
       const lotCagr = calcCAGR(lotCost, lotEnd, lot.dateAcquired, endDate);
-      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
-      const se = benchmarkPriceOnDate(spyLookup, endDate);
+      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired, 'adjClose');
+      const se = benchmarkPriceOnDate(spyLookup, endDate, 'adjClose');
       const sc = (sb && se) ? calcCAGR(sb, se, lot.dateAcquired, endDate) : null;
       if (lotCagr != null && sc != null) { total++; if (lotCagr > sc) beat++; }
     }
     return total > 0 ? { beat, total, pct: beat / total } : null;
-  }, [filteredLots, filteredClosed, quotes, spyLookup, today]);
+  }, [filteredLots, filteredClosed, quotes, spyLookup, today, dividendEvents]);
 
-  // % of closed lots beating S&P
+  // % of closed lots beating S&P (total return)
   const closedBeatingSP = useMemo(() => {
     if (!filteredClosed.length || !spyLookup) return null;
     let beat = 0;
@@ -199,10 +233,12 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
     for (const lot of filteredClosed) {
       if (!lot.dateSold) continue;
       const lotCost = ds(lot) * dc(lot);
-      const proceeds = lotProceeds(lot);
+      const events = dividendEvents?.[lot.symbol];
+      const divs = events ? lifetimeDividends([lot], events) : 0;
+      const proceeds = lotProceeds(lot) + divs;
       const lotCagr = calcCAGR(lotCost, proceeds, lot.dateAcquired, lot.dateSold);
-      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
-      const se = benchmarkPriceOnDate(spyLookup, lot.dateSold);
+      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired, 'adjClose');
+      const se = benchmarkPriceOnDate(spyLookup, lot.dateSold, 'adjClose');
       const sc = (sb && se) ? calcCAGR(sb, se, lot.dateAcquired, lot.dateSold) : null;
       if (lotCagr != null && sc != null) {
         total++;
@@ -210,7 +246,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
       }
     }
     return total > 0 ? { beat, total, pct: beat / total } : null;
-  }, [filteredClosed, spyLookup]);
+  }, [filteredClosed, spyLookup, dividendEvents]);
 
   return (
     <div className="dashboard">
@@ -233,6 +269,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                 <div className="col-header">CAGR</div>
                 <div className="col-header">Alpha</div>
                 <div className="col-header">% Alpha &gt; 0</div>
+                <div className="col-header">Dividends</div>
                 <div className="col-header" />
                 <div className="col-header" />
               </div>
@@ -247,6 +284,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                 <Stat value={displayTotalIRR != null ? formatPct(displayTotalIRR) : '—'} accent={displayTotalIRR != null ? (displayTotalIRR >= 0 ? 'positive' : 'negative') : null} />
                 <Stat value={displayTotalAlpha != null ? (displayTotalAlpha >= 0 ? '+' : '') + formatPct(displayTotalAlpha) : '—'} accent={displayTotalAlpha != null ? (displayTotalAlpha >= 0 ? 'positive' : 'negative') : null} />
                 <Stat value={allBeatingSP != null ? formatPct(allBeatingSP.pct) : '—'} sub={allBeatingSP != null ? `${allBeatingSP.beat} of ${allBeatingSP.total}` : null} accent={allBeatingSP != null ? (allBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
+                <Stat value={totalDivs > 0 ? formatCurrency(totalDivs) : '—'} accent={totalDivs > 0 ? 'positive' : null} />
                 <Stat label="Charity" value={charitableClosed.length > 0 ? formatCurrency(charitableGL) : '—'} sub={charitableClosed.length > 0 ? `${charitableClosed.length} donations` : null} accent={charitableClosed.length > 0 ? (charitableIsPos ? 'positive' : 'negative') : null} />
                 <div className="stat-action">
                   {onReload && <Button variant="ghost" onClick={onReload}>Reload from sheet</Button>}
@@ -263,6 +301,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                 <Stat value={displayPortfolioIRR != null ? formatPct(displayPortfolioIRR) : '—'} accent={displayPortfolioIRR != null ? (displayPortfolioIRR >= 0 ? 'positive' : 'negative') : null} />
                 <Stat value={displayPortfolioAlpha != null ? (displayPortfolioAlpha >= 0 ? '+' : '') + formatPct(displayPortfolioAlpha) : '—'} accent={displayPortfolioAlpha != null ? (displayPortfolioAlpha >= 0 ? 'positive' : 'negative') : null} />
                 <Stat value={openBeatingSP != null ? formatPct(openBeatingSP.pct) : '—'} sub={openBeatingSP != null ? `${openBeatingSP.beat} of ${openBeatingSP.total}` : null} accent={openBeatingSP != null ? (openBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
+                <Stat value={unrealizedDivs > 0 ? formatCurrency(unrealizedDivs) : '—'} accent={unrealizedDivs > 0 ? 'positive' : null} />
                 <div className="stat" />
                 <div />
               </div>
@@ -278,6 +317,7 @@ export default function Dashboard({ positions, openLots, closedLots, quotes, quo
                   <Stat value={displayClosedIRR != null ? formatPct(displayClosedIRR) : '—'} accent={displayClosedIRR != null ? (displayClosedIRR >= 0 ? 'positive' : 'negative') : null} />
                   <Stat value={displayClosedAlpha != null ? (displayClosedAlpha >= 0 ? '+' : '') + formatPct(displayClosedAlpha) : '—'} accent={displayClosedAlpha != null ? (displayClosedAlpha >= 0 ? 'positive' : 'negative') : null} />
                   <Stat value={closedBeatingSP != null ? formatPct(closedBeatingSP.pct) : '—'} sub={closedBeatingSP != null ? `${closedBeatingSP.beat} of ${closedBeatingSP.total}` : null} accent={closedBeatingSP != null ? (closedBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
+                  <Stat value={closedDivs > 0 ? formatCurrency(closedDivs) : '—'} accent={closedDivs > 0 ? 'positive' : null} />
                   <div className="stat" />
                   <div />
                 </div>

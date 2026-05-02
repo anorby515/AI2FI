@@ -33,36 +33,41 @@
 .ch__title    { font-size: 24px; font-weight: 700; letter-spacing: -0.6px; }
 .ch__subtitle { font-size: 12.5px; color: var(--ink-2); }
 
-/* Metadata strip — Account / Current Balance pulled from the
-   spreadsheet's Charitable Trust tab header rows. */
-.ch__meta-strip {
+/* Account strip pulled from the Charitable Trust tab header rows.
+   Format: "<Account name> | Current Balance $X (as of date)". */
+.ch__account-strip {
   display: flex;
-  gap: var(--gap-lg);
-  margin-top: var(--gap-sm);
-  flex-wrap: wrap;
-}
-.ch__meta-item {
-  display: inline-flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 10px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+  font-size: 14px;
 }
-.ch__meta-label {
+.ch__account-name {
+  color: var(--ink);
+  font-weight: 600;
+}
+.ch__pipe {
+  color: var(--dim);
+}
+.ch__balance-label {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--dim);
   font-weight: 600;
 }
-.ch__meta-value {
+.ch__balance-value {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
-  color: var(--ink);
-  font-weight: 600;
+  color: var(--accent);
+  font-weight: 700;
 }
-.ch__meta-asof {
-  font-size: 11.5px;
+.ch__balance-asof {
+  font-size: 12px;
   color: var(--dim);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .ch__loading,
@@ -236,6 +241,35 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+/* Sortable headers — clickable, with persistent direction arrow */
+.ch__sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--t-fast);
+}
+.ch__sortable:hover {
+  color: var(--ink);
+}
+.ch__sortable--active {
+  color: var(--accent);
+}
+.ch__sort-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ch__sortable.ch__num .ch__sort-label {
+  flex-direction: row-reverse;
+}
+.ch__sort-arrow {
+  font-size: 10px;
+  opacity: 0.55;
+  font-family: var(--font-mono);
+}
+.ch__sortable--active .ch__sort-arrow {
+  opacity: 1;
+}
+
 .ch__pos    { color: var(--pos); }
 .ch__neg    { color: var(--neg); }
 .ch__dim    { color: var(--dim); }

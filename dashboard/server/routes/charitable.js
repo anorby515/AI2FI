@@ -49,6 +49,10 @@ function formatDate(val) {
 //   Current Balance    → meta.currentBalance     (number) +
 //                        meta.currentBalanceAsOf (ISO date) — pulled from a
 //                        sibling cell that starts with "as of …" if present.
+//
+// Tolerates currency-symbol filler cells (a lone "$" between the label and
+// the numeric value) and "As of …" tags appearing in any column to the
+// right of the value.
 function parseTrustMeta(rows, headerIdx) {
   const meta = {};
   const labelMap = {
@@ -57,6 +61,8 @@ function parseTrustMeta(rows, headerIdx) {
     'current balance': 'currentBalance',
     balance:        'currentBalance',
   };
+  const isFiller = (v) => typeof v === 'string' && /^[\s$€£¥:]+$/.test(v.trim());
+
   for (let i = 0; i < headerIdx; i++) {
     const row = rows[i] || [];
     for (let c = 0; c < row.length; c++) {
@@ -65,31 +71,29 @@ function parseTrustMeta(rows, headerIdx) {
       const label = cell.trim().toLowerCase().replace(/:\s*$/, '');
       const key = labelMap[label];
       if (!key) continue;
-      // Walk to the right looking for the value (skip blank cells).
-      let valueCell = null;
-      let asOfCell = null;
+
+      // Collect every non-blank, non-filler cell to the right of the label.
+      const tail = [];
       for (let nc = c + 1; nc < row.length; nc++) {
         const v = row[nc];
-        if (v == null || v === '') continue;
-        if (valueCell == null) {
-          valueCell = v;
-          continue;
-        }
-        // Subsequent non-blank cells: capture an "As of …" tag if present.
-        if (typeof v === 'string' && /^as\s+of\b/i.test(v.trim())) {
-          asOfCell = v.trim().replace(/^as\s+of\s*/i, '');
-          break;
-        }
+        if (v == null || v === '' || isFiller(v)) continue;
+        tail.push(v);
       }
+
       if (key === 'currentBalance') {
-        const num = Number(valueCell);
-        if (Number.isFinite(num)) meta.currentBalance = num;
-        if (asOfCell) {
-          const iso = formatDate(asOfCell);
+        // Prefer the first numeric value (skip a stray "$" or label cell).
+        const num = tail.map(Number).find((n) => Number.isFinite(n));
+        if (num != null) meta.currentBalance = num;
+        // "As of …" tag may appear before or after the number.
+        const asOfRaw = tail.find(
+          (v) => typeof v === 'string' && /^as\s+of\b/i.test(v.trim()),
+        );
+        if (asOfRaw) {
+          const iso = formatDate(asOfRaw.trim().replace(/^as\s+of\s*/i, ''));
           if (iso) meta.currentBalanceAsOf = iso;
         }
-      } else {
-        if (valueCell != null) meta[key] = String(valueCell).trim();
+      } else if (tail.length > 0) {
+        meta[key] = String(tail[0]).trim();
       }
       break;
     }

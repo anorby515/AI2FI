@@ -100,6 +100,19 @@ export default function CharitableView() {
   // the YTD hero is locked to current calendar year regardless.
   const [range, setRange] = useState('All');
 
+  // Per-table sort state. Numeric columns default to desc on first click,
+  // text columns to asc. Clicking the active column toggles direction.
+  const [orgSort, setOrgSort] = useState({ col: 'total', dir: 'desc' });
+  const [stockSort, setStockSort] = useState({ col: 'total', dir: 'desc' });
+
+  function toggleSort(setter, prevState, col, isText = false) {
+    if (prevState.col === col) {
+      setter({ col, dir: prevState.dir === 'asc' ? 'desc' : 'asc' });
+    } else {
+      setter({ col, dir: isText ? 'asc' : 'desc' });
+    }
+  }
+
   const reload = useCallback(() => {
     setErrorBody(null);
     fetch('/api/charitable')
@@ -282,8 +295,7 @@ export default function CharitableView() {
       .map(([org, cells]) => {
         const total = yearList.reduce((s, y) => s + (cells[y] || 0), 0);
         return { org, cells, total };
-      })
-      .sort((a, b) => b.total - a.total);
+      });
     const yearTotals = {};
     for (const y of yearList) {
       yearTotals[y] = orgRows.reduce((s, r) => s + (r.cells[y] || 0), 0);
@@ -291,6 +303,36 @@ export default function CharitableView() {
     const grandTotal = orgRows.reduce((s, r) => s + r.total, 0);
     return { years: yearList, rows: orgRows, yearTotals, grandTotal };
   }, [filtered.distributions]);
+
+  const sortedOrgRows = useMemo(() => {
+    const rows = [...orgTable.rows];
+    const dir = orgSort.dir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => {
+      let av, bv;
+      if (orgSort.col === 'org') { av = a.org.toLowerCase(); bv = b.org.toLowerCase(); }
+      else if (orgSort.col === 'total') { av = a.total; bv = b.total; }
+      else { av = a.cells[orgSort.col] || 0; bv = b.cells[orgSort.col] || 0; }
+      if (av < bv) return -1 * dir;
+      if (av > bv) return  1 * dir;
+      return 0;
+    });
+    return rows;
+  }, [orgTable.rows, orgSort]);
+
+  const sortedStockRows = useMemo(() => {
+    const rows = [...stockTable.rows];
+    const dir = stockSort.dir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => {
+      let av, bv;
+      if (stockSort.col === 'symbol') { av = a.symbol.toLowerCase(); bv = b.symbol.toLowerCase(); }
+      else if (stockSort.col === 'total') { av = a.total.amount; bv = b.total.amount; }
+      else { av = a.cells[stockSort.col]?.amount || 0; bv = b.cells[stockSort.col]?.amount || 0; }
+      if (av < bv) return -1 * dir;
+      if (av > bv) return  1 * dir;
+      return 0;
+    });
+    return rows;
+  }, [stockTable.rows, stockSort]);
 
   if (errorBody) {
     return (
@@ -329,34 +371,34 @@ export default function CharitableView() {
   const tabMissing = data.distributionsTabFound === false;
   const noData = !filtered.contributions.length && !filtered.distributions.length;
   const meta = data.meta || {};
-  const subtitle = meta.timeframe
+  const timeframe = meta.timeframe
     || (earliestDate ? `Activity since ${earliestDate}` : 'No charitable activity yet');
+
+  // "<Account> | Current Balance $X (as of date)" — surfaced directly from
+  // the spreadsheet's Charitable Trust header rows when present.
+  const accountStrip = (meta.account || meta.currentBalance != null) ? (
+    <div className="ch__account-strip">
+      {meta.account && <span className="ch__account-name">{meta.account}</span>}
+      {meta.account && meta.currentBalance != null && <span className="ch__pipe">|</span>}
+      {meta.currentBalance != null && (
+        <>
+          <span className="ch__balance-label">Current Balance</span>
+          <span className="ch__balance-value">{fmtUSD(meta.currentBalance)}</span>
+          {meta.currentBalanceAsOf && (
+            <span className="ch__balance-asof">(as of {meta.currentBalanceAsOf})</span>
+          )}
+        </>
+      )}
+    </div>
+  ) : null;
 
   return (
     <div className="ch">
       <div className="ch__head">
         <div className="ch__head-left">
           <div className="ch__title">Charitable Tracking</div>
-          <div className="ch__subtitle">{subtitle}</div>
-          {(meta.account || meta.currentBalance != null) && (
-            <div className="ch__meta-strip">
-              {meta.account && (
-                <div className="ch__meta-item">
-                  <span className="ch__meta-label">Account</span>
-                  <span className="ch__meta-value">{meta.account}</span>
-                </div>
-              )}
-              {meta.currentBalance != null && (
-                <div className="ch__meta-item">
-                  <span className="ch__meta-label">Current balance</span>
-                  <span className="ch__meta-value">{fmtUSD(meta.currentBalance)}</span>
-                  {meta.currentBalanceAsOf && (
-                    <span className="ch__meta-asof">as of {meta.currentBalanceAsOf}</span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          {accountStrip}
+          <div className="ch__subtitle">{timeframe}</div>
         </div>
         <div className="ch__head-right">
           <Button variant="ghost" onClick={reload}>Reload from sheet</Button>
@@ -493,15 +535,33 @@ export default function CharitableView() {
                 <table className="ch__table">
                   <thead>
                     <tr>
-                      <th>Organization</th>
+                      <SortableTh
+                        col="org"
+                        label="Organization"
+                        sort={orgSort}
+                        onSort={(c) => toggleSort(setOrgSort, orgSort, c, true)}
+                      />
                       {orgTable.years.map(y => (
-                        <th key={y} className="ch__num">{y}</th>
+                        <SortableTh
+                          key={y}
+                          col={y}
+                          label={y}
+                          numeric
+                          sort={orgSort}
+                          onSort={(c) => toggleSort(setOrgSort, orgSort, c)}
+                        />
                       ))}
-                      <th className="ch__num">Total</th>
+                      <SortableTh
+                        col="total"
+                        label="Total"
+                        numeric
+                        sort={orgSort}
+                        onSort={(c) => toggleSort(setOrgSort, orgSort, c)}
+                      />
                     </tr>
                   </thead>
                   <tbody>
-                    {orgTable.rows.map(r => (
+                    {sortedOrgRows.map(r => (
                       <tr key={r.org}>
                         <td className="ch__org">{r.org}</td>
                         {orgTable.years.map(y => (
@@ -534,15 +594,33 @@ export default function CharitableView() {
                 <table className="ch__table">
                   <thead>
                     <tr>
-                      <th>Ticker</th>
+                      <SortableTh
+                        col="symbol"
+                        label="Ticker"
+                        sort={stockSort}
+                        onSort={(c) => toggleSort(setStockSort, stockSort, c, true)}
+                      />
                       {stockTable.years.map(y => (
-                        <th key={y} className="ch__num">{y}</th>
+                        <SortableTh
+                          key={y}
+                          col={y}
+                          label={y}
+                          numeric
+                          sort={stockSort}
+                          onSort={(c) => toggleSort(setStockSort, stockSort, c)}
+                        />
                       ))}
-                      <th className="ch__num">Total</th>
+                      <SortableTh
+                        col="total"
+                        label="Total"
+                        numeric
+                        sort={stockSort}
+                        onSort={(c) => toggleSort(setStockSort, stockSort, c)}
+                      />
                     </tr>
                   </thead>
                   <tbody>
-                    {stockTable.rows.map(r => (
+                    {sortedStockRows.map(r => (
                       <tr key={r.symbol}>
                         <td className="ch__ticker">{r.symbol}</td>
                         {stockTable.years.map(y => {
@@ -600,6 +678,25 @@ function rangeLabel(r) {
     case '3Y':  return 'Last 3 years';
     default:    return 'Since inception';
   }
+}
+
+function SortableTh({ col, label, numeric = false, sort, onSort }) {
+  const active = sort.col === col;
+  const arrow = active ? (sort.dir === 'asc' ? '↑' : '↓') : '';
+  return (
+    <th
+      className={`${numeric ? 'ch__num ' : ''}ch__sortable${active ? ' ch__sortable--active' : ''}`}
+      onClick={() => onSort(col)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSort(col); } }}
+    >
+      <span className="ch__sort-label">
+        {label}
+        <span className="ch__sort-arrow">{arrow || '⇅'}</span>
+      </span>
+    </th>
+  );
 }
 
 function ActivityRow({ eyebrow, tag, agg }) {

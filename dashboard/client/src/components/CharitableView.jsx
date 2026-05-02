@@ -142,39 +142,37 @@ export default function CharitableView() {
     return all.reduce((min, e) => (min == null || e.date < min) ? e.date : min, null);
   }, [data]);
 
-  // YTD snapshot for the hero — always shows current calendar year regardless
-  // of the time-range segment (which scopes the lower analytical sections).
-  // Taxes saved approximates LT capital gains avoided by donating appreciated
-  // stock instead of selling: (proceeds − cost basis) × LT rate, only counted
-  // for lots held more than a year (donating short-term gains caps the
-  // deduction at basis, so the tax benefit is much smaller).
-  const ytd = useMemo(() => {
-    const year = new Date().getFullYear();
-    const yearStart = `${year}-01-01`;
-    const yearEnd   = `${year}-12-31`;
-    const inYear = (e) => e.date >= yearStart && e.date <= yearEnd;
-
-    const contribs = (data?.contributions || []).filter(inYear);
-    const distribs = (data?.distributions || []).filter(inYear);
-
+  // Activity aggregates for the hero — fixed time scopes (lifetime, YTD,
+  // last year) independent of the time-range segment filter below.
+  const activity = useMemo(() => {
     const ONE_YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
-    let taxesSaved = 0;
-    for (const c of contribs) {
-      if (c.costBasis == null || !c.dateAcquired) continue;
-      const heldMs = new Date(c.date) - new Date(c.dateAcquired);
-      const isLT = heldMs >= ONE_YEAR_MS;
-      const gain = c.amount - c.costBasis;
-      if (gain <= 0 || !isLT) continue;
-      taxesSaved += gain * DEFAULT_TAX_RATES.lt;
+    function aggregate(startISO, endISO) {
+      const inRange = (e) => e.date >= startISO && e.date <= endISO;
+      const contribs = (data?.contributions || []).filter(inRange);
+      const distribs = (data?.distributions || []).filter(inRange);
+      let taxesAvoided = 0;
+      for (const c of contribs) {
+        if (c.costBasis == null || !c.dateAcquired) continue;
+        const heldMs = new Date(c.date) - new Date(c.dateAcquired);
+        if (heldMs < ONE_YEAR_MS) continue;
+        const gain = c.amount - c.costBasis;
+        if (gain <= 0) continue;
+        taxesAvoided += gain * DEFAULT_TAX_RATES.lt;
+      }
+      return {
+        contribTotal: contribs.reduce((s, e) => s + (e.amount || 0), 0),
+        contribCount: contribs.length,
+        distribTotal: distribs.reduce((s, e) => s + (e.amount || 0), 0),
+        distribCount: distribs.length,
+        taxesAvoided,
+      };
     }
-
+    const thisYear = new Date().getFullYear();
+    const lastYear = thisYear - 1;
     return {
-      year,
-      contribTotal: contribs.reduce((s, e) => s + (e.amount || 0), 0),
-      contribCount: contribs.length,
-      distribTotal: distribs.reduce((s, e) => s + (e.amount || 0), 0),
-      distribCount: distribs.length,
-      taxesSaved,
+      lifetime: aggregate('0000-01-01', '9999-12-31'),
+      ytd:      { year: thisYear, ...aggregate(`${thisYear}-01-01`, `${thisYear}-12-31`) },
+      lastYear: { year: lastYear, ...aggregate(`${lastYear}-01-01`, `${lastYear}-12-31`) },
     };
   }, [data]);
 
@@ -245,12 +243,11 @@ export default function CharitableView() {
     return { years: yearList, rows: symRows, yearTotals, grandTotal };
   }, [filtered.contributions]);
 
-  // Sector pie data — only distributions, since contributions don't carry a
-  // sector. Slice colors come from the series tokens so the chart restyles
-  // when the accent palette changes.
-  const sectorData = useMemo(() => {
+  // Lifetime sector pie — pinned to the overview block so it reads as a
+  // top-level snapshot, not affected by the time-range segment.
+  const sectorDataLifetime = useMemo(() => {
     const bySector = new Map();
-    for (const d of filtered.distributions) {
+    for (const d of (data?.distributions || [])) {
       const k = d.sector || 'Uncategorized';
       bySector.set(k, (bySector.get(k) || 0) + d.amount);
     }
@@ -261,7 +258,11 @@ export default function CharitableView() {
         color: SECTOR_COLORS[i % SECTOR_COLORS.length],
       }))
       .sort((a, b) => b.value - a.value);
-  }, [filtered.distributions]);
+  }, [data]);
+  const lifetimeDistribTotal = useMemo(
+    () => sectorDataLifetime.reduce((s, x) => s + x.value, 0),
+    [sectorDataLifetime],
+  );
 
   // Organization × Calendar-Year pivot for the donations summary.
   const orgTable = useMemo(() => {
@@ -327,53 +328,86 @@ export default function CharitableView() {
 
   const tabMissing = data.distributionsTabFound === false;
   const noData = !filtered.contributions.length && !filtered.distributions.length;
-  const subtitle = earliestDate
-    ? `Activity since ${earliestDate}`
-    : 'No charitable activity yet';
+  const meta = data.meta || {};
+  const subtitle = meta.timeframe
+    || (earliestDate ? `Activity since ${earliestDate}` : 'No charitable activity yet');
 
   return (
     <div className="ch">
       <div className="ch__head">
-        <div>
+        <div className="ch__head-left">
           <div className="ch__title">Charitable Tracking</div>
           <div className="ch__subtitle">{subtitle}</div>
+          {(meta.account || meta.currentBalance != null) && (
+            <div className="ch__meta-strip">
+              {meta.account && (
+                <div className="ch__meta-item">
+                  <span className="ch__meta-label">Account</span>
+                  <span className="ch__meta-value">{meta.account}</span>
+                </div>
+              )}
+              {meta.currentBalance != null && (
+                <div className="ch__meta-item">
+                  <span className="ch__meta-label">Current balance</span>
+                  <span className="ch__meta-value">{fmtUSD(meta.currentBalance)}</span>
+                  {meta.currentBalanceAsOf && (
+                    <span className="ch__meta-asof">as of {meta.currentBalanceAsOf}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="ch__head-right">
           <Button variant="ghost" onClick={reload}>Reload from sheet</Button>
         </div>
       </div>
 
-      <Card variant="grad" className="ch__hero">
-        <div className="ch__hero-head">
-          <div className="ch__hero-eyebrow">YTD Activity</div>
-          <div className="ch__hero-year">{ytd.year}</div>
-        </div>
-        <div className="ch__hero-grid">
-          <Stat
-            label="Contributions"
-            value={fmtUSD(ytd.contribTotal)}
-            sub={`${ytd.contribCount} contribution${ytd.contribCount === 1 ? '' : 's'}`}
-            size="lg"
-            tone={ytd.contribTotal > 0 ? 'pos' : 'neutral'}
-          />
-          <div className="ch__hero-divider" />
-          <Stat
-            label="Taxes saved"
-            value={fmtUSD(ytd.taxesSaved)}
-            sub={`Est. LT cap-gains @ ${(DEFAULT_TAX_RATES.lt * 100).toFixed(1)}%`}
-            size="lg"
-            tone={ytd.taxesSaved > 0 ? 'pos' : 'neutral'}
-          />
-          <div className="ch__hero-divider" />
-          <Stat
-            label="Distributions"
-            value={fmtUSD(ytd.distribTotal)}
-            sub={`${ytd.distribCount} grant${ytd.distribCount === 1 ? '' : 's'}`}
-            size="lg"
-            tone={ytd.distribTotal > 0 ? 'neg' : 'neutral'}
-          />
-        </div>
-      </Card>
+      <div className="ch__overview">
+        <Card variant="grad" className="ch__hero">
+          <ActivityRow eyebrow="Lifetime Activity" tag={earliestDate ? `since ${earliestDate.slice(0, 4)}` : null} agg={activity.lifetime} />
+          <div className="ch__hero-sep" />
+          <ActivityRow eyebrow="YTD" tag={String(activity.ytd.year)} agg={activity.ytd} />
+          <div className="ch__hero-sep" />
+          <ActivityRow eyebrow="Last Year" tag={String(activity.lastYear.year)} agg={activity.lastYear} />
+        </Card>
+
+        <Card className="ch__pie-card">
+          <div className="ch__section-title">Distributions by sector · lifetime</div>
+          {sectorDataLifetime.length === 0 ? (
+            <div className="ch__empty">No distributions recorded yet.</div>
+          ) : (
+            <div className="ch__pie-wrap">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={sectorDataLifetime}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={110}
+                    innerRadius={55}
+                    paddingAngle={1}
+                    label={({ name, value }) =>
+                      lifetimeDistribTotal ? `${name} · ${(value / lifetimeDistribTotal * 100).toFixed(0)}%` : name
+                    }
+                  >
+                    {sectorDataLifetime.map((slice) => (
+                      <Cell key={slice.name} fill={slice.color} stroke="var(--card)" strokeWidth={1} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: 'var(--card-hi)', border: '1px solid var(--rule-3)', fontSize: 12 }}
+                    formatter={(v, name) => [fmtUSD(v), name]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Card>
+      </div>
 
       <div className="ch__filter-bar">
         <span className="ch__filter-label">Explore activity over</span>
@@ -399,87 +433,6 @@ export default function CharitableView() {
         </Card>
       ) : (
         <>
-          <div className="ch__split">
-            <Card className="ch__pie-card">
-              <div className="ch__section-title">Distributions by sector</div>
-              {sectorData.length === 0 ? (
-                <div className="ch__empty">No distributions in the selected range.</div>
-              ) : (
-                <div className="ch__pie-wrap">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={sectorData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={120}
-                        innerRadius={60}
-                        paddingAngle={1}
-                        label={({ name, value }) =>
-                          distribTotal ? `${name} · ${(value / distribTotal * 100).toFixed(0)}%` : name
-                        }
-                      >
-                        {sectorData.map((slice) => (
-                          <Cell key={slice.name} fill={slice.color} stroke="var(--card)" strokeWidth={1} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ background: 'var(--card-hi)', border: '1px solid var(--rule-3)', fontSize: 12 }}
-                        formatter={(v, name) => [fmtUSD(v), name]}
-                      />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </Card>
-
-            <Card>
-              <div className="ch__section-title">Top organizations</div>
-              {orgTable.rows.length === 0 ? (
-                <div className="ch__empty">No distributions in the selected range.</div>
-              ) : (
-                <div className="ch__table-scroll">
-                  <table className="ch__table">
-                    <thead>
-                      <tr>
-                        <th>Organization</th>
-                        {orgTable.years.map(y => (
-                          <th key={y} className="ch__num">{y}</th>
-                        ))}
-                        <th className="ch__num">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orgTable.rows.map(r => (
-                        <tr key={r.org}>
-                          <td className="ch__org">{r.org}</td>
-                          {orgTable.years.map(y => (
-                            <td key={y} className={`ch__num ${r.cells[y] ? '' : 'ch__dim'}`}>
-                              {r.cells[y] ? fmtUSD(r.cells[y]) : '—'}
-                            </td>
-                          ))}
-                          <td className="ch__num ch__strong">{fmtUSD(r.total)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="ch__totals-row">
-                        <td>Total</td>
-                        {orgTable.years.map(y => (
-                          <td key={y} className="ch__num">{fmtUSD(orgTable.yearTotals[y])}</td>
-                        ))}
-                        <td className="ch__num">{fmtUSD(orgTable.grandTotal)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
-            </Card>
-          </div>
-
           <Card>
             <div className="ch__section-title">Quarterly cash flow</div>
             <div className="ch__table-scroll">
@@ -529,6 +482,49 @@ export default function CharitableView() {
                 </tbody>
               </table>
             </div>
+          </Card>
+
+          <Card>
+            <div className="ch__section-title">Top organizations</div>
+            {orgTable.rows.length === 0 ? (
+              <div className="ch__empty">No distributions in the selected range.</div>
+            ) : (
+              <div className="ch__table-scroll">
+                <table className="ch__table">
+                  <thead>
+                    <tr>
+                      <th>Organization</th>
+                      {orgTable.years.map(y => (
+                        <th key={y} className="ch__num">{y}</th>
+                      ))}
+                      <th className="ch__num">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orgTable.rows.map(r => (
+                      <tr key={r.org}>
+                        <td className="ch__org">{r.org}</td>
+                        {orgTable.years.map(y => (
+                          <td key={y} className={`ch__num ${r.cells[y] ? '' : 'ch__dim'}`}>
+                            {r.cells[y] ? fmtUSD(r.cells[y]) : '—'}
+                          </td>
+                        ))}
+                        <td className="ch__num ch__strong">{fmtUSD(r.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="ch__totals-row">
+                      <td>Total</td>
+                      {orgTable.years.map(y => (
+                        <td key={y} className="ch__num">{fmtUSD(orgTable.yearTotals[y])}</td>
+                      ))}
+                      <td className="ch__num">{fmtUSD(orgTable.grandTotal)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
           </Card>
 
           {stockTable.rows.length > 0 && (
@@ -604,4 +600,37 @@ function rangeLabel(r) {
     case '3Y':  return 'Last 3 years';
     default:    return 'Since inception';
   }
+}
+
+function ActivityRow({ eyebrow, tag, agg }) {
+  return (
+    <div className="ch__hero-section">
+      <div className="ch__hero-head">
+        <div className="ch__hero-eyebrow">{eyebrow}</div>
+        {tag && <div className="ch__hero-year">{tag}</div>}
+      </div>
+      <div className="ch__hero-grid">
+        <Stat
+          label="Contributions"
+          value={fmtUSD(agg.contribTotal)}
+          sub={`${agg.contribCount} contribution${agg.contribCount === 1 ? '' : 's'}`}
+          tone={agg.contribTotal > 0 ? 'pos' : 'neutral'}
+        />
+        <div className="ch__hero-divider" />
+        <Stat
+          label="Taxes avoided"
+          value={fmtUSD(agg.taxesAvoided)}
+          sub={`Est. LT cap-gains @ ${(DEFAULT_TAX_RATES.lt * 100).toFixed(1)}%`}
+          tone={agg.taxesAvoided > 0 ? 'pos' : 'neutral'}
+        />
+        <div className="ch__hero-divider" />
+        <Stat
+          label="Distributions"
+          value={fmtUSD(agg.distribTotal)}
+          sub={`${agg.distribCount} grant${agg.distribCount === 1 ? '' : 's'}`}
+          tone={agg.distribTotal > 0 ? 'neg' : 'neutral'}
+        />
+      </div>
+    </div>
+  );
 }

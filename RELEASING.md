@@ -4,7 +4,7 @@ This document describes how to cut a release and how a release flows through
 to the public welcome page at
 [anorby515.github.io/AI2FI](https://anorby515.github.io/AI2FI/).
 
-Keep this process boring on purpose. The welcome page, the `CHANGELOG.md`,
+Keep this process boring on purpose. The welcome page, the `RELEASE.md`,
 the `VERSION` / `version.json` files, the `release` branch, and a git tag
 are the only moving parts.
 
@@ -19,7 +19,7 @@ AI2FI ships as a git repository — users clone or download a ZIP of the
    the long-lived `release` branch.
 2. A tag (`vX.Y.Z`) on that commit.
 3. A GitHub Release attached to the tag, with notes.
-4. An updated `CHANGELOG.md`, `VERSION`, and `version.json` that describe
+4. An updated `RELEASE.md`, `VERSION`, and `version.json` that describe
    what changed and what version the public is now seeing.
 
 There is no build artifact. There is no package registry. The welcome page
@@ -65,17 +65,19 @@ Run through this every time.
 1. **Confirm `main` is green.** Dashboard builds, any tests pass.
 2. **Decide the version bump.** Check recent commits since the last tag with
    `git log --oneline $(git describe --tags --abbrev=0)..HEAD`.
-3. **Update `CHANGELOG.md`:**
-   - Move the relevant lines out of `[Unreleased]` into a new
-     `## [X.Y.Z] - YYYY-MM-DD` section.
-   - Leave an empty `[Unreleased]` block at the top with the standard
-     subheadings (`### Added`, `### Changed`, `### Fixed`, `### Removed`).
-   - Update the compare links at the bottom of the file.
+3. **Rewrite `RELEASE.md`** as the public summary for this version:
+   - Lead with `# AI2FI vX.Y.Z` and a one-line tagline.
+   - High-level, user-facing only — what someone actually sees or does
+     differently. No file paths, class names, or implementation detail
+     (those belong in commit messages and PR descriptions).
+   - Group by *AI Coach*, *Dashboard*, *Privacy posture* (or whatever
+     groupings the release suggests). Past releases are not preserved
+     here — the file always describes the current release.
 4. **Bump `VERSION` and `version.json`** at the repo root:
    - `VERSION` — single line, e.g. `0.2.0`.
    - `version.json` — update `version`, `released` (today's date), and
      `tag` (`vX.Y.Z`). Leave `branch`, `downloadUrl`, `tarballUrl`,
-     `releasesUrl`, and `changelogUrl` alone — they reference the
+     `releasesUrl`, and `releaseNotesUrl` alone — they reference the
      `release` branch and don't change between versions.
 5. **Commit on `main`** with message `release: vX.Y.Z`.
 6. **Fast-forward `release` to `main`:**
@@ -90,15 +92,14 @@ Run through this every time.
 7. **Tag the commit:** `git tag -a vX.Y.Z -m "AI2FI vX.Y.Z"`.
 8. **Push everything:** `git push origin main release && git push --tags`.
 9. **Create the GitHub Release.** In the GitHub UI, "Draft a new release" →
-   pick the tag → title `AI2FI vX.Y.Z` → paste the matching section from
-   `CHANGELOG.md` as the body (or click "Generate release notes" and
-   reconcile).
+   pick the tag → title `AI2FI vX.Y.Z` → paste `RELEASE.md` as the body
+   (or click "Generate release notes" and reconcile).
 10. **Verify the welcome page.** Visit
     [anorby515.github.io/AI2FI](https://anorby515.github.io/AI2FI/) and
     confirm:
     - The version pill in the hero reads `vX.Y.Z · released YYYY-MM-DD`.
     - The "Download release" card shows the new version.
-    - The "What's new" section includes the new release at the top.
+    - The "What's in this release" section renders the new `RELEASE.md`.
 
     GitHub Pages usually updates within a minute or two.
 
@@ -108,18 +109,18 @@ Run through this every time.
 
 The welcome page is static HTML at `docs/index.html`, served by GitHub Pages
 from the `release` branch's `/docs` folder. It does **not** need to be
-rebuilt when the changelog or version changes.
+rebuilt when `RELEASE.md` or `version.json` changes.
 
 At page load it runs:
 
 ```
 fetch('https://raw.githubusercontent.com/anorby515/AI2FI/release/version.json')
-fetch('https://raw.githubusercontent.com/anorby515/AI2FI/release/CHANGELOG.md')
+fetch('https://raw.githubusercontent.com/anorby515/AI2FI/release/RELEASE.md')
 ```
 
 and renders the result. Three consequences:
 
-- Updating `CHANGELOG.md` and `version.json` on `release` is sufficient to
+- Updating `RELEASE.md` and `version.json` on `release` is sufficient to
   update the public surface. No HTML edit, no rebuild.
 - The page only sees what is on `release` — anything on `main` that hasn't
   been fast-forwarded into `release` is invisible to users.
@@ -165,8 +166,8 @@ source branch changes.
 
 If a change is user-facing but *content only* (new module curriculum, a
 knowledge-check revision, a new scenario), it still counts as a release —
-content is the product. Bump the minor version and write it up in the
-changelog.
+content is the product. Bump the minor version and write it up in
+`RELEASE.md`.
 
 ---
 

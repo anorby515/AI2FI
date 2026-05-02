@@ -12,7 +12,8 @@ router.get('/:ticker', async (req, res) => {
 
   try {
     const data = await fetchHistoricalPrices(ticker, '1993-01-01');
-    const lean = data.map(d => ({ date: d.date, close: d.close }));
+    // adjClose is dividend-adjusted — used for total-return alpha vs SPY.
+    const lean = data.map(d => ({ date: d.date, close: d.close, adjClose: d.adjClose }));
     cache.set('benchmark', ticker, lean);
     res.json(lean);
   } catch (err) {

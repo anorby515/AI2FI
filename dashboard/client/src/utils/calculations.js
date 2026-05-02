@@ -99,11 +99,16 @@ export function calcCAGR(startValue, endValue, startDate, endDate) {
 }
 
 /**
- * IRR (Internal Rate of Return) via Newton's method.
+ * IRR (Internal Rate of Return).
  * cashFlows: array of { date: 'YYYY-MM-DD', amount: number }
  *   - Negative amounts = money out (purchases)
- *   - Positive amounts = money in (current value, proceeds)
- * Returns annualized rate or null if can't converge.
+ *   - Positive amounts = money in (current value, proceeds, dividends)
+ * Returns annualized rate or null if a root can't be located.
+ *
+ * Strategy: try Newton's method first (fast); if it diverges or converges to
+ * a non-root, fall back to bisection over [-0.99, 100]. This matters once
+ * dividends and re-buys are folded in — the resulting NPV curve can have
+ * multiple sign changes, on which Newton can climb to the upper clamp.
  */
 export function calcIRR(cashFlows) {
   if (!cashFlows || cashFlows.length < 2) return null;
@@ -115,31 +120,171 @@ export function calcIRR(cashFlows) {
     years: (new Date(cf.date).getTime() - t0) / msPerYear,
   }));
 
-  // Newton's method: find r where NPV(r) = 0
-  let r = 0.1; // initial guess 10%
-  for (let i = 0; i < 100; i++) {
+  const grossFlow = flows.reduce((s, f) => s + Math.abs(f.amount), 0);
+  // Relative tolerance — absolute $0.01 is too tight for large portfolios.
+  const tol = Math.max(0.01, grossFlow * 1e-6);
+
+  function npvAt(r) {
     let npv = 0;
-    let dnpv = 0;
     for (const f of flows) {
       const disc = Math.pow(1 + r, f.years);
-      if (!isFinite(disc) || disc === 0) return null;
+      if (!isFinite(disc) || disc === 0) return NaN;
+      npv += f.amount / disc;
+    }
+    return npv;
+  }
+
+  // Newton's method
+  let r = 0.1;
+  for (let i = 0; i < 60; i++) {
+    let npv = 0, dnpv = 0;
+    for (const f of flows) {
+      const disc = Math.pow(1 + r, f.years);
+      if (!isFinite(disc) || disc === 0) { r = NaN; break; }
       npv += f.amount / disc;
       dnpv -= f.years * f.amount / (disc * (1 + r));
     }
-    if (Math.abs(npv) < 0.01) return r; // converged
-    if (dnpv === 0) return null;
-    r -= npv / dnpv;
-    if (r < -0.99) r = -0.99; // clamp to avoid divergence
-    if (r > 100) r = 100;
+    if (!isFinite(r)) break;
+    if (Math.abs(npv) < tol) return r;
+    if (dnpv === 0) break;
+    const next = r - npv / dnpv;
+    if (!isFinite(next) || next <= -0.99 || next >= 100) break; // bail to bisection
+    r = next;
   }
-  return Math.abs(r) < 100 ? r : null; // didn't converge well
+
+  // Bisection fallback — scan for a sign change and converge.
+  const lo0 = -0.9999, hi0 = 100;
+  let fLo = npvAt(lo0);
+  let fHi = npvAt(hi0);
+  if (!isFinite(fLo) || !isFinite(fHi)) return null;
+  if (fLo * fHi > 0) {
+    // No sign change at endpoints — sweep for one
+    let prevR = lo0, prevF = fLo;
+    let found = false;
+    const steps = 200;
+    for (let i = 1; i <= steps; i++) {
+      const rr = lo0 + (hi0 - lo0) * (i / steps);
+      const ff = npvAt(rr);
+      if (!isFinite(ff)) continue;
+      if (prevF * ff < 0) {
+        fLo = prevF; fHi = ff;
+        // bisect within [prevR, rr]
+        let lo = prevR, hi = rr;
+        for (let j = 0; j < 80; j++) {
+          const mid = (lo + hi) / 2;
+          const fm = npvAt(mid);
+          if (!isFinite(fm)) return null;
+          if (Math.abs(fm) < tol) return mid;
+          if (fLo * fm < 0) { hi = mid; fHi = fm; }
+          else { lo = mid; fLo = fm; }
+        }
+        return (lo + hi) / 2;
+      }
+      prevR = rr; prevF = ff;
+    }
+    if (!found) return null;
+  }
+  // Standard bisection on [lo0, hi0]
+  let lo = lo0, hi = hi0;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    const fm = npvAt(mid);
+    if (!isFinite(fm)) return null;
+    if (Math.abs(fm) < tol) return mid;
+    if (fLo * fm < 0) { hi = mid; fHi = fm; }
+    else { lo = mid; fLo = fm; }
+  }
+  return (lo + hi) / 2;
+}
+
+// --- Dividends ---
+
+// A lot is "holding shares on ex-date" if it was acquired by then AND either
+// is still open or was sold strictly after the ex-date. Uses raw sharesBought
+// to match historical (un-split-adjusted) per-share dividend amounts from Yahoo.
+function sharesHeldOnExDate(lot, exDate) {
+  if (!lot.dateAcquired || lot.dateAcquired > exDate) return 0;
+  if (lot.transaction === 'Open') return lot.sharesBought || 0;
+  if (lot.dateSold && lot.dateSold > exDate) return lot.sharesBought || 0;
+  return 0;
+}
+
+/**
+ * Build positive cash flows from dividends actually received by these lots.
+ * dividendEvents: [{ date, dividend }] (per-share amounts at ex-date).
+ * Returns one flow per ex-date with non-zero held shares.
+ */
+export function dividendCashFlows(lots, dividendEvents) {
+  if (!dividendEvents || !dividendEvents.length || !lots || !lots.length) return [];
+  const flows = [];
+  for (const div of dividendEvents) {
+    const exDate = div.date;
+    const perShare = div.dividend ?? div.adjDividend ?? 0;
+    if (!exDate || !perShare) continue;
+    let shares = 0;
+    for (const lot of lots) shares += sharesHeldOnExDate(lot, exDate);
+    if (shares > 0) flows.push({ date: exDate, amount: shares * perShare });
+  }
+  return flows;
+}
+
+/**
+ * Total dollars of dividends received across these lots, lifetime.
+ */
+export function lifetimeDividends(lots, dividendEvents) {
+  if (!dividendEvents || !dividendEvents.length || !lots || !lots.length) return 0;
+  let total = 0;
+  for (const div of dividendEvents) {
+    const exDate = div.date;
+    const perShare = div.dividend ?? div.adjDividend ?? 0;
+    if (!exDate || !perShare) continue;
+    let shares = 0;
+    for (const lot of lots) shares += sharesHeldOnExDate(lot, exDate);
+    total += shares * perShare;
+  }
+  return total;
+}
+
+// dividendEvents map: { [SYMBOL]: [{date, dividend}, ...] }
+export function dividendCashFlowsForSymbols(lots, dividendEvents) {
+  if (!dividendEvents) return [];
+  const bySym = {};
+  for (const lot of lots) {
+    if (!bySym[lot.symbol]) bySym[lot.symbol] = [];
+    bySym[lot.symbol].push(lot);
+  }
+  const all = [];
+  for (const sym in bySym) {
+    const events = dividendEvents[sym];
+    if (!events) continue;
+    all.push(...dividendCashFlows(bySym[sym], events));
+  }
+  return all;
+}
+
+export function lifetimeDividendsForSymbols(lots, dividendEvents) {
+  if (!dividendEvents) return 0;
+  const bySym = {};
+  for (const lot of lots) {
+    if (!bySym[lot.symbol]) bySym[lot.symbol] = [];
+    bySym[lot.symbol].push(lot);
+  }
+  let total = 0;
+  for (const sym in bySym) {
+    const events = dividendEvents[sym];
+    if (!events) continue;
+    total += lifetimeDividends(bySym[sym], events);
+  }
+  return total;
 }
 
 /**
  * Compute IRR for a set of open lots at a given current price.
  * Each lot purchase is a negative cash flow; current value is a positive terminal flow.
+ * Optional dividendEvents: per-share events for the lots' symbol (single-symbol)
+ * — folded in as positive flows on ex-dates for shares held.
  */
-export function calcLotsIRR(lots, currentPrice, today) {
+export function calcLotsIRR(lots, currentPrice, today, dividendEvents = null) {
   if (!lots || lots.length === 0 || currentPrice == null) return null;
 
   const flows = [];
@@ -155,6 +300,7 @@ export function calcLotsIRR(lots, currentPrice, today) {
 
   if (flows.length === 0 || totalCurrentValue <= 0) return null;
   flows.push({ date: today, amount: totalCurrentValue });
+  if (dividendEvents) flows.push(...dividendCashFlows(lots, dividendEvents));
   flows.sort((a, b) => a.date.localeCompare(b.date));
 
   return calcIRR(flows);
@@ -163,7 +309,7 @@ export function calcLotsIRR(lots, currentPrice, today) {
 /**
  * Compute IRR for a set of closed lots using proceeds.
  */
-export function calcClosedLotsIRR(lots) {
+export function calcClosedLotsIRR(lots, dividendEvents = null) {
   if (!lots || lots.length === 0) return null;
 
   const flows = [];
@@ -179,6 +325,7 @@ export function calcClosedLotsIRR(lots) {
   }
 
   if (flows.length < 2) return null;
+  if (dividendEvents) flows.push(...dividendCashFlows(lots, dividendEvents));
   flows.sort((a, b) => a.date.localeCompare(b.date));
 
   return calcIRR(flows);

@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { usePriceHistory, useDividends, useBenchmark, useMoat, benchmarkPriceOnDate } from '../hooks/usePortfolio';
 import MoatCard from './MoatCard';
-import { formatCurrency, formatPct, formatShares, gainLoss, gainLossPct, calcCAGR, calcLotsIRR, calcClosedLotsIRR, calcIRR, calcBenchmarkIRR, ds, dc, lotProceeds, taxTerm, estimatedTax } from '../utils/calculations';
+import { formatCurrency, formatPct, formatShares, gainLoss, gainLossPct, calcCAGR, calcLotsIRR, calcClosedLotsIRR, calcIRR, calcBenchmarkIRR, ds, dc, lotProceeds, taxTerm, estimatedTax, dividendCashFlows, lifetimeDividends } from '../utils/calculations';
 
 export default function PositionDetail({ symbol, allPositions, quotes, onBack, selectedAccounts, lotFilter, sortBy, sortDir, toggleSort, taxRates }) {
 
@@ -62,9 +62,10 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
   const charitableProceeds = charitableLots.reduce((s, l) => s + lotProceeds(l), 0);
   const charitableGL = charitableProceeds - charitableCost;
 
-  // Total IRR across all lots (open + closed)
+  // Total IRR across all lots (open + closed) — total return (price + dividends)
   const totalInvested = totalOpenCost + totalClosedCost;
-  const benchmarkFn = spyLookup ? (d) => benchmarkPriceOnDate(spyLookup, d) : null;
+  // adjClose for SPY so the alpha comparison includes reinvested dividends.
+  const benchmarkFn = spyLookup ? (d) => benchmarkPriceOnDate(spyLookup, d, 'adjClose') : null;
   const cagr = useMemo(() => {
     const flows = [];
     let terminalValue = 0;
@@ -81,37 +82,33 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
     }
     if (flows.length === 0) return null;
     if (terminalValue > 0) flows.push({ date: today, amount: terminalValue });
+    if (dividends?.length) flows.push(...dividendCashFlows(filteredLots, dividends));
     flows.sort((a, b) => a.date.localeCompare(b.date));
     return calcIRR(flows);
-  }, [filteredLots, price, today]);
+  }, [filteredLots, price, today, dividends]);
 
-  // Total alpha (IRR vs SPY benchmark IRR)
+  // Total alpha (IRR vs SPY total-return benchmark IRR)
   const totalSpyCagr = useMemo(() => {
     if (!benchmarkFn) return null;
     return calcBenchmarkIRR(filteredLots, benchmarkFn, today, price);
   }, [filteredLots, benchmarkFn, today, price]);
   const totalAlpha = (cagr != null && totalSpyCagr != null) ? cagr - totalSpyCagr : null;
 
-  // Dividends received: estimate based on shares held at each ex-date
+  // Dividends received across all lots displayed (lifetime)
   const dividendsReceived = useMemo(() => {
-    if (!dividends.length || !allLots.length) return null;
-    let total = 0;
-    for (const div of dividends) {
-      const exDate = div.date;
-      if (!exDate) continue;
-      // Count shares held on ex-date (bought before, not yet sold)
-      let sharesHeld = 0;
-      for (const lot of allLots) {
-        if (lot.dateAcquired <= exDate) {
-          if (lot.transaction === 'Open' || (lot.dateSold && lot.dateSold > exDate)) {
-            sharesHeld += lot.sharesBought;
-          }
-        }
-      }
-      total += sharesHeld * (div.dividend || div.adjDividend || 0);
-    }
-    return total;
-  }, [dividends, allLots]);
+    if (!dividends?.length || !filteredLots.length) return null;
+    return lifetimeDividends(filteredLots, dividends);
+  }, [dividends, filteredLots]);
+
+  const unrealizedDivs = useMemo(() => {
+    if (!dividends?.length || !openLots.length) return 0;
+    return lifetimeDividends(openLots, dividends);
+  }, [dividends, openLots]);
+
+  const realizedDivs = useMemo(() => {
+    if (!dividends?.length || !closedLots.length) return 0;
+    return lifetimeDividends(closedLots, dividends);
+  }, [dividends, closedLots]);
 
   // Chart data: merge buy/sell markers + normalized SPY into price history.
   // Markers plot at the price actually paid/received (split-adjusted to today's
@@ -187,27 +184,28 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
     });
   }, [history, allLots, spyLookup]);
 
-  // Unrealized IRR + Alpha
-  const unrealizedCagr = price != null && openLots.length > 0 ? calcLotsIRR(openLots, price, today) : null;
+  // Unrealized IRR + Alpha (total return)
+  const unrealizedCagr = price != null && openLots.length > 0 ? calcLotsIRR(openLots, price, today, dividends) : null;
   const unrealizedSpyCagr = benchmarkFn && openLots.length > 0 ? calcBenchmarkIRR(openLots, benchmarkFn, today) : null;
   const unrealizedAlpha = (unrealizedCagr != null && unrealizedSpyCagr != null) ? unrealizedCagr - unrealizedSpyCagr : null;
 
-  // Realized IRR + Alpha
-  const realizedCagr = closedLots.length > 0 ? calcClosedLotsIRR(closedLots) : null;
+  // Realized IRR + Alpha (total return)
+  const realizedCagr = closedLots.length > 0 ? calcClosedLotsIRR(closedLots, dividends) : null;
   const realizedSpyCagr = benchmarkFn && closedLots.length > 0 ? calcBenchmarkIRR(closedLots, benchmarkFn, today) : null;
   const realizedAlpha = (realizedCagr != null && realizedSpyCagr != null) ? realizedCagr - realizedSpyCagr : null;
 
-  // % of open lots beating S&P
+  // % of open lots beating S&P (total return on both sides)
   const openBeatingSP = useMemo(() => {
     if (!openLots.length || !spyLookup || price == null) return null;
     let beat = 0;
     let total = 0;
     for (const lot of openLots) {
       const lotCost = ds(lot) * dc(lot);
-      const lotValue = ds(lot) * price;
+      const divs = dividends?.length ? lifetimeDividends([lot], dividends) : 0;
+      const lotValue = ds(lot) * price + divs;
       const lotCagr = calcCAGR(lotCost, lotValue, lot.dateAcquired, today);
-      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
-      const se = benchmarkPriceOnDate(spyLookup, today);
+      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired, 'adjClose');
+      const se = benchmarkPriceOnDate(spyLookup, today, 'adjClose');
       const sc = (sb && se) ? calcCAGR(sb, se, lot.dateAcquired, today) : null;
       if (lotCagr != null && sc != null) {
         total++;
@@ -215,9 +213,9 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
       }
     }
     return total > 0 ? { beat, total, pct: beat / total } : null;
-  }, [openLots, spyLookup, price, today]);
+  }, [openLots, spyLookup, price, today, dividends]);
 
-  // % of sells beating S&P
+  // % of sells beating S&P (total return)
   const sellsBeatingSP = useMemo(() => {
     if (!closedLots.length || !spyLookup) return null;
     let beat = 0;
@@ -225,10 +223,11 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
     for (const lot of closedLots) {
       if (!lot.dateSold) continue;
       const lotCost = ds(lot) * dc(lot);
-      const proceeds = lotProceeds(lot);
+      const divs = dividends?.length ? lifetimeDividends([lot], dividends) : 0;
+      const proceeds = lotProceeds(lot) + divs;
       const lotCagr = calcCAGR(lotCost, proceeds, lot.dateAcquired, lot.dateSold);
-      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
-      const se = benchmarkPriceOnDate(spyLookup, lot.dateSold);
+      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired, 'adjClose');
+      const se = benchmarkPriceOnDate(spyLookup, lot.dateSold, 'adjClose');
       const sc = (sb && se) ? calcCAGR(sb, se, lot.dateAcquired, lot.dateSold) : null;
       if (lotCagr != null && sc != null) {
         total++;
@@ -236,9 +235,9 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
       }
     }
     return total > 0 ? { beat, total, pct: beat / total } : null;
-  }, [closedLots, spyLookup]);
+  }, [closedLots, spyLookup, dividends]);
 
-  // Total % Alpha > 0 across ALL lots (open + closed)
+  // Total % Alpha > 0 across ALL lots (open + closed) — total return
   const allBeatingSP = useMemo(() => {
     if (!spyLookup) return null;
     let beat = 0;
@@ -248,11 +247,14 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
       const endDate = isOpen ? today : lot.dateSold;
       if (!endDate) continue;
       const lotCost = ds(lot) * dc(lot);
-      const lotEnd = isOpen ? (price != null ? ds(lot) * price : null) : lotProceeds(lot);
+      const divs = dividends?.length ? lifetimeDividends([lot], dividends) : 0;
+      const lotEnd = isOpen
+        ? (price != null ? ds(lot) * price + divs : null)
+        : lotProceeds(lot) + divs;
       if (lotEnd == null) continue;
       const lotCagr = calcCAGR(lotCost, lotEnd, lot.dateAcquired, endDate);
-      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
-      const se = benchmarkPriceOnDate(spyLookup, endDate);
+      const sb = benchmarkPriceOnDate(spyLookup, lot.dateAcquired, 'adjClose');
+      const se = benchmarkPriceOnDate(spyLookup, endDate, 'adjClose');
       const sc = (sb && se) ? calcCAGR(sb, se, lot.dateAcquired, endDate) : null;
       if (lotCagr != null && sc != null) {
         total++;
@@ -260,7 +262,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
       }
     }
     return total > 0 ? { beat, total, pct: beat / total } : null;
-  }, [filteredLots, spyLookup, price, today]);
+  }, [filteredLots, spyLookup, price, today, dividends]);
 
   // Tax estimates
   const estTaxUnrealized = unrealizedGL != null && unrealizedGL > 0
@@ -329,6 +331,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
             <div className="col-header">CAGR</div>
             <div className="col-header">Alpha</div>
             <div className="col-header">% Alpha &gt; 0</div>
+            <div className="col-header">Dividends</div>
             <div className="col-header" />
             <div className="col-header" />
           </div>
@@ -343,6 +346,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
             <Stat value={cagr != null ? formatPct(cagr) : '—'} accent={cagr != null ? (cagr >= 0 ? 'positive' : 'negative') : null} />
             <Stat value={totalAlpha != null ? (totalAlpha >= 0 ? '+' : '') + formatPct(totalAlpha) : '—'} accent={totalAlpha != null ? (totalAlpha >= 0 ? 'positive' : 'negative') : null} />
             <Stat value={allBeatingSP != null ? formatPct(allBeatingSP.pct) : '—'} sub={allBeatingSP != null ? `${allBeatingSP.beat} of ${allBeatingSP.total} lots` : null} accent={allBeatingSP != null ? (allBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
+            <Stat value={dividendsReceived ? formatCurrency(dividendsReceived) : '—'} accent={dividendsReceived ? 'positive' : null} />
             <Stat label="Charity" value={charitableLots.length > 0 ? formatCurrency(charitableGL) : '—'} sub={charitableLots.length > 0 ? `${charitableLots.length} donation${charitableLots.length !== 1 ? 's' : ''}` : null} accent={charitableLots.length > 0 ? (charitableGL >= 0 ? 'positive' : 'negative') : null} />
             <Stat label="Est. Tax" value={estTaxTotal ? formatCurrency(estTaxTotal) : '—'} sub={estTaxTotal ? `${(taxRates?.lt * 100).toFixed(1)}% LT / ${(taxRates?.st * 100).toFixed(1)}% ST` : null} accent={estTaxTotal ? 'negative' : null} />
           </div>
@@ -357,6 +361,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
             <Stat value={unrealizedCagr != null ? formatPct(unrealizedCagr) : '—'} accent={unrealizedCagr != null ? (unrealizedCagr >= 0 ? 'positive' : 'negative') : null} />
             <Stat value={unrealizedAlpha != null ? (unrealizedAlpha >= 0 ? '+' : '') + formatPct(unrealizedAlpha) : '—'} accent={unrealizedAlpha != null ? (unrealizedAlpha >= 0 ? 'positive' : 'negative') : null} />
             <Stat value={openBeatingSP != null ? formatPct(openBeatingSP.pct) : '—'} sub={openBeatingSP != null ? `${openBeatingSP.beat} of ${openBeatingSP.total} lots` : null} accent={openBeatingSP != null ? (openBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
+            <Stat value={unrealizedDivs > 0 ? formatCurrency(unrealizedDivs) : '—'} accent={unrealizedDivs > 0 ? 'positive' : null} />
             <Stat label="Current Value" value={marketValue != null ? formatCurrency(marketValue) : '—'} />
             <Stat label="Est. Tax" value={estTaxUnrealized ? formatCurrency(estTaxUnrealized) : '—'} accent={estTaxUnrealized ? 'negative' : null} />
           </div>
@@ -372,6 +377,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
               <Stat value={realizedCagr != null ? formatPct(realizedCagr) : '—'} accent={realizedCagr != null ? (realizedCagr >= 0 ? 'positive' : 'negative') : null} />
               <Stat value={realizedAlpha != null ? (realizedAlpha >= 0 ? '+' : '') + formatPct(realizedAlpha) : '—'} accent={realizedAlpha != null ? (realizedAlpha >= 0 ? 'positive' : 'negative') : null} />
               <Stat value={sellsBeatingSP != null ? formatPct(sellsBeatingSP.pct) : '—'} sub={sellsBeatingSP != null ? `${sellsBeatingSP.beat} of ${sellsBeatingSP.total} lots` : null} accent={sellsBeatingSP != null ? (sellsBeatingSP.pct >= 0.5 ? 'positive' : 'negative') : null} />
+              <Stat value={realizedDivs > 0 ? formatCurrency(realizedDivs) : '—'} accent={realizedDivs > 0 ? 'positive' : null} />
               <Stat label="Tax Avoided" value={taxAvoided ? formatCurrency(taxAvoided) : '—'} sub={taxAvoided ? 'via charity' : null} accent={taxAvoided ? 'positive' : null} />
               <Stat label="Est. Tax" value={estTaxRealized ? formatCurrency(estTaxRealized) : '—'} accent={estTaxRealized ? 'negative' : null} />
             </div>
@@ -397,6 +403,7 @@ export default function PositionDetail({ symbol, allPositions, quotes, onBack, s
           sortDir={sortDir}
           toggleSort={toggleSort}
           taxRates={taxRates}
+          dividends={dividends}
         />
         <div className="lot-summary">
           {filteredLots.length} lot{filteredLots.length !== 1 ? 's' : ''}
@@ -466,29 +473,31 @@ function PriceChart({ chartData, loading, error }) {
   );
 }
 
-function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, toggleSort, taxRates }) {
+function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, toggleSort, taxRates, dividends }) {
   // Pre-compute all sortable values per row
   const rows = useMemo(() => filteredLots.map((lot, i) => {
     const shares = ds(lot);
     const cost = dc(lot);
     const lotCost = shares * cost;
     const isOpen = lot.transaction === 'Open';
+    const lotDivs = dividends?.length ? lifetimeDividends([lot], dividends) : 0;
     let lotGl, lotGlPct, lotCagr;
 
     if (isOpen) {
       const lotValue = price != null ? shares * price : null;
       lotGl = lotValue != null ? lotValue - lotCost : null;
       lotGlPct = lotGl != null ? gainLossPct(lotCost, lotValue) : null;
-      lotCagr = lotValue != null ? calcCAGR(lotCost, lotValue, lot.dateAcquired, today) : null;
+      // Total-return CAGR: include dividends in terminal value.
+      lotCagr = lotValue != null ? calcCAGR(lotCost, lotValue + lotDivs, lot.dateAcquired, today) : null;
     } else {
       const proceeds = lotProceeds(lot);
       lotGl = proceeds - lotCost;
       lotGlPct = gainLossPct(lotCost, proceeds);
-      lotCagr = lot.dateSold ? calcCAGR(lotCost, proceeds, lot.dateAcquired, lot.dateSold) : null;
+      lotCagr = lot.dateSold ? calcCAGR(lotCost, proceeds + lotDivs, lot.dateAcquired, lot.dateSold) : null;
     }
     const endDate = isOpen ? today : (lot.dateSold || today);
-    const spyBuy = benchmarkPriceOnDate(spyLookup, lot.dateAcquired);
-    const spySell = benchmarkPriceOnDate(spyLookup, endDate);
+    const spyBuy = benchmarkPriceOnDate(spyLookup, lot.dateAcquired, 'adjClose');
+    const spySell = benchmarkPriceOnDate(spyLookup, endDate, 'adjClose');
     const spyCagr = (spyBuy && spySell) ? calcCAGR(spyBuy, spySell, lot.dateAcquired, endDate) : null;
     const alpha = (lotCagr != null && spyCagr != null) ? lotCagr - spyCagr : null;
     const term = taxTerm(lot.dateAcquired, endDate);
@@ -499,7 +508,7 @@ function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, togg
 
     return {
       key: i, lot, isOpen, shares, cost, lotCost, lotGl, lotGlPct, lotCagr, spyCagr, alpha,
-      term, estTax, currentValue,
+      term, estTax, currentValue, lotDivs,
       originalShares: lot.originalShares ?? lot.sharesBought,
       adjCost: lot.adjCostBasis ?? cost,
       totalSplitFactor: lot.totalSplitFactor ?? 1,
@@ -510,7 +519,7 @@ function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, togg
       account: lot.account, dateAcquired: lot.dateAcquired, dateSold: lot.dateSold || '',
       charitable: lot.charitableDonation === 'Yes' ? 'Yes' : '',
     };
-  }), [filteredLots, price, today, spyLookup]);
+  }), [filteredLots, price, today, spyLookup, dividends]);
 
   const sorted = useMemo(() => {
     return [...rows].sort((a, b) => {
@@ -547,6 +556,7 @@ function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, togg
           <SortTh col="lotGlPct" label="G/L %" />
           <SortTh col="lotCagr" label="CAGR" />
           <SortTh col="alpha" label="Alpha" />
+          <SortTh col="lotDivs" label="Dividends" />
           <SortTh col="term" label="Term" />
           <SortTh col="estTax" label="Est. Tax" />
           <SortTh col="charitable" label="Charitable" />
@@ -601,6 +611,9 @@ function LotTable({ filteredLots, price, today, spyLookup, sortBy, sortDir, togg
               </td>
               <td className={r.alpha != null ? (alphaPos ? 'positive' : 'negative') : ''}>
                 {r.alpha != null ? (r.alpha >= 0 ? '+' : '') + formatPct(r.alpha) : '—'}
+              </td>
+              <td className={r.lotDivs > 0 ? 'positive' : ''}>
+                {r.lotDivs > 0 ? formatCurrency(r.lotDivs) : '—'}
               </td>
               <td>{r.term ? <span className={`term-badge ${r.term}`}>{r.term === 'long' ? 'LT' : 'ST'}</span> : '—'}</td>
               <td className={r.estTax != null ? 'negative' : ''}>

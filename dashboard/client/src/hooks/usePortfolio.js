@@ -78,7 +78,11 @@ export function useBenchmark(ticker = 'SPY') {
         // Sort oldest first for forward-scanning lookup
         const sorted = [...d].sort((a, b) => a.date.localeCompare(b.date));
         const map = new Map(sorted.map(e => [e.date, e.close]));
-        setLookup({ sorted, map });
+        // adjClose is dividend-adjusted — used for total-return alpha. Falls back
+        // to close on dates the server didn't supply it, so older cache entries
+        // still work without a forced re-sync.
+        const mapAdj = new Map(sorted.map(e => [e.date, e.adjClose ?? e.close]));
+        setLookup({ sorted, map, mapAdj });
       })
       .catch(() => {});
   }, [ticker]);
@@ -86,17 +90,20 @@ export function useBenchmark(ticker = 'SPY') {
   return { lookup };
 }
 
-export function benchmarkPriceOnDate(lookup, dateStr) {
+// mode: 'close' (price-only, used by charts) | 'adjClose' (total-return, used by IRR/alpha)
+export function benchmarkPriceOnDate(lookup, dateStr, mode = 'close') {
   if (!lookup || !dateStr) return null;
-  const exact = lookup.map.get(dateStr);
+  const map = mode === 'adjClose' ? lookup.mapAdj : lookup.map;
+  const exact = map.get(dateStr);
   if (exact != null) return exact;
   const arr = lookup.sorted;
+  const key = mode === 'adjClose' ? 'adjClose' : 'close';
   // Scan forward for first date >= target
   for (let i = 0; i < arr.length; i++) {
-    if (arr[i].date >= dateStr) return arr[i].close;
+    if (arr[i].date >= dateStr) return arr[i][key] ?? arr[i].close;
   }
   // Target is beyond the data (e.g. today before market close) — use last available
-  if (arr.length > 0) return arr[arr.length - 1].close;
+  if (arr.length > 0) return arr[arr.length - 1][key] ?? arr[arr.length - 1].close;
   return null;
 }
 
@@ -157,6 +164,28 @@ export function useMoat(symbol) {
   }, [symbol]);
 
   return moat;
+}
+
+// Batch: fetch dividend events for many tickers at once (cache-only on the server).
+// Returns { [SYMBOL]: [{date, dividend}] } — empty array for tickers with no
+// cached events (sync hasn't run yet for that ticker).
+export function usePortfolioDividends(symbols) {
+  const [events, setEvents] = useState({});
+  const key = useMemo(() => [...(symbols || [])].sort().join(','), [symbols]);
+
+  useEffect(() => {
+    if (!symbols || symbols.length === 0) return;
+    fetch('/api/dividends/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tickers: symbols }),
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => { if (data && typeof data === 'object') setEvents(data); })
+      .catch(() => {});
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return events;
 }
 
 // On-demand: fetched when user clicks into a position (1 call, cached forever)

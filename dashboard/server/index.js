@@ -126,13 +126,29 @@ app.post('/api/sync', async (_, res) => {
   log.push(`Splits: ${splitOk}/${allSymbols.size - skipped} fetched (${skipped} delisted skipped)`);
   if (failedSplits.length) log.push(`Failed splits: ${failedSplits.join(', ')}`);
 
-  // Step 3: Fetch SPY benchmark
+  // Step 3: Fetch SPY benchmark (close + adjClose for total-return alpha)
   try {
     const data = await fetchHistoricalPrices('SPY', '1993-01-01');
-    const lean = data.map(d => ({ date: d.date, close: d.close }));
+    const lean = data.map(d => ({ date: d.date, close: d.close, adjClose: d.adjClose }));
     cache.set('benchmark', 'SPY', lean);
     log.push('SPY benchmark: fetched');
   } catch { errors++; log.push('SPY benchmark: FAILED'); }
+
+  // Step 3b: Fetch dividends for all tickers (for total-return CAGR)
+  let divOk = 0;
+  const failedDivs = [];
+  for (const sym of allSymbols) {
+    if (DELISTED.has(sym)) { cache.set('dividends', sym, []); continue; }
+    try {
+      const { fetchDividends } = require('./yahooClient');
+      const data = await fetchDividends(sym);
+      cache.set('dividends', sym, data);
+      divOk++;
+    } catch (e) { errors++; failedDivs.push(`${sym}: ${e.message?.slice(0, 60)}`); }
+    await new Promise(r => setTimeout(r, 200));
+  }
+  log.push(`Dividends: ${divOk}/${allSymbols.size - skipped} fetched`);
+  if (failedDivs.length) log.push(`Failed dividends: ${failedDivs.join(', ')}`);
 
   // Step 4: Fetch current quotes for open positions
   let quoteOk = 0;

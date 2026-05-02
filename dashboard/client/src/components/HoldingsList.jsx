@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { formatCurrency, formatPct, formatShares, gainLoss, gainLossPct, calcLotsIRR, calcBenchmarkIRR } from '../utils/calculations';
+import { formatCurrency, formatPct, formatShares, gainLoss, gainLossPct, calcLotsIRR, calcBenchmarkIRR, lifetimeDividends } from '../utils/calculations';
 import { benchmarkPriceOnDate } from '../hooks/usePortfolio';
 
-export default function HoldingsList({ positions, quotes, selectedAccounts, onSelectPosition, spyLookup }) {
+export default function HoldingsList({ positions, quotes, selectedAccounts, onSelectPosition, spyLookup, dividendEvents }) {
   const [sortBy, setSortBy] = useState('value');
   const [sortDir, setSortDir] = useState('desc');
   const today = new Date().toISOString().slice(0, 10);
@@ -19,16 +19,19 @@ export default function HoldingsList({ positions, quotes, selectedAccounts, onSe
     const gl = value != null ? gainLoss(p.totalCost, value) : null;
     const glPct = value != null ? gainLossPct(p.totalCost, value) : null;
 
-    // IRR for multi-lot positions (money-weighted return)
-    const cagr = price != null ? calcLotsIRR(p.lots, price, today) : null;
+    const events = dividendEvents?.[p.symbol] || null;
+    const divs = events ? lifetimeDividends(p.lots, events) : 0;
 
-    // S&P benchmark IRR
-    const benchmarkFn = spyLookup ? (d) => benchmarkPriceOnDate(spyLookup, d) : null;
+    // Total-return IRR — folds dividend cash flows into the return.
+    const cagr = price != null ? calcLotsIRR(p.lots, price, today, events) : null;
+
+    // SPY total-return IRR using adjClose (dividend-reinjected).
+    const benchmarkFn = spyLookup ? (d) => benchmarkPriceOnDate(spyLookup, d, 'adjClose') : null;
     const spyCagr = benchmarkFn ? calcBenchmarkIRR(p.lots, benchmarkFn, today) : null;
     const alpha = (cagr != null && spyCagr != null) ? cagr - spyCagr : null;
 
-    return { ...p, price, value, gl, glPct, cagr, spyCagr, alpha };
-  }), [filtered, quotes, spyLookup, today]);
+    return { ...p, price, value, gl, glPct, cagr, spyCagr, alpha, divs };
+  }), [filtered, quotes, spyLookup, today, dividendEvents]);
 
   function toggleSort(col) {
     if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -65,6 +68,7 @@ export default function HoldingsList({ positions, quotes, selectedAccounts, onSe
             <ColHeader col="glPct" label="G/L %" />
             <ColHeader col="cagr" label="CAGR" />
             <ColHeader col="alpha" label="Alpha" />
+            <ColHeader col="divs" label="Dividends" />
             <ColHeader col="avgCostBasis" label="Avg Cost/Share" />
             <ColHeader col="totalCost" label="Cost Basis Total" />
           </tr>
@@ -92,6 +96,9 @@ export default function HoldingsList({ positions, quotes, selectedAccounts, onSe
                 </td>
                 <td className={p.alpha != null ? (alphaPos ? 'positive' : 'negative') : ''}>
                   {p.alpha != null ? (p.alpha >= 0 ? '+' : '') + formatPct(p.alpha) : '—'}
+                </td>
+                <td className={p.divs > 0 ? 'positive' : ''}>
+                  {p.divs > 0 ? formatCurrency(p.divs) : '—'}
                 </td>
                 <td>{formatCurrency(p.avgCostBasis)}</td>
                 <td>{formatCurrency(p.totalCost)}</td>

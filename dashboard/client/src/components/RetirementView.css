@@ -54,7 +54,7 @@
   font-size: 13px;
 }
 .rv__feedback--ok  { background: var(--accent-weak); color: var(--accent); }
-.rv__feedback--err { background: rgba(251, 113, 133, 0.12); color: var(--neg); }
+.rv__feedback--err { background: color-mix(in srgb, var(--neg) 12%, transparent); color: var(--neg); }
 
 /* ── Single-column layout: editor flow with the simulation pane inline ─── */
 .rv__cols {
@@ -323,7 +323,7 @@ input.rv__input[type="date"] {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Simulation placeholder card ──────────────────────────────────────── */
+/* ── Simulation card ──────────────────────────────────────────────────── */
 .rv__sim-card {
   padding: var(--pad-lg);
   min-height: 420px;
@@ -341,29 +341,6 @@ input.rv__input[type="date"] {
   margin-top: 2px;
   margin-bottom: 14px;
 }
-.rv__sim-placeholder {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  gap: var(--gap);
-  border: 1px dashed var(--rule-3);
-  border-radius: var(--r-chip);
-  padding: var(--pad);
-  color: var(--ink-2);
-  font-size: 13px;
-}
-.rv__sim-placeholder-msg code {
-  background: var(--card-hi);
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink);
-}
-
 /* ── Simulation pane (chart + tiles + SS optimizer) ─────────────────────── */
 .rv__sim-head {
   display: flex;
@@ -382,33 +359,6 @@ input.rv__input[type="date"] {
 @media (max-width: 900px) {
   .rv__sim-tiles { grid-template-columns: repeat(2, 1fr); }
 }
-.rv__sim-tile {
-  background: var(--card-hi);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-chip);
-  padding: var(--pad);
-}
-.rv__sim-tile-label {
-  font-size: 11px;
-  color: var(--ink-2);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.rv__sim-tile-value {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ink);
-  margin-top: 4px;
-}
-.rv__sim-tile-sub {
-  font-size: 11px;
-  color: var(--ink-2);
-  margin-top: 2px;
-}
-.rv__pos { color: var(--pos); }
-.rv__neg { color: var(--neg); }
 
 .rv__chart-wrap {
   min-height: 380px;

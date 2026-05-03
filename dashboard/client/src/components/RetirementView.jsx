@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Legend,
 } from 'recharts';
-import { Card, Button } from '../ui';
+import { Card, Stat, Button } from '../ui';
 import { useRetirementScenarios, useRetirementInputs } from '../hooks/useRetirementScenarios';
 import { runSimulation, aggregatePercentiles, optimizeSSClaimAge } from '../utils/monteCarlo';
 import './RetirementView.css';
@@ -999,28 +999,23 @@ function SimulationPane({ scenario, inputs, setFeedback }) {
       {/* End-of-plan + probability tiles */}
       {summary && (
         <div className="rv__sim-tiles">
-          <div className="rv__sim-tile">
-            <div className="rv__sim-tile-label">Probability of success</div>
-            <div className={`rv__sim-tile-value ${summary.probabilityOfSuccess >= 0.85 ? 'rv__pos' : summary.probabilityOfSuccess >= 0.70 ? '' : 'rv__neg'}`}>
-              {(summary.probabilityOfSuccess * 100).toFixed(1)}%
-            </div>
-            <div className="rv__sim-tile-sub">paths that don't deplete</div>
-          </div>
-          <div className="rv__sim-tile">
-            <div className="rv__sim-tile-label">Assets at end (10th pct)</div>
-            <div className="rv__sim-tile-value">{fmtUSDcompact(endP10)}</div>
-            <div className="rv__sim-tile-sub">significantly-below scenario</div>
-          </div>
-          <div className="rv__sim-tile">
-            <div className="rv__sim-tile-label">Assets at end (median)</div>
-            <div className="rv__sim-tile-value">{fmtUSDcompact(endP50)}</div>
-            <div className="rv__sim-tile-sub">average scenario</div>
-          </div>
-          <div className="rv__sim-tile">
-            <div className="rv__sim-tile-label">Assets at end (90th pct)</div>
-            <div className="rv__sim-tile-value">{fmtUSDcompact(endP90)}</div>
-            <div className="rv__sim-tile-sub">favorable scenario</div>
-          </div>
+          <Card>
+            <Stat
+              label="Probability of success"
+              value={`${(summary.probabilityOfSuccess * 100).toFixed(1)}%`}
+              tone={summary.probabilityOfSuccess >= 0.85 ? 'pos' : summary.probabilityOfSuccess >= 0.70 ? 'neutral' : 'neg'}
+              sub="paths that don't deplete"
+            />
+          </Card>
+          <Card>
+            <Stat label="Assets at end (10th pct)" value={fmtUSDcompact(endP10)} sub="significantly-below scenario" />
+          </Card>
+          <Card>
+            <Stat label="Assets at end (median)" value={fmtUSDcompact(endP50)} sub="average scenario" />
+          </Card>
+          <Card>
+            <Stat label="Assets at end (90th pct)" value={fmtUSDcompact(endP90)} sub="favorable scenario" />
+          </Card>
         </div>
       )}
 
@@ -1034,8 +1029,8 @@ function SimulationPane({ scenario, inputs, setFeedback }) {
           <ResponsiveContainer width="100%" height={380}>
             <AreaChart data={chartData} margin={{ top: 10, right: 24, bottom: 4, left: 8 }}>
               <CartesianGrid stroke="var(--rule)" strokeDasharray="2 4" vertical={false} />
-              <XAxis dataKey="year" tick={{ fill: 'var(--ink-dim, var(--ink))', fontSize: 11 }} stroke="var(--rule)" />
-              <YAxis tickFormatter={fmtUSDcompact} tick={{ fill: 'var(--ink-dim, var(--ink))', fontSize: 11 }} stroke="var(--rule)" />
+              <XAxis dataKey="year" tick={{ fill: 'var(--ink-2)', fontSize: 11 }} stroke="var(--rule)" />
+              <YAxis tickFormatter={fmtUSDcompact} tick={{ fill: 'var(--ink-2)', fontSize: 11 }} stroke="var(--rule)" />
               <Tooltip content={<ChartTooltip />} />
               <Legend
                 wrapperStyle={{ fontSize: 11, paddingTop: 4 }}
@@ -1050,7 +1045,7 @@ function SimulationPane({ scenario, inputs, setFeedback }) {
               <Area type="monotone" dataKey="p50" stroke="var(--accent)" strokeWidth={1.5} fill="var(--accent)" fillOpacity={0.30} />
               <Area type="monotone" dataKey="p10" stroke="var(--accent)" strokeWidth={1.5} fill="var(--accent)" fillOpacity={0.55} />
               {retirementYear && (
-                <ReferenceLine x={retirementYear} stroke="var(--ink-dim, var(--ink))" strokeDasharray="4 4" label={{ value: 'Retirement', position: 'insideTop', fill: 'var(--ink-dim, var(--ink))', fontSize: 10 }} />
+                <ReferenceLine x={retirementYear} stroke="var(--ink-2)" strokeDasharray="4 4" label={{ value: 'Retirement', position: 'insideTop', fill: 'var(--ink-2)', fontSize: 10 }} />
               )}
             </AreaChart>
           </ResponsiveContainer>

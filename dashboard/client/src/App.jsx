@@ -14,7 +14,10 @@ import MortgageView from './components/MortgageView';
 import CollegeView from './components/CollegeView';
 import EducationSavingsView from './components/EducationSavingsView';
 import PensionView from './components/PensionView';
+import BrokerageLinkView from './components/BrokerageLinkView';
+import Four01kView from './components/Four01kView';
 import CharitableView from './components/CharitableView';
+import RetirementView from './components/RetirementView';
 import AnnualBudget from './components/AnnualBudget';
 import ComingSoon from './components/ComingSoon';
 import Welcome from './components/Welcome';
@@ -33,20 +36,31 @@ const COMING_SOON_TITLES = {
   'loan-calculator': 'Loan Calculator',
 };
 
-// Sidebar keys that route to the portfolio screens. The parent
-// (`portfolio-analysis`) shows the aggregate; each child filters by
-// `accountTypeGroup` from the spreadsheet's Lookup Tables tab. The RSUs
-// view is a special case that filters by the 'RSU' Account Type
-// directly (not a Group) since RSUs aren't a separate group bucket.
-const PORTFOLIO_VIEW_KEYS = ['portfolio-analysis', 'retirement', 'brokerage', 'hsa', 'esa', 'rsus'];
+// Coming Soon copy overrides for pages that need bespoke messaging beyond the
+// generic placeholder.
+const COMING_SOON_DESCRIPTIONS = {};
+
+// Sidebar keys that route to the portfolio screens. The Portfolio Analysis
+// parent shows the aggregate; each child filters by `accountTypeGroup` from the
+// spreadsheet's Lookup Tables tab. The RSUs view is a special case that filters
+// by the 'RSU' Account Type directly (not a Group) since RSUs aren't a separate
+// group bucket. The IRAs view filters the Retirement group but excludes 401k
+// rows so they can render under their own page once the lookup mapping exists.
+const PORTFOLIO_VIEW_KEYS = ['portfolio-analysis', 'iras', 'brokerage', 'hsa', 'esa', 'rsus'];
 const PORTFOLIO_GROUP_BY_VIEW = {
-  retirement: 'Retirement',
+  iras: 'Retirement',
   brokerage: 'Brokerage',
   hsa: 'HSA',
   esa: 'ESA',
 };
 const PORTFOLIO_ACCOUNT_TYPE_BY_VIEW = {
   rsus: 'RSU',
+};
+// Account Types to exclude from a view *after* the group filter applies. Used
+// today to keep 401k lots off the IRAs page; once the spreadsheet's Lookup
+// Tables map "401k" → "Retirement", the dedicated 401k view will own those.
+const PORTFOLIO_EXCLUDE_ACCOUNT_TYPE_BY_VIEW = {
+  iras: '401k',
 };
 
 const PORTFOLIO_TABS = ['Open Positions', 'Closed Positions'];
@@ -176,19 +190,26 @@ export default function App() {
   const isPortfolioView = PORTFOLIO_VIEW_KEYS.includes(sidebarView);
   const portfolioGroup = PORTFOLIO_GROUP_BY_VIEW[sidebarView] || null;
   const portfolioAccountType = PORTFOLIO_ACCOUNT_TYPE_BY_VIEW[sidebarView] || null;
+  const portfolioExcludeAccountType = PORTFOLIO_EXCLUDE_ACCOUNT_TYPE_BY_VIEW[sidebarView] || null;
 
   // Apply the broad-group filter first; everything downstream (owner/account
   // chips, aggregations) operates on this pre-filtered set so chips only show
   // values that exist within the active group. Account-type-scoped views
-  // (e.g. RSUs) filter on `account` instead.
-  const matchesScope = (l) => (
-    portfolioGroup ? l.accountTypeGroup === portfolioGroup
-    : portfolioAccountType ? l.account === portfolioAccountType
-    : true
-  );
-  const groupAllLots = useMemo(() => allLots.filter(matchesScope), [allLots, portfolioGroup, portfolioAccountType]);
-  const groupOpenLots = useMemo(() => rawOpenLots.filter(matchesScope), [rawOpenLots, portfolioGroup, portfolioAccountType]);
-  const groupClosedLots = useMemo(() => rawClosedLots.filter(matchesScope), [rawClosedLots, portfolioGroup, portfolioAccountType]);
+  // (e.g. RSUs) filter on `account` instead. An optional exclusion strips a
+  // single Account Type out of the post-group set (e.g. IRAs excludes 401k).
+  const matchesScope = (l) => {
+    const inScope = (
+      portfolioGroup ? l.accountTypeGroup === portfolioGroup
+      : portfolioAccountType ? l.account === portfolioAccountType
+      : true
+    );
+    if (!inScope) return false;
+    if (portfolioExcludeAccountType && l.account === portfolioExcludeAccountType) return false;
+    return true;
+  };
+  const groupAllLots = useMemo(() => allLots.filter(matchesScope), [allLots, portfolioGroup, portfolioAccountType, portfolioExcludeAccountType]);
+  const groupOpenLots = useMemo(() => rawOpenLots.filter(matchesScope), [rawOpenLots, portfolioGroup, portfolioAccountType, portfolioExcludeAccountType]);
+  const groupClosedLots = useMemo(() => rawClosedLots.filter(matchesScope), [rawClosedLots, portfolioGroup, portfolioAccountType, portfolioExcludeAccountType]);
 
   // Apply owner + account + account-name filters at the lot level BEFORE aggregation
   const allOwnersSelected = selectedOwners.size === 0;
@@ -395,7 +416,10 @@ export default function App() {
         {sidebarView === 'college' && <CollegeView />}
         {sidebarView === 'education-savings' && <EducationSavingsView />}
         {sidebarView === 'pension' && <PensionView />}
+        {sidebarView === 'brokerage-link' && <BrokerageLinkView />}
+        {sidebarView === '401k' && <Four01kView />}
         {sidebarView === 'charitable' && <CharitableView />}
+        {sidebarView === 'retirement' && <RetirementView />}
         {sidebarView === 'budget' && <AnnualBudget />}
         {sidebarView === 'sankey-diagram' && (
           <AnnualBudget
@@ -456,8 +480,11 @@ export default function App() {
 
         {sidebarView === 'tax-harvesting' && <TaxHarvesting />}
 
-        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'pension', 'charitable', 'budget', 'moat-analysis', 'sankey-diagram', 'refinance-calculator', 'tax-harvesting', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
-          <ComingSoon title={COMING_SOON_TITLES[sidebarView] || sidebarView} />
+        {!['getting-started', 'welcome', 'strategy', 'networth', 'college', 'debt-mortgage', 'education-savings', 'pension', 'brokerage-link', '401k', 'charitable', 'retirement', 'budget', 'moat-analysis', 'sankey-diagram', 'refinance-calculator', 'tax-harvesting', ...PORTFOLIO_VIEW_KEYS].includes(sidebarView) && (
+          <ComingSoon
+            title={COMING_SOON_TITLES[sidebarView] || sidebarView}
+            description={COMING_SOON_DESCRIPTIONS[sidebarView]}
+          />
         )}
       </main>
       </div>

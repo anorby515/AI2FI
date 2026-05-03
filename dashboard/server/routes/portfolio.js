@@ -244,3 +244,7 @@ router.get('/', async (req, res) => {
 });
 
 module.exports = router;
+// Internal helpers for other routes (e.g. retirement-inputs) that need
+// split-adjusted holdings without making an HTTP call to /api/portfolio.
+module.exports.parseSheet = parseSheet;
+module.exports.normalizeHoldings = normalizeHoldings;

@@ -46,8 +46,8 @@ export default function MoatAnalysis() {
         <ol>
           <li>
             <strong>Export your ticker list.</strong> Pull the symbols you own
-            from any of the Portfolio Analysis pages (HSA, Retirement, ESA,
-            Brokerage).
+            from any of the Portfolio Analysis pages (HSA, ESA, Brokerage) or
+            the Retirement pages (IRAs).
           </li>
           <li>
             <strong>Hand the list to an AI agent</strong> together with the

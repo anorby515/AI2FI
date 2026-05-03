@@ -90,6 +90,40 @@ export function useBenchmark(ticker = 'SPY') {
   return { lookup };
 }
 
+// Fetch /api/benchmark for an array of tickers in parallel and return
+// { lookups: { [TICKER]: { sorted, map, mapAdj } } }. Used by the 401k page
+// to scale lastKnownNAV → currentValue using each fund's proxy total-return
+// growth, and by callers wanting alpha against multiple benchmarks.
+export function useHistoricalPrices(tickers) {
+  const [lookups, setLookups] = useState({});
+
+  // Memoize the dependency by sorted joined string so passing a new array
+  // with the same contents doesn't re-fire fetches.
+  const key = useMemo(() => [...new Set(tickers || [])].sort().join(','), [tickers]);
+
+  useEffect(() => {
+    const unique = key ? key.split(',').filter(Boolean) : [];
+    if (unique.length === 0) return;
+    let cancelled = false;
+    Promise.all(unique.map(t => fetch(`/api/benchmark/${t}`).then(r => r.ok ? r.json() : null).catch(() => null).then(d => [t, d])))
+      .then(pairs => {
+        if (cancelled) return;
+        const next = {};
+        for (const [t, d] of pairs) {
+          if (!Array.isArray(d)) continue;
+          const sorted = [...d].sort((a, b) => a.date.localeCompare(b.date));
+          const map = new Map(sorted.map(e => [e.date, e.close]));
+          const mapAdj = new Map(sorted.map(e => [e.date, e.adjClose ?? e.close]));
+          next[t] = { sorted, map, mapAdj };
+        }
+        setLookups(prev => ({ ...prev, ...next }));
+      });
+    return () => { cancelled = true; };
+  }, [key]);
+
+  return lookups;
+}
+
 // mode: 'close' (price-only, used by charts) | 'adjClose' (total-return, used by IRR/alpha)
 export function benchmarkPriceOnDate(lookup, dateStr, mode = 'close') {
   if (!lookup || !dateStr) return null;

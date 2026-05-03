@@ -10,18 +10,24 @@ const BASE_NAV = [
       { key: 'budget', label: 'Annual Budget' },
       { key: 'education-savings', label: 'Educational Savings' },
       { key: 'debt-mortgage', label: 'Mortgage Payoff' },
-      { key: 'pension', label: 'Pension' },
       { key: 'charitable', label: 'Charitable Tracking' },
     ]
   },
   {
     key: 'portfolio-analysis', label: 'Portfolio Analysis', children: [
       { key: 'hsa', label: 'HSA' },
-      { key: 'retirement', label: 'Retirement' },
       { key: 'esa', label: 'ESA' },
       { key: 'brokerage', label: 'Brokerage' },
       { key: 'rsus', label: 'RSUs' },
       { key: 'moat-analysis', label: 'Moat Analysis' },
+    ]
+  },
+  {
+    key: 'retirement', label: 'Retirement', children: [
+      { key: 'iras', label: 'IRAs' },
+      { key: '401k', label: '401k' },
+      { key: 'brokerage-link', label: 'BrokerageLink' },
+      { key: 'pension', label: 'Pension' },
     ]
   },
   {

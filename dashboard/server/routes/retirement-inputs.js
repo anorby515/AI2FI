@@ -10,11 +10,21 @@
 //     asOfDate: ISO date string,
 //     people: { self: { name, dob, currentAge }, spouse: {...} },
 //     currentBalances: { '401k', BrokerageLink, 'Traditional IRA', 'Roth IRA',
-//                        Brokerage, HSA, ESA },
+//                        Brokerage, HSA, ESA, RSU },        // RSU split out;
+//                                                            // Brokerage no
+//                                                            // longer includes
+//                                                            // RSU lots.
+//     balancesByOwner: { [ownerName]: { [accountType]: balance } },
+//     owners: string[],            // owner names, with selfOwner first
+//     selfOwner: string | null,    // owner with most portfolio lots — used to
+//                                  // attribute 401k + BrokerageLink balances.
 //     pensionOptions: [...],          // verbatim from /api/pension
 //     salaryHints: { currentAnnualSalary, annualIncreasePct, stipPct },
 //     contributionHints: { annual401kFromLedger, annualEmployerMatchFromLedger },
 //   }
+//
+// Vesting: RSU lots whose `dateAcquired` (vest date) falls after `asOfDate`
+// are skipped — they're not yours yet.
 
 const express = require('express');
 const router = express.Router();
@@ -345,21 +355,24 @@ function four01kCurrentBalance(spreadsheetPath) {
 // raw sharesBought from the ledger. Multiplies by cached live quote when
 // available, falling back to displayCostBasis (the per-share cost adjusted
 // for splits so it matches displayShares) when no quote is cached.
-function portfolioBalances(spreadsheetPath) {
-  const out = {
+function portfolioBalances(spreadsheetPath, asOfDate) {
+  const totals = {
     'Traditional IRA': 0,
     'Roth IRA': 0,
     'Brokerage': 0,
     'HSA': 0,
     'ESA': 0,
+    'RSU': 0,
   };
+  const byOwner = {};      // { owner: { accountType: balance } }
+  const ownerLotCount = {}; // { owner: lotCount }  — used to infer "self".
 
   let holdings;
   try {
     const raw = portfolio.parseSheet(spreadsheetPath);
     holdings = portfolio.normalizeHoldings(raw);
   } catch {
-    return out;
+    return { totals, byOwner, ownerLotCount };
   }
 
   const TICKER_MAP = { 'BRKB': 'BRK-B', 'BTC': 'BTC-USD', 'ETH': 'ETH-USD' };
@@ -377,27 +390,48 @@ function portfolioBalances(spreadsheetPath) {
     if (h.transaction !== 'Open') continue;
     const accountType = String(h.account || '').trim();
     const group = String(h.accountTypeGroup || '').trim();
+    const owner = String(h.owner || '').trim() || 'Unknown';
+
+    // Unvested RSU grants — `dateAcquired` carries the vest date — should
+    // not contribute to retirement assets until they actually vest. The user
+    // has explicit control via the inclusion toggle; vested ones still need
+    // to flow through.
+    if (accountType === 'RSU' && h.dateAcquired && h.dateAcquired > asOfDate) continue;
+
     const shares = Number.isFinite(h.displayShares) ? h.displayShares : h.sharesBought;
     if (!Number.isFinite(shares) || shares <= 0) continue;
     const livePrice = priceFor(String(h.symbol || '').trim());
     const adjCost = Number.isFinite(h.displayCostBasis) ? h.displayCostBasis : h.costBasis;
     const lotValue = livePrice != null ? livePrice * shares : adjCost * shares;
 
-    if (group === 'Retirement') {
+    let bucket = null;
+    if (accountType === 'RSU') {
+      // Pull RSUs out of Brokerage so the user can toggle them as a
+      // distinct line item — they're tied to current employment and the
+      // simulator should treat them as an opt-in source of retirement assets.
+      bucket = 'RSU';
+    } else if (group === 'Retirement') {
       // Skip 401k — those lots live in a separate ledger we total separately.
       if (accountType === '401k') continue;
       if (accountType === 'Traditional IRA' || accountType === 'Roth IRA') {
-        out[accountType] += lotValue;
+        bucket = accountType;
       }
     } else if (group === 'Brokerage') {
-      out['Brokerage'] += lotValue;
+      bucket = 'Brokerage';
     } else if (group === 'HSA') {
-      out['HSA'] += lotValue;
+      bucket = 'HSA';
     } else if (group === 'ESA') {
-      out['ESA'] += lotValue;
+      bucket = 'ESA';
     }
+
+    if (!bucket) continue;
+
+    totals[bucket] += lotValue;
+    if (!byOwner[owner]) byOwner[owner] = {};
+    byOwner[owner][bucket] = (byOwner[owner][bucket] || 0) + lotValue;
+    ownerLotCount[owner] = (ownerLotCount[owner] || 0) + 1;
   }
-  return out;
+  return { totals, byOwner, ownerLotCount };
 }
 
 // --- Public aggregator ---
@@ -407,15 +441,51 @@ async function aggregateInputs() {
 
   const wb = XLSX.readFile(sheet.path, { cellDates: false });
   const pension = await parsePensionFile(sheet.path);
+  const asOfDate = new Date().toISOString().slice(0, 10);
   // portfolioBalances reuses portfolio.js's parser, which re-reads the file —
   // pass the path rather than the wb so split adjustments and the lookup
-  // tables flow through.
-  const portfolioByGroup = portfolioBalances(sheet.path);
+  // tables flow through. asOfDate is used to drop unvested RSU grants.
+  const { totals, byOwner, ownerLotCount } = portfolioBalances(sheet.path, asOfDate);
   const four01kBalance = four01kCurrentBalance(sheet.path);
   const blBalance = brokerageLinkCurrentValue(wb);
   const annual401k = annualContributionsFromLedger(wb);
 
-  const asOfDate = new Date().toISOString().slice(0, 10);
+  // Infer "self" owner — the user with the most lots in the portfolio. The
+  // 401k Ledger and BrokerageLink sheets have no Owner column, so we attribute
+  // those balances to whichever person the user-as-data-owner clearly is.
+  // Falls back to a synthetic 'Self' bucket when no portfolio lots exist.
+  let selfOwner = null;
+  let maxCount = -1;
+  for (const [owner, count] of Object.entries(ownerLotCount)) {
+    if (count > maxCount) { maxCount = count; selfOwner = owner; }
+  }
+  if (!selfOwner) selfOwner = 'Self';
+
+  const balancesByOwner = {};
+  for (const [owner, byAcct] of Object.entries(byOwner)) {
+    balancesByOwner[owner] = { ...byAcct };
+  }
+  if (!balancesByOwner[selfOwner]) balancesByOwner[selfOwner] = {};
+  if (four01kBalance > 0) {
+    balancesByOwner[selfOwner]['401k'] =
+      (balancesByOwner[selfOwner]['401k'] || 0) + four01kBalance;
+  }
+  if (blBalance > 0) {
+    balancesByOwner[selfOwner]['BrokerageLink'] =
+      (balancesByOwner[selfOwner]['BrokerageLink'] || 0) + blBalance;
+  }
+  // Round each per-owner cell to cents.
+  for (const owner of Object.keys(balancesByOwner)) {
+    for (const at of Object.keys(balancesByOwner[owner])) {
+      balancesByOwner[owner][at] = Number(balancesByOwner[owner][at].toFixed(2));
+    }
+  }
+  const owners = Object.keys(balancesByOwner).sort((a, b) => {
+    // selfOwner sorts first, then alphabetically.
+    if (a === selfOwner) return -1;
+    if (b === selfOwner) return 1;
+    return a.localeCompare(b);
+  });
 
   const myDob = pension.header.my_dob || null;
   const spouseDob = pension.header.beneficiary_dob || null;
@@ -445,12 +515,16 @@ async function aggregateInputs() {
     currentBalances: {
       '401k': Number(four01kBalance.toFixed(2)),
       'BrokerageLink': Number(blBalance.toFixed(2)),
-      'Traditional IRA': Number(portfolioByGroup['Traditional IRA'].toFixed(2)),
-      'Roth IRA': Number(portfolioByGroup['Roth IRA'].toFixed(2)),
-      'Brokerage': Number(portfolioByGroup['Brokerage'].toFixed(2)),
-      'HSA': Number(portfolioByGroup['HSA'].toFixed(2)),
-      'ESA': Number(portfolioByGroup['ESA'].toFixed(2)),
+      'Traditional IRA': Number(totals['Traditional IRA'].toFixed(2)),
+      'Roth IRA': Number(totals['Roth IRA'].toFixed(2)),
+      'Brokerage': Number(totals['Brokerage'].toFixed(2)),
+      'HSA': Number(totals['HSA'].toFixed(2)),
+      'ESA': Number(totals['ESA'].toFixed(2)),
+      'RSU': Number(totals['RSU'].toFixed(2)),
     },
+    balancesByOwner,
+    owners,
+    selfOwner,
     pensionOptions: pension.options,
     pensionMeta: {
       stopWorking: pension.header.stop_working || null,

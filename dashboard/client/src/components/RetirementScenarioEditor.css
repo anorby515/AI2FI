@@ -1,0 +1,895 @@
+/* RetirementView — Phase 1 scaffolding.
+ * Layout-only rules. All colors / spacing / typography read from tokens.css.
+ * Single root class .rv scopes everything below.
+ */
+
+.rv {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--pad-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.rv__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--pad-lg) 0 0;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+
+.rv__head-right {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  flex-wrap: wrap;
+}
+
+.rv__title    { font-size: 48px; font-weight: 700; letter-spacing: -1.2px; }
+.rv__subtitle { font-size: 24px; color: var(--ink-2); margin-top: 6px; }
+.rv__badge    { color: var(--warn); font-weight: 600; }
+
+.rv__loading,
+.rv__empty {
+  padding: 80px 40px;
+  color: var(--dim);
+  font-size: 13px;
+  text-align: center;
+}
+.rv__empty-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.rv__empty-body { color: var(--ink-2); }
+.rv__empty-hint { color: var(--dim); margin-top: 10px; font-size: 12.5px; }
+
+.rv__feedback {
+  padding: var(--gap-sm) var(--pad);
+  border-radius: var(--r-chip);
+  font-size: 13px;
+}
+.rv__feedback--ok  { background: var(--accent-weak); color: var(--accent); }
+.rv__feedback--err { background: rgba(251, 113, 133, 0.12); color: var(--neg); }
+
+/* ── Single-column layout: editor flow with the simulation pane inline ─── */
+.rv__cols {
+  display: block;
+}
+
+.rv__editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.rv__sim {
+  /* Inline section between Scenario and Starting position. */
+}
+
+/* Side-by-side pair of sections (e.g. Pension on the left, Social Security
+ * on the right). Collapses to a single column on narrow viewports. */
+.rv__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+@media (max-width: 1000px) {
+  .rv__pair { grid-template-columns: 1fr; }
+}
+/* Paired panels are roughly half-width, so labels + inputs both shrink
+ * slightly to keep the row from overflowing. */
+.rv__pair .rv__field {
+  grid-template-columns: 240px 200px;
+}
+.rv__pair .rv__field--compact {
+  grid-template-columns: 240px 110px;
+}
+
+/* ── Account Owners section (per-owner sub-cards) ────────────────────── */
+.rv__owners-empty,
+.rv__owners-prompt {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  padding: 10px 14px;
+  border-radius: var(--r-chip);
+  background: var(--card-hi);
+  border: 1px solid var(--rule-3);
+  margin-bottom: var(--gap);
+}
+.rv__owners-prompt {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 30%, transparent);
+}
+
+.rv__owners {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gap);
+}
+@media (max-width: 900px) {
+  .rv__owners { grid-template-columns: 1fr; }
+}
+
+.rv__owner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: 14px 16px;
+  background: var(--card-hi);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-btn);
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.rv__owner--on {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--rule));
+  background: color-mix(in srgb, var(--accent) 5%, var(--card-hi));
+}
+.rv__owner--child {
+  background: color-mix(in srgb, var(--ink-2) 4%, var(--card-hi));
+}
+.rv__owner--dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+.rv__owner--drop-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.rv__owner-head-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+.rv__owner-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+  min-height: 40px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rv__owner-role-select {
+  background: var(--card);
+  color: var(--ink-2);
+  border: 1px solid var(--rule-3);
+  border-radius: var(--r-chip);
+  padding: 6px 26px 6px 12px;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-2) 50%),
+    linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 12px) 50%, calc(100% - 7px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  outline: none;
+}
+.rv__owner-role-select:focus { border-color: var(--accent); }
+.rv__owner--on .rv__owner-role-select {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--rule));
+}
+
+/* Drag-handle "grip" — click-and-drag to reorder owner cards. The cursor
+ * flips to grabbing while held; the host .rv__owner picks up the
+ * draggable=true flag once mousedown fires (see InputsSummary). */
+.rv__owner-grip {
+  width: 24px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: var(--dim);
+  padding: 0;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: -2px;
+  transition: color var(--t-fast);
+  flex-shrink: 0;
+}
+.rv__owner-grip:hover { color: var(--ink-2); }
+.rv__owner-grip:active { cursor: grabbing; color: var(--accent); }
+
+/* Collapse / expand chevron next to the role select. */
+.rv__owner-collapse {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--rule-3);
+  border-radius: 6px;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+  flex-shrink: 0;
+}
+.rv__owner-collapse:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.rv__owner-child-note {
+  font-size: 13px;
+  color: var(--dim);
+  font-style: italic;
+  padding: 8px 0 0;
+}
+
+.rv__owner-disabled {
+  font-size: 13px;
+  color: var(--dim);
+  padding: 8px 10px;
+  border: 1px dashed var(--rule-3);
+  border-radius: var(--r-chip);
+  text-align: center;
+}
+.rv__owner-head input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+.rv__owner-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  line-height: 1;
+}
+.rv__owner-role {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.rv__owner-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap);
+}
+/* Owner sub-card field rows: short labels, packed compact. */
+.rv__owner-fields .rv__field {
+  grid-template-columns: 180px 240px;
+}
+
+.rv__owner-dob {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--ink-2);
+  padding: 8px 10px;
+  background: var(--card);
+  border: 1px solid var(--rule-3);
+  border-radius: var(--r-chip);
+}
+
+.rv__owner-note {
+  font-size: 12px;
+  color: var(--dim);
+  font-style: italic;
+  align-self: center;
+}
+
+.rv__starting-subhead {
+  font-size: 11px;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: var(--gap);
+  margin-bottom: 8px;
+}
+
+/* ── Sections (cards) ─────────────────────────────────────────────────── */
+.rv__section { padding: var(--pad-lg); }
+
+.rv__section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap);
+  margin-bottom: 16px;
+}
+
+/* Doubled section title + subtitle — pages-level emphasis so the editor
+ * reads with the same hierarchy as the overview hero card. */
+.rv__section-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.4px;
+}
+/* Subtitle = half the heading size (per design spec). */
+.rv__section-subtitle {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 4px;
+  max-width: 70ch;
+  line-height: 1.5;
+}
+
+.rv__section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.rv__sub-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  font-weight: 600;
+  margin-top: 6px;
+}
+.rv__alloc-warn {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--neg);
+  font-weight: 500;
+}
+.rv__starting-warn {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--warn);
+  font-weight: 600;
+}
+
+/* ── Field grids ────────────────────────────────────────────────────────
+ * Single-column, left-aligned layout: label sits above its input, full row
+ * width. Bento Stats put the label small + uppercase + tracked over the
+ * value — same idiom here, but the value is editable. */
+.rv__grid-2,
+.rv__grid-3,
+.rv__grid-4 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap-lg);
+}
+
+.rv__row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+
+/* Inline label-left, input-right layout. Both the label and input cells
+ * are fixed-width and packed to the left edge — no fluid 1fr stretching
+ * means no empty whitespace between label and input. */
+.rv__field {
+  display: grid;
+  grid-template-columns: 280px 260px;
+  gap: var(--gap);
+  align-items: center;
+  justify-content: start;
+  min-width: 0;
+}
+/* Half-size variant — for short % inputs (e.g. 401k contribution rate).
+ * The calculated $ amount sits inline next to the label. */
+.rv__field--compact {
+  grid-template-columns: 280px 120px;
+}
+.rv__field--compact .rv__input { text-align: right; padding-right: 32px; }
+.rv__field-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.rv__field-label {
+  font-size: 15px;
+  color: var(--ink-2);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* Calculated dollar amount inline beside a label (e.g. 401(k) — employee
+ * $23,520). Mono + accent so it reads as derived data, not editable copy. */
+.rv__field-amount {
+  display: inline-block;
+  margin-left: 10px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.rv__field-hint {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* ── Inputs ───────────────────────────────────────────────────────────── */
+.rv__input,
+.rv__select {
+  background: var(--card-hi);
+  color: var(--ink);
+  border: 1px solid var(--rule-3);
+  border-radius: var(--r-chip);
+  padding: 9px 12px;
+  /* Same font as the label so the row reads as a single line. */
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0;
+  font-family: var(--font-sans);
+  width: 100%;
+  outline: none;
+  transition: border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
+}
+.rv__input:hover,
+.rv__select:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--rule-3));
+}
+.rv__input:focus,
+.rv__select:focus {
+  border-color: var(--accent);
+  background: var(--card-hi-2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+input.rv__input[type="number"],
+input.rv__input[type="date"] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rv__select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.rv__num-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.rv__num-wrap .rv__input {
+  padding-right: 32px;
+}
+.rv__suffix {
+  position: absolute;
+  right: 12px;
+  font-size: 13px;
+  color: var(--dim);
+  pointer-events: none;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+/* iOS-style toggle switch — same idiom as RetirementView's .ret__switch.
+ * Used for boolean Field rows like "Stop contributions at retirement". */
+.rv__switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.rv__switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+.rv__switch-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--card-hi);
+  border: 1px solid var(--rule-3);
+  border-radius: var(--r-pill);
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.rv__switch-slider::before {
+  content: '';
+  position: absolute;
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  top: 2px;
+  background: var(--ink-2);
+  border-radius: 50%;
+  transition: transform var(--t-fast), background var(--t-fast);
+}
+.rv__switch input:checked + .rv__switch-slider {
+  background: var(--accent-weak);
+  border-color: var(--accent);
+}
+.rv__switch input:checked + .rv__switch-slider::before {
+  transform: translateX(16px);
+  background: var(--accent);
+}
+.rv__switch input:focus-visible + .rv__switch-slider {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* Toggle row: native checkbox tinted via accent. */
+.rv__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--r-chip);
+  background: var(--card-hi);
+  border: 1px solid var(--rule-3);
+  user-select: none;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.rv__toggle:hover { background: var(--card-hi-2); }
+.rv__toggle input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.rv__inclusion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-sm);
+}
+.rv__inclusion--stack {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+.rv__inclusion--stack .rv__toggle { width: auto; }
+
+/* ── Withdrawal sequence ──────────────────────────────────────────────── */
+.rv__seq {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+.rv__seq-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 8px 12px;
+  background: var(--card-hi);
+  border: 1px solid var(--rule-3);
+  border-radius: var(--r-chip);
+}
+.rv__seq-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-weight: 700;
+  width: 18px;
+  text-align: center;
+}
+.rv__seq-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink);
+}
+.rv__seq-btns {
+  display: flex;
+  gap: 4px;
+}
+
+/* ── Returns mini grid (label + mean + stdev) ─────────────────────────── */
+.rv__returns-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 1fr;
+  gap: var(--gap-sm);
+  align-items: center;
+}
+.rv__returns-label {
+  font-size: 12px;
+  color: var(--ink-2);
+  text-transform: capitalize;
+}
+
+/* ── Inputs summary block (read-only) ─────────────────────────────────── */
+.rv__starting-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gap);
+}
+@media (max-width: 800px) {
+  .rv__starting-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.rv__starting-cell {
+  padding: 12px 14px;
+  background: var(--card-hi);
+  border-radius: var(--r-chip);
+  border: 1px solid var(--rule-3);
+}
+.rv__starting-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.rv__starting-value {
+  font-size: 14px;
+  color: var(--ink);
+}
+.rv__mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Simulation placeholder card ──────────────────────────────────────── */
+.rv__sim-card {
+  padding: var(--pad-lg);
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+/* Hero radial — same idiom as RetirementView's .ret__hero-blob. */
+.rv__sim-card::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  right: -80px;
+  width: 360px;
+  height: 360px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%);
+  z-index: 0;
+}
+.rv__sim-card > * { position: relative; z-index: 1; }
+/* Match the standard section heading rhythm (see .rv__section-title /
+ * .rv__section-subtitle): subtitle is half the title's font size. */
+.rv__sim-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.4px;
+}
+.rv__sim-subtitle {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.rv__sim-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: var(--gap);
+  border: 1px dashed var(--rule-3);
+  border-radius: var(--r-chip);
+  padding: var(--pad);
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.rv__sim-placeholder-msg code {
+  background: var(--card-hi);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+/* ── Simulation pane (chart + tiles + SS optimizer) ─────────────────────── */
+.rv__sim-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+
+.rv__sim-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+@media (max-width: 900px) {
+  .rv__sim-tiles { grid-template-columns: repeat(2, 1fr); }
+}
+.rv__sim-tile {
+  background: var(--card-hi);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-chip);
+  padding: var(--pad);
+}
+.rv__sim-tile-label {
+  font-size: 11px;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rv__sim-tile-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 4px;
+}
+.rv__sim-tile-sub {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+.rv__pos { color: var(--pos); }
+.rv__neg { color: var(--neg); }
+
+.rv__chart-wrap {
+  min-height: 380px;
+  display: flex;
+}
+.rv__chart-loading,
+.rv__chart-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--rule-3);
+  border-radius: var(--r-chip);
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+/* Recharts tooltip */
+.rv__tooltip {
+  background: var(--card-hi);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  min-width: 180px;
+}
+.rv__tooltip-year {
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--ink);
+}
+.rv__tooltip-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  margin-top: 2px;
+}
+.rv__tooltip-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.rv__tooltip-swatch--p10 { opacity: 0.55; }
+.rv__tooltip-swatch--p50 { opacity: 0.30; }
+.rv__tooltip-swatch--p70 { opacity: 0.15; }
+
+/* SS optimizer panel */
+.rv__ss-opt {
+  margin-top: var(--gap);
+  border-top: 1px solid var(--rule);
+  padding-top: var(--gap);
+}
+.rv__ss-opt-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--gap);
+}
+.rv__ss-opt-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.rv__ss-opt-subtitle {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin-top: 2px;
+  max-width: 60ch;
+}
+.rv__ss-opt-body {
+  margin-top: var(--gap);
+}
+.rv__ss-opt-best {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card-hi);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-chip);
+  padding: var(--pad);
+  margin-bottom: var(--gap);
+  gap: var(--gap);
+}
+.rv__ss-opt-best-label {
+  font-size: 11px;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rv__ss-opt-best-value {
+  font-size: 16px;
+  color: var(--ink);
+  margin-top: 2px;
+}
+.rv__ss-opt-best-sub {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rv__ss-opt-grid-wrap {
+  overflow-x: auto;
+}
+.rv__ss-grid {
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--ink);
+}
+.rv__ss-grid th, .rv__ss-grid td {
+  border: 1px solid var(--rule);
+  padding: 6px 8px;
+  text-align: center;
+  min-width: 40px;
+}
+.rv__ss-grid th {
+  background: var(--card-hi);
+  font-weight: 600;
+  color: var(--ink-2);
+  font-size: 10px;
+}
+.rv__ss-grid-corner {
+  text-align: left;
+  font-size: 10px !important;
+  color: var(--ink-2);
+}
+.rv__ss-grid-cell--best {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  font-weight: 700;
+}

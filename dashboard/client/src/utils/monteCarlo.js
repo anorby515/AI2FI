@@ -274,7 +274,7 @@ function simulateOnePath(ctx) {
     asOfYear, endYear,
     selfDob, spouseDob,
     selfRetirementYear, spouseRetirementYear,
-    pensionStartYear,
+    pensionStartYear, pensionEndYear,
     contributionsCfg, withdrawalSequence,
     spending, returns, allocation, tax,
     socialSecurity,
@@ -337,12 +337,16 @@ function simulateOnePath(ctx) {
 
     const portReal = equityW * eqReal + bondW * bdReal + cashW * csReal;
 
-    // Apply portfolio return to every bucket. We do not split returns
-    // per-bucket in v1.
+    // Apply portfolio return to the three invested buckets. The cash
+    // bucket is already-taxed sweep money (pension/SS surplus + RMD
+    // proceeds awaiting spend), so it compounds at the cash rate, not the
+    // equity-heavy portfolio return — otherwise an untouched cash bucket
+    // can balloon over a 30-year retirement and inflate the late-life
+    // balance unrealistically.
     balances.traditional *= (1 + portReal);
     balances.roth        *= (1 + portReal);
     balances.taxable     *= (1 + portReal);
-    balances.cash        *= (1 + portReal); // even cash bucket compounds with portfolio (post-RMD)
+    balances.cash        *= (1 + csReal);
 
     const ageSelf = ageInYear(selfDob, year);
     const ageSpouse = spouseDob ? ageInYear(spouseDob, year) : null;
@@ -368,7 +372,11 @@ function simulateOnePath(ctx) {
     // (d) Income (real, pre-tax). Pension + SS + otherIncome.
     let pensionThisYear = 0;
     if (pensionStartYear != null && year >= pensionStartYear) {
-      pensionThisYear = pensionAnnual;
+      // pensionEndYear lets a lump-sum payment land in a single year; for
+      // ongoing annuities pensionEndYear is null and pension flows forever.
+      if (pensionEndYear == null || year <= pensionEndYear) {
+        pensionThisYear = pensionAnnual;
+      }
     }
     let selfSS = 0;
     if (ageSelf != null && ageSelf >= selfClaimAge) selfSS = selfSSAnnual;
@@ -399,40 +407,43 @@ function simulateOnePath(ctx) {
     let withdrawalTax = 0;
     let shortfall = 0;
 
+    // Snapshot the traditional balance before the spending draw so we can
+    // measure how much spending pulled from it — needed below to net the
+    // RMD top-up correctly (otherwise spending-from-traditional + RMD would
+    // double-pull and quickly drain the bucket).
+    const tradBeforeSpend = balances.traditional;
+
     if (netNeed <= 0) {
       // (f) Surplus → cash bucket.
       balances.cash += -netNeed;
     } else {
-      // (g) Draw from accounts in order.
-      const result = drawFromBuckets(balances, netNeed, withdrawalSequence, taxRates);
+      // (g) Draw from accounts in order. Cash is drawn first because it's
+      // already-taxed sweep money (pension/SS surplus + RMD proceeds);
+      // touching invested buckets while cash is sitting idle would make
+      // the simulation unnecessarily tax-inefficient and let cash compound
+      // unspent.
+      const effectiveSequence = ['cash', ...withdrawalSequence];
+      const result = drawFromBuckets(balances, netNeed, effectiveSequence, taxRates);
       drawn = result.drawn;
       withdrawalTax = result.taxesPaid;
       shortfall = result.shortfall;
       if (shortfall > 1e-2 && !depleted) depleted = year;
     }
 
-    // (h) RMDs at age >= 73.
-    if (ageSelf != null && ageSelf >= 73 && balances.traditional > 0) {
+    // (h) RMDs at age >= 73. Compute the requirement off the pre-spend
+    // traditional balance (close to year-start), then top up only the
+    // shortfall — anything spending already pulled from traditional counts
+    // toward the RMD.
+    if (ageSelf != null && ageSelf >= 73 && tradBeforeSpend > 0) {
       const factor = rmdFactor(ageSelf);
-      const required = balances.traditional / factor;
-      // We've already pulled from traditional in step (g) if it was first in
-      // sequence. Compare with what was drawn from traditional.
-      // Easy path: draw ANY remaining required - already-drawn-from-trad.
-      // We approximate: if remaining required > 0, force-draw it now and
-      // route the post-tax surplus into cash.
-      // (Sequence matters: if traditional wasn't first, we may have left
-      // funds there that the RMD now forces us to touch.)
-      if (required > 0 && balances.traditional >= required) {
-        // We don't know how much of `drawn` came from traditional — to keep
-        // it tractable, force the RMD as an additional withdrawal here. If
-        // traditional was the first-pulled bucket and we already exceeded the
-        // RMD, this still triggers a forced extra withdrawal (small bug
-        // documented). For the typical sequence ['taxable','traditional',
-        // 'roth'] the RMD often binds first, so this is fine.
-        // Better fix tracked: thread per-bucket draws through drawFromBuckets.
-        balances.traditional -= required;
-        const tax = required * ordRate;
-        const postTax = required - tax;
+      const required = tradBeforeSpend / factor;
+      const tradPulledForSpending = Math.max(0, tradBeforeSpend - balances.traditional);
+      const stillToDraw = Math.max(0, required - tradPulledForSpending);
+      if (stillToDraw > 0 && balances.traditional > 0) {
+        const actualDraw = Math.min(stillToDraw, balances.traditional);
+        balances.traditional -= actualDraw;
+        const tax = actualDraw * ordRate;
+        const postTax = actualDraw - tax;
         balances.cash += postTax;
         withdrawalTax += tax;
       }
@@ -489,6 +500,7 @@ export function runSimulation(scenario, inputs) {
   const { selfRetirementYear, spouseRetirementYear } =
     resolveRetirementYears(scenario, asOfYear);
   const pensionStartYear = yearOf(scenario.income?.pension?.startDate);
+  const pensionEndYear = yearOf(scenario.income?.pension?.endDate);
 
   const seedSpec = scenario.monteCarlo?.seed;
   const seedUsed = (typeof seedSpec === 'number' && !isNaN(seedSpec))
@@ -505,7 +517,7 @@ export function runSimulation(scenario, inputs) {
     asOfYear, endYear,
     selfDob, spouseDob,
     selfRetirementYear, spouseRetirementYear,
-    pensionStartYear,
+    pensionStartYear, pensionEndYear,
     contributionsCfg: scenario.contributions || {},
     withdrawalSequence: scenario.withdrawalSequence || ['taxable', 'traditional', 'roth'],
     spending: scenario.spending || {},

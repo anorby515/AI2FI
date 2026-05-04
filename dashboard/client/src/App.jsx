@@ -419,7 +419,7 @@ export default function App() {
         {sidebarView === 'brokerage-link' && <BrokerageLinkView />}
         {sidebarView === '401k' && <Four01kView />}
         {sidebarView === 'charitable' && <CharitableView />}
-        {sidebarView === 'retirement' && <RetirementView />}
+        {sidebarView === 'retirement' && <RetirementView onNavigate={handleSidebarChange} />}
         {sidebarView === 'budget' && <AnnualBudget />}
         {sidebarView === 'sankey-diagram' && (
           <AnnualBudget

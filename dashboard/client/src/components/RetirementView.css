@@ -1,9 +1,9 @@
-/* RetirementView — Phase 1 scaffolding.
- * Layout-only rules. All colors / spacing / typography read from tokens.css.
- * Single root class .rv scopes everything below.
+/* RetirementView — Bento "Am I on track?" overview.
+ * Layout-only rules. All colors / type / spacing read from tokens.css.
+ * Single root class .ret scopes everything below.
  */
 
-.rv {
+.ret {
   max-width: 1440px;
   margin: 0 auto;
   padding: 0 var(--pad-xl);
@@ -12,7 +12,7 @@
   gap: var(--gap);
 }
 
-.rv__head {
+.ret__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -20,402 +20,275 @@
   gap: var(--gap);
   flex-wrap: wrap;
 }
+.ret__title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.ret__subtitle { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
+.ret__template-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  vertical-align: middle;
+}
 
-.rv__head-right {
+.ret__head-right {
   display: flex;
   align-items: center;
   gap: var(--gap-sm);
   flex-wrap: wrap;
 }
 
-.rv__title    { font-size: 24px; font-weight: 700; letter-spacing: -0.6px; }
-.rv__subtitle { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
-.rv__badge    { color: var(--warn); font-weight: 600; }
+.ret__select {
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--rule-3);
+  border-radius: var(--r-btn);
+  padding: 8px 28px 8px 12px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-2) 50%),
+    linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  outline: none;
+  transition: border-color var(--t-fast);
+}
+.ret__select:hover  { border-color: var(--rule-3); }
+.ret__select:focus  { border-color: var(--accent); }
 
-.rv__loading,
-.rv__empty {
+/* ── Empty / loading / error states ────────────────────────────────── */
+.ret__loading,
+.ret__empty {
   padding: 80px 40px;
   color: var(--dim);
   font-size: 13px;
   text-align: center;
 }
-.rv__empty-title {
+.ret__empty-title {
   font-size: 18px;
   font-weight: 700;
   color: var(--ink);
   margin-bottom: 6px;
 }
-.rv__empty-body { color: var(--ink-2); }
-.rv__empty-hint { color: var(--dim); margin-top: 10px; font-size: 12.5px; }
+.ret__empty-body { color: var(--ink-2); }
+.ret__empty-body--err { color: var(--neg); }
+.ret__empty-hint { color: var(--dim); margin-top: 10px; font-size: 12.5px; }
 
-.rv__feedback {
-  padding: var(--gap-sm) var(--pad);
-  border-radius: var(--r-chip);
-  font-size: 13px;
-}
-.rv__feedback--ok  { background: var(--accent-weak); color: var(--accent); }
-.rv__feedback--err { background: rgba(251, 113, 133, 0.12); color: var(--neg); }
-
-/* ── Single-column layout: editor flow with the simulation pane inline ─── */
-.rv__cols {
-  display: block;
-}
-
-.rv__editor {
+/* Inline banner shown above the grid when no owners are opted-in. */
+.ret__owner-empty {
   display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-  min-width: 0;
-}
-
-.rv__sim {
-  /* Inline section between Scenario and Starting position. */
-}
-
-.rv__starting-subhead {
-  font-size: 11px;
-  color: var(--ink-2);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-top: var(--gap);
-  margin-bottom: 8px;
-}
-
-/* ── Sections (cards) ─────────────────────────────────────────────────── */
-.rv__section { padding: var(--pad-lg); }
-
-.rv__section-head {
-  display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--gap);
-  margin-bottom: 14px;
+  padding: var(--pad-lg);
+  flex-wrap: wrap;
 }
-
-.rv__section-title {
-  font-size: 14px;
+.ret__owner-empty-title {
+  font-size: 15px;
   font-weight: 700;
   color: var(--ink);
   letter-spacing: -0.2px;
 }
-.rv__section-subtitle {
-  font-size: 12px;
+.ret__owner-empty-body {
+  font-size: 13px;
   color: var(--ink-2);
-  margin-top: 2px;
+  margin-top: 4px;
+  max-width: 60ch;
+  line-height: 1.5;
 }
 
-.rv__section-body {
-  display: flex;
-  flex-direction: column;
+/* ── Page grid: 1.5fr / 1fr two-col with full-width spans ────────────── */
+.ret__grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
   gap: var(--gap);
 }
+.ret__chart-card,
+.ret__accounts-card,
+.ret__seq-card { grid-column: span 2; }
 
-.rv__sub-title {
+@media (max-width: 900px) {
+  .ret__grid { grid-template-columns: 1fr; }
+  .ret__chart-card,
+  .ret__accounts-card,
+  .ret__seq-card { grid-column: span 1; }
+}
+
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.ret__hero {
+  position: relative;
+  overflow: hidden;
+  padding: var(--pad-lg);
+}
+.ret__hero-blob {
+  position: absolute;
+  top: -100px;
+  right: -80px;
+  width: 360px;
+  height: 360px;
+  pointer-events: none;
+  border-radius: 50%;
+}
+.ret__hero-blob--pos { background: radial-gradient(circle, color-mix(in srgb, var(--pos) 15%, transparent), transparent 70%); }
+.ret__hero-blob--neg { background: radial-gradient(circle, color-mix(in srgb, var(--neg) 15%, transparent), transparent 70%); }
+
+.ret__pill {
   font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  position: relative;
+}
+.ret__pill--pos { color: var(--pos); }
+.ret__pill--neg { color: var(--neg); }
+
+.ret__hero-stats {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+  position: relative;
+}
+.ret__hero-aside { padding-bottom: 6px; }
+
+/* Two stats packed inside one Card — used for Target spend + Rule of 4%. */
+.ret__split-stat {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+  align-items: start;
+}
+
+.ret__hero-label {
+  font-size: 11px;
   color: var(--dim);
   font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ret__hero-big {
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -1.6px;
+  line-height: 1;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.ret__hero-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  color: var(--ink-2);
   margin-top: 6px;
 }
-.rv__alloc-warn {
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--neg);
-  font-weight: 500;
-}
 
-/* ── Field grids ──────────────────────────────────────────────────────── */
-.rv__grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--gap);
-}
-.rv__grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--gap);
-}
-.rv__grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--gap);
-}
-@media (max-width: 800px) {
-  .rv__grid-3, .rv__grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-.rv__row {
-  display: flex;
-  align-items: center;
-  gap: var(--gap);
-  flex-wrap: wrap;
-}
-
-.rv__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.rv__field-label {
-  font-size: 11.5px;
-  color: var(--ink-2);
-  font-weight: 500;
-}
-.rv__field-hint {
-  font-size: 11px;
-  color: var(--dim);
-}
-
-/* ── Inputs ───────────────────────────────────────────────────────────── */
-.rv__input,
-.rv__select {
-  background: var(--card-hi);
-  color: var(--ink);
-  border: 1px solid var(--rule-3);
-  border-radius: var(--r-chip);
-  padding: 8px 10px;
-  font-size: 13px;
-  font-family: var(--font-sans);
-  width: 100%;
-  outline: none;
-  transition: border-color var(--t-fast), background var(--t-fast);
-}
-.rv__input:focus,
-.rv__select:focus {
-  border-color: var(--accent);
-  background: var(--card-hi-2);
-}
-input.rv__input[type="number"],
-input.rv__input[type="date"] {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.rv__select {
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-}
-
-.rv__num-wrap {
+.ret__hero-progress { margin-top: 18px; position: relative; }
+.ret__progress-track {
   position: relative;
-  display: flex;
-  align-items: center;
+  height: 8px;
+  background: var(--rule-2);
+  border-radius: var(--r-pill);
+  overflow: hidden;
 }
-.rv__num-wrap .rv__input {
-  padding-right: 28px;
+.ret__progress-fill {
+  height: 100%;
+  border-radius: var(--r-pill);
 }
-.rv__suffix {
+.ret__progress-fill--ok  { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+.ret__progress-fill--bad { background: var(--neg); }
+.ret__progress-marker {
   position: absolute;
-  right: 10px;
-  font-size: 11px;
-  color: var(--dim);
-  pointer-events: none;
-  font-family: var(--font-mono);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ink-2);
+  opacity: 0.5;
 }
-
-/* Toggle row: native checkbox tinted via accent. */
-.rv__toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--ink);
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: var(--r-chip);
-  background: var(--card-hi);
-  border: 1px solid var(--rule-3);
-  user-select: none;
-  transition: background var(--t-fast), border-color var(--t-fast);
-}
-.rv__toggle:hover { background: var(--card-hi-2); }
-.rv__toggle input[type="checkbox"] {
-  accent-color: var(--accent);
-  width: 14px;
-  height: 14px;
-  margin: 0;
-}
-
-.rv__inclusion {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-sm);
-}
-
-/* ── Withdrawal sequence ──────────────────────────────────────────────── */
-.rv__seq {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-sm);
-}
-.rv__seq-row {
-  display: flex;
-  align-items: center;
-  gap: var(--gap);
-  padding: 8px 12px;
-  background: var(--card-hi);
-  border: 1px solid var(--rule-3);
-  border-radius: var(--r-chip);
-}
-.rv__seq-num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-  font-weight: 700;
-  width: 18px;
-  text-align: center;
-}
-.rv__seq-label {
-  flex: 1;
-  font-size: 13px;
-  color: var(--ink);
-}
-.rv__seq-btns {
-  display: flex;
-  gap: 4px;
-}
-
-/* ── Returns mini grid (label + mean + stdev) ─────────────────────────── */
-.rv__returns-row {
-  display: grid;
-  grid-template-columns: 90px 1fr 1fr;
-  gap: var(--gap-sm);
-  align-items: center;
-}
-.rv__returns-label {
-  font-size: 12px;
-  color: var(--ink-2);
-  text-transform: capitalize;
-}
-
-/* ── Inputs summary block (read-only) ─────────────────────────────────── */
-.rv__starting-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--gap);
-}
-@media (max-width: 800px) {
-  .rv__starting-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-.rv__starting-cell {
-  padding: 12px 14px;
-  background: var(--card-hi);
-  border-radius: var(--r-chip);
-  border: 1px solid var(--rule-3);
-}
-.rv__starting-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--dim);
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.rv__starting-value {
-  font-size: 14px;
-  color: var(--ink);
-}
-.rv__mono {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ── Simulation placeholder card ──────────────────────────────────────── */
-.rv__sim-card {
-  padding: var(--pad-lg);
-  min-height: 420px;
-  display: flex;
-  flex-direction: column;
-}
-.rv__sim-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink);
-}
-.rv__sim-subtitle {
-  font-size: 12px;
-  color: var(--ink-2);
-  margin-top: 2px;
-  margin-bottom: 14px;
-}
-.rv__sim-placeholder {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  gap: var(--gap);
-  border: 1px dashed var(--rule-3);
-  border-radius: var(--r-chip);
-  padding: var(--pad);
-  color: var(--ink-2);
-  font-size: 13px;
-}
-.rv__sim-placeholder-msg code {
-  background: var(--card-hi);
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink);
-}
-
-/* ── Simulation pane (chart + tiles + SS optimizer) ─────────────────────── */
-.rv__sim-head {
+.ret__progress-labels {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--gap);
-  margin-bottom: var(--gap);
-}
-
-.rv__sim-tiles {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--gap);
-  margin-bottom: var(--gap);
-}
-@media (max-width: 900px) {
-  .rv__sim-tiles { grid-template-columns: repeat(2, 1fr); }
-}
-.rv__sim-tile {
-  background: var(--card-hi);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-chip);
-  padding: var(--pad);
-}
-.rv__sim-tile-label {
-  font-size: 11px;
-  color: var(--ink-2);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.rv__sim-tile-value {
+  font-size: 10.5px;
+  color: var(--dim);
+  margin-top: 6px;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ink);
-  margin-top: 4px;
 }
-.rv__sim-tile-sub {
-  font-size: 11px;
-  color: var(--ink-2);
-  margin-top: 2px;
-}
-.rv__pos { color: var(--pos); }
-.rv__neg { color: var(--neg); }
+.ret__progress-mid { color: var(--ink-2); }
 
-.rv__chart-wrap {
-  min-height: 380px;
+.ret__hero-explainer {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  margin: 16px 0 0;
+  line-height: 1.5;
+  max-width: 560px;
+  position: relative;
+}
+.ret__hero-emphasis { color: var(--ink); font-weight: 600; }
+
+/* ── Quick stats stack (right column, 2x2) ───────────────────────────── */
+.ret__quickstats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+  align-content: start;
+}
+
+/* ── Section head shared by chart + sequence cards ───────────────────── */
+.ret__section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 14px;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+.ret__section-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+.ret__section-sub   { font-size: 12px; color: var(--ink-2); margin-top: 3px; }
+
+/* ── Chart card legend ───────────────────────────────────────────────── */
+.ret__chart-card { padding: var(--pad-lg); }
+.ret__legend {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--dim);
+}
+.ret__legend-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.ret__legend-swatch--accent  { background: var(--accent); }
+.ret__legend-swatch--accent2 { background: var(--accent-2); }
+.ret__legend-swatch--p10     { background: var(--accent); opacity: 0.55; }
+.ret__legend-swatch--p50     { background: var(--accent); opacity: 0.30; }
+.ret__legend-swatch--p70     { background: var(--accent); opacity: 0.15; }
+
+.ret__chart-area {
+  min-height: 300px;
   display: flex;
 }
-.rv__chart-loading,
-.rv__chart-empty {
+.ret__chart-loading {
   flex: 1;
   display: flex;
   align-items: center;
@@ -424,128 +297,248 @@ input.rv__input[type="date"] {
   border-radius: var(--r-chip);
   color: var(--ink-2);
   font-size: 13px;
+  font-family: var(--font-mono);
 }
 
-/* Recharts tooltip */
-.rv__tooltip {
+/* Recharts tooltip — Bento-styled. */
+.ret__chart-tip {
   background: var(--card-hi);
   border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 8px 10px;
+  border-radius: var(--r-chip);
+  padding: 10px 12px;
   font-size: 12px;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--ink);
   min-width: 180px;
+  box-shadow: var(--shadow-card);
 }
-.rv__tooltip-year {
+.ret__chart-tip-label {
   font-weight: 700;
-  margin-bottom: 4px;
   color: var(--ink);
+  margin-bottom: 4px;
 }
-.rv__tooltip-row {
+.ret__chart-tip-row {
   display: grid;
   grid-template-columns: 12px 1fr auto;
   gap: 6px;
   align-items: center;
-  font-size: 11px;
+  font-size: 11.5px;
   margin-top: 2px;
+  color: var(--ink-2);
 }
-.rv__tooltip-swatch {
+.ret__chart-tip-val { color: var(--ink); }
+.ret__chart-tip-swatch {
   width: 10px;
   height: 10px;
   border-radius: 2px;
   background: var(--accent);
 }
-.rv__tooltip-swatch--p10 { opacity: 0.55; }
-.rv__tooltip-swatch--p50 { opacity: 0.30; }
-.rv__tooltip-swatch--p90 { opacity: 0.15; }
+.ret__chart-tip-swatch--p10 { opacity: 0.55; }
+.ret__chart-tip-swatch--p50 { opacity: 0.30; }
+.ret__chart-tip-swatch--p70 { opacity: 0.15; }
 
-/* SS optimizer panel */
-.rv__ss-opt {
-  margin-top: var(--gap);
-  border-top: 1px solid var(--rule);
-  padding-top: var(--gap);
+/* ── Accounts table ──────────────────────────────────────────────────── */
+.ret__accounts-card {
+  padding: 0;
+  overflow: hidden;
 }
-.rv__ss-opt-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--gap);
-}
-.rv__ss-opt-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink);
-}
-.rv__ss-opt-subtitle {
-  font-size: 11px;
-  color: var(--ink-2);
-  margin-top: 2px;
-  max-width: 60ch;
-}
-.rv__ss-opt-body {
-  margin-top: var(--gap);
-}
-.rv__ss-opt-best {
-  display: flex;
-  justify-content: space-between;
+.ret__accounts-row {
+  display: grid;
+  grid-template-columns: 56px 1.4fr 1fr 130px 130px 1fr;
+  padding: 14px 22px;
   align-items: center;
-  background: var(--card-hi);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-chip);
-  padding: var(--pad);
-  margin-bottom: var(--gap);
-  gap: var(--gap);
+  border-bottom: 1px solid var(--rule-2);
 }
-.rv__ss-opt-best-label {
-  font-size: 11px;
+.ret__accounts-row--last { border-bottom: none; }
+/* Dim every cell on an excluded row except the toggle, so the click target
+ * for re-enabling stays full-opacity (CSS opacity is multiplicative against
+ * a parent — there's no way to "cancel out" a parent's opacity on a child).
+ */
+.ret__accounts-row--off > div:not(.ret__acct-toggle) { opacity: 0.45; }
+.ret__accounts-empty {
+  padding: 22px;
+  text-align: center;
   color: var(--ink-2);
+  font-size: 12.5px;
+}
+.ret__accounts-head {
+  font-size: 10.5px;
+  color: var(--dim);
+  font-weight: 600;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--rule);
 }
-.rv__ss-opt-best-value {
-  font-size: 16px;
-  color: var(--ink);
-  margin-top: 2px;
-}
-.rv__ss-opt-best-sub {
-  font-size: 11px;
-  color: var(--ink-2);
-  margin-top: 2px;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+.ret__num { text-align: right; }
+.ret__center {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.rv__ss-opt-grid-wrap {
-  overflow-x: auto;
+/* ── Account inclusion switch ────────────────────────────────────────── */
+.ret__switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
 }
-.rv__ss-grid {
-  border-collapse: collapse;
+.ret__switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+.ret__switch-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--card-hi);
+  border: 1px solid var(--rule-3);
+  border-radius: var(--r-pill);
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.ret__switch-slider::before {
+  content: '';
+  position: absolute;
+  height: 12px;
+  width: 12px;
+  left: 2px;
+  top: 2px;
+  background: var(--ink-2);
+  border-radius: 50%;
+  transition: transform var(--t-fast), background var(--t-fast);
+}
+.ret__switch input:checked + .ret__switch-slider {
+  background: var(--accent-weak);
+  border-color: var(--accent);
+}
+.ret__switch input:checked + .ret__switch-slider::before {
+  transform: translateX(14px);
+  background: var(--accent);
+}
+.ret__switch input:focus-visible + .ret__switch-slider {
+  box-shadow: 0 0 0 2px var(--accent-weak);
+}
+
+.ret__acct-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+.ret__acct-inst { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+.ret__pill-tax {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  display: inline-block;
+}
+
+.ret__acct-balance {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.ret__acct-contrib {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.ret__acct-vest {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.ret__alloc {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.ret__alloc-bar {
+  flex: 1;
+  max-width: 180px;
+}
+.ret__alloc-pct {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 11px;
+  color: var(--ink-2);
+  min-width: 36px;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  /* Drop "Annual in" (col 5) on narrow viewports — keep toggle, account,
+   * tax pill, balance, and allocation visible. */
+  .ret__accounts-row { grid-template-columns: 56px 1.4fr 1fr 110px 1fr; }
+  .ret__acct-contrib { display: none; }
+  .ret__accounts-head > div:nth-child(5) { display: none; }
+}
+
+/* ── Withdrawal sequence cards ───────────────────────────────────────── */
+.ret__seq-card { padding: var(--pad-lg); }
+.ret__seq-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap);
+}
+@media (max-width: 900px) { .ret__seq-grid { grid-template-columns: 1fr; } }
+
+.ret__seq-card-inner {
+  padding: 18px;
+  border-radius: calc(var(--r-btn) + 4px);
+  background: var(--bg);
+  border: 1px solid var(--rule);
+}
+.ret__seq-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.ret__seq-num {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-btn);
+  background: var(--accent-weak);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+.ret__seq-phase {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+}
+.ret__seq-label {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
   color: var(--ink);
 }
-.rv__ss-grid th, .rv__ss-grid td {
-  border: 1px solid var(--rule);
-  padding: 6px 8px;
-  text-align: center;
-  min-width: 40px;
+.ret__seq-pull {
+  font-size: 12px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  margin-top: 4px;
 }
-.rv__ss-grid th {
-  background: var(--card-hi);
-  font-weight: 600;
+.ret__seq-why {
+  font-size: 12.5px;
   color: var(--ink-2);
-  font-size: 10px;
-}
-.rv__ss-grid-corner {
-  text-align: left;
-  font-size: 10px !important;
-  color: var(--ink-2);
-}
-.rv__ss-grid-cell--best {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-  font-weight: 700;
+  margin-top: 10px;
+  line-height: 1.5;
 }

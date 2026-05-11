@@ -58,9 +58,31 @@ normal semver practice and matches the early-project reality.
 
 ---
 
-## Release checklist
+## The fast path: `/create-release`
 
-Run through this every time.
+In Claude Code, with `main` clean, just type:
+
+```
+/create-release
+```
+
+The [`create-release` skill](./skills/create-release/SKILL.md) runs the
+whole checklist below: reads `VERSION`, proposes the next minor bump,
+confirms with you, updates `VERSION` / `version.json` / `RELEASE.md`,
+commits on `main`, fast-forwards `release`, tags, pushes, and creates the
+GitHub Release with `gh`. You only have to (a) make sure `RELEASE.md`
+describes this version's changes before invoking, and (b) confirm the
+proposed version.
+
+The manual checklist below is the ground truth — read it once so you
+understand what the skill is doing, but you shouldn't need to run it by
+hand.
+
+---
+
+## Release checklist (manual)
+
+Run through this every time you cut a release without `/create-release`.
 
 1. **Confirm `main` is green.** Dashboard builds, any tests pass.
 2. **Decide the version bump.** Check recent commits since the last tag with

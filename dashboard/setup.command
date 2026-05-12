@@ -6,11 +6,12 @@
 # auto-start every time you log into your Mac, reachable at http://localhost:3001.
 #
 # What this script does:
-#   1. Verifies Homebrew and Node are installed (offers to install Node if missing)
-#   2. Installs npm dependencies for the server and client
-#   3. Builds the client
-#   4. Registers a launchd agent so the server runs on login
-#   5. Starts the server now and opens it in your browser
+#   1. Verifies Homebrew is installed (offers to install it if missing)
+#   2. Verifies Node is installed (offers to install via Homebrew if missing)
+#   3. Installs npm dependencies for the server and client
+#   4. Builds the client
+#   5. Registers a launchd agent so the server runs on login
+#   6. Starts the server now and opens it in your browser
 #
 # To undo: double-click uninstall.command in this same folder.
 
@@ -41,15 +42,43 @@ fail()  { echo "${RED}✗${RESET} $1" >&2; }
 # --- Step 1: Homebrew ---
 step "Checking for Homebrew"
 if ! command -v brew >/dev/null 2>&1; then
-  fail "Homebrew is not installed."
+  warn "Homebrew is not installed."
   echo ""
   echo "Homebrew is the macOS package manager this setup uses to install Node."
-  echo "Install it by running the command on this page: https://brew.sh"
-  echo "Then double-click this file again."
+  echo "It's the standard Mac developer tool — the official installer prompts"
+  echo "for your password (sudo) once and installs to /opt/homebrew (Apple"
+  echo "Silicon) or /usr/local (Intel)."
   echo ""
-  echo "Press any key to close this window..."
-  read -n 1 -s
-  exit 1
+  read -p "Install Homebrew now? [Y/n] " -n 1 -r REPLY
+  echo ""
+  if [[ $REPLY =~ ^[Nn]$ ]]; then
+    fail "Setup cannot continue without Homebrew."
+    echo "You can install it later from https://brew.sh, then re-run this file."
+    echo "Press any key to close this window..."
+    read -n 1 -s
+    exit 1
+  fi
+
+  # Run the official Homebrew installer non-interactively. NONINTERACTIVE=1
+  # skips the "Press RETURN to continue" prompt, but sudo will still prompt
+  # for the user's password.
+  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+  # Fresh Homebrew installs aren't on PATH yet in the current shell. Source
+  # the appropriate shellenv so `brew` is callable below.
+  if [ -x "/opt/homebrew/bin/brew" ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [ -x "/usr/local/bin/brew" ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+
+  if ! command -v brew >/dev/null 2>&1; then
+    fail "Homebrew install finished but 'brew' is not on PATH."
+    echo "Open a new Terminal window and double-click this file again."
+    echo "Press any key to close this window..."
+    read -n 1 -s
+    exit 1
+  fi
 fi
 ok "Homebrew found at $(command -v brew)"
 

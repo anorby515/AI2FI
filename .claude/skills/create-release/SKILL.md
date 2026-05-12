@@ -195,6 +195,14 @@ This is the publish. The welcome page and ZIP download both serve from
 this branch.
 
 ```sh
+# CRITICAL: pull main first. If local main is behind origin/main (very
+# common right after a PR merge), `git merge --ff-only main` below is a
+# silent no-op — release stays at the old commit, the push has nothing
+# to send, and Pages doesn't rebuild. Pulling main first guarantees the
+# merge actually moves the branch.
+git checkout main
+git pull --ff-only
+
 git checkout release
 git pull --ff-only
 git merge --ff-only main
@@ -207,6 +215,11 @@ If `git merge --ff-only main` fails ("Not possible to fast-forward"):
 - Diagnose: `git log --oneline main..release` shows what's on release
   that isn't on main.
 - Tell the user; do not force-anything.
+
+If `git merge --ff-only main` reports "Already up to date" when you
+expected commits to land, local main is still stale somehow — fetch
+again (`git fetch origin && git pull --ff-only` while on main) before
+retrying.
 
 ### 8. Tag and push the tag
 

@@ -105,12 +105,23 @@ Run through this every time you cut a release without `/create-release`.
 6. **Fast-forward `release` to `main`:**
 
    ```sh
+   # Pull main first — if you came here right after a PR merge, local
+   # main is stale. Without this, `git merge --ff-only main` below is a
+   # silent no-op: release stays at the old commit, the push in step 8
+   # has nothing to send for release, and Pages doesn't rebuild.
+   git checkout main
+   git pull --ff-only
+
    git checkout release
+   git pull --ff-only
    git merge --ff-only main
    git checkout main
    ```
 
    If `release` has diverged (it shouldn't), investigate before forcing.
+   If `merge --ff-only main` reports "Already up to date" when you
+   expected commits to move, local main is still stale — `git fetch
+   origin && git pull --ff-only` while on main, then retry.
 7. **Tag the commit:** `git tag -a vX.Y.Z -m "AI2FI vX.Y.Z"`.
 8. **Push everything:** `git push origin main release && git push --tags`.
 9. **Create the GitHub Release.** In the GitHub UI, "Draft a new release" →

@@ -32,6 +32,41 @@ them.
 
 ---
 
+## Running contexts
+
+This skill runs in two environments. The procedure below is the same in
+both; only the write-permission boundary differs.
+
+### Local Mac (terminal Claude Code) — full flow
+
+Direct push to `main` and to tags works (assuming the user is authed to
+GitHub with push rights). `gh` CLI, if installed and authed, auto-creates
+the GitHub Release at step 9. End-to-end in one go, no PR detour.
+
+### Claude Code on the web (sandbox) — PR detour required
+
+The sandbox does **not** have push access to `main` or to tags — GitHub
+returns HTTP 403 on both. `gh` is typically not installed either. The
+skill detects these and pivots:
+
+- **Step 6 fallback** — when `git push origin main` 403s: move the
+  commit onto a feature branch `claude/release-vX.Y.Z`, push that
+  branch, hand the user the PR URL, and **pause** until they confirm
+  the merge. On confirm, `git checkout main && git pull --ff-only` and
+  resume from step 7.
+- **Step 8 fallback** — when `git push origin vX.Y.Z` 403s: tag exists
+  locally but won't reach origin. Give the user the three commands to
+  recreate and push the tag from their Mac.
+- **Step 9 fallback** — `gh` not present: print the manual draft URL
+  (`https://github.com/anorby515/AI2FI/releases/new?tag=vX.Y.Z`) and
+  the `RELEASE.md` path so the user can paste the body into the UI.
+
+Anything that succeeded before a fallback (the file bumps, the local
+commit, the release-branch push) stays as-is — never roll back partial
+state.
+
+---
+
 ## Procedure
 
 ### 1. Pre-flight checks
@@ -136,6 +171,24 @@ git commit -m "release: vX.Y.Z"
 git push origin main
 ```
 
+**If the push 403s** (sandbox running against a protected `main`):
+
+```sh
+git checkout -b claude/release-vX.Y.Z          # carry the commit forward
+git push -u origin claude/release-vX.Y.Z
+```
+
+Tell the user the PR URL
+(`https://github.com/anorby515/AI2FI/compare/main...claude/release-vX.Y.Z`)
+and **pause** until they confirm the merge. On confirm:
+
+```sh
+git checkout main
+git pull --ff-only
+```
+
+Then continue to step 7.
+
 ### 7. Fast-forward `release` and push
 
 This is the publish. The welcome page and ZIP download both serve from
@@ -158,6 +211,15 @@ If `git merge --ff-only main` fails ("Not possible to fast-forward"):
 ### 8. Tag and push the tag
 
 ```sh
+git tag -a vX.Y.Z -m "AI2FI vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+**If the tag push 403s** (sandbox): the local tag exists but won't reach
+origin. Hand the user these commands to run on their Mac:
+
+```sh
+git checkout main && git pull
 git tag -a vX.Y.Z -m "AI2FI vX.Y.Z"
 git push origin vX.Y.Z
 ```

@@ -145,6 +145,12 @@
       margin: 1.4rem 0 0.4rem;
       color: var(--fg-bright);
     }
+    h4 {
+      font-size: 0.95rem;
+      margin: 1.1rem 0 0.4rem;
+      color: var(--fg-bright);
+      font-weight: 600;
+    }
     p { margin: 0.4rem 0 0.9rem; }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
@@ -408,18 +414,20 @@
   <h2>3. Installation</h2>
   <p>Three ways, ranked by least friction. All of them end with the dashboard running at <code>http://localhost:3001</code> and auto-starting at login. Nothing is uploaded &mdash; the whole install is local.</p>
 
-  <h3>Option A &mdash; One-line Terminal install <span class="muted">(recommended)</span></h3>
+  <h3>macOS</h3>
+
+  <h4>Option A &mdash; One-line Terminal install <span class="muted">(recommended)</span></h4>
   <p>Open Terminal (<code>&#8984;-Space</code>, type "Terminal") and paste:</p>
   <pre><code>curl -L https://github.com/anorby515/AI2FI/archive/refs/heads/release.tar.gz | tar xz &amp;&amp; cd AI2FI-release &amp;&amp; bash dashboard/setup.command</code></pre>
   <p class="muted">Downloads, unpacks, installs. No Gatekeeper prompt, no rename step. The script runs Homebrew and Node checks, installs dependencies, builds the client, registers the login agent, and opens the dashboard in your browser. First run takes a couple of minutes.</p>
 
-  <h3>Option B &mdash; Git clone</h3>
+  <h4>Option B &mdash; Git clone</h4>
   <pre><code>git clone --branch release https://github.com/anorby515/AI2FI.git
 cd AI2FI
 bash dashboard/setup.command</code></pre>
   <p class="muted">Tracks the <code>release</code> branch so <code>git pull</code> picks up new releases. Files cloned via git aren't quarantined, so double-clicking <code>setup.command</code> from Finder also works with no Gatekeeper dance.</p>
 
-  <h3>Option C &mdash; ZIP download + Finder</h3>
+  <h4>Option C &mdash; ZIP download + Finder</h4>
   <p>
     <a class="btn secondary" href="https://github.com/anorby515/AI2FI/archive/refs/heads/release.zip">Download AI2FI.zip</a>
   </p>
@@ -429,20 +437,48 @@ bash dashboard/setup.command</code></pre>
     <strong>Finder path hits Gatekeeper.</strong> macOS 15+ blocks <code>.command</code> files downloaded from the internet. You'll see a "cannot be opened" dialog &mdash; click <strong>Done</strong>, open <strong>System Settings &rarr; Privacy &amp; Security</strong>, scroll to the Security section, click <strong>Open Anyway</strong>, and enter your password. Option A avoids this entirely.
   </div>
 
+  <h3>Windows</h3>
+
+  <h4>Option A &mdash; PowerShell install <span class="muted">(recommended)</span></h4>
+  <p>Open PowerShell (Start menu &rarr; type "PowerShell") and paste this single line:</p>
+  <pre><code>iwr https://github.com/anorby515/AI2FI/archive/refs/heads/release.zip -OutFile ai2fi.zip; Expand-Archive ai2fi.zip -DestinationPath . -Force; cd AI2FI-release; .\dashboard\setup.cmd</code></pre>
+  <p class="muted">Downloads, unpacks, installs. The script runs winget and Node checks (offers to install Node via winget if missing), installs dependencies, builds the client, registers a Scheduled Task so the dashboard auto-starts at login, and opens it in your browser.</p>
+
+  <h4>Option B &mdash; Git clone</h4>
+  <pre><code>git clone --branch release https://github.com/anorby515/AI2FI.git
+cd AI2FI
+.\dashboard\setup.cmd</code></pre>
+  <p class="muted">Tracks the <code>release</code> branch so <code>git pull</code> picks up new releases.</p>
+
+  <h4>Option C &mdash; ZIP download + File Explorer</h4>
+  <p>
+    <a class="btn secondary" href="https://github.com/anorby515/AI2FI/archive/refs/heads/release.zip">Download AI2FI.zip</a>
+  </p>
+  <p class="muted">Right-click the ZIP &rarr; <strong>Extract All</strong>. Open the extracted <code>AI2FI-release\dashboard\</code> folder and double-click <code>setup.cmd</code>.</p>
+
+  <div class="callout">
+    <strong>Windows SmartScreen may warn.</strong> On the first run of <code>setup.cmd</code> from a downloaded ZIP, Windows shows <em>"Windows protected your PC."</em> Click <strong>More info</strong>, then <strong>Run anyway</strong>. The PowerShell path in Option A bypasses this entirely.
+  </div>
+
   <h3>After install</h3>
-  <p>When the installer finishes, your browser opens <a href="http://localhost:3001">http://localhost:3001</a> and you're looking at the dashboard. It auto-starts every time you log into your Mac.</p>
+  <p>When the installer finishes, your browser opens <a href="http://localhost:3001">http://localhost:3001</a> and you're looking at the dashboard. It auto-starts every time you log into your machine.</p>
 
   <p>The dashboard reads a local spreadsheet to render portfolio, net worth, and benchmark views. Put yours at:</p>
   <pre><code>user-profiles/&lt;your-name&gt;/private/Finances.xlsx</code></pre>
   <p class="muted">Start from <code>user-profiles/example/</code> as a template if you want the expected shape. Everything under <code>user-profiles/&lt;your-name&gt;/</code> is gitignored &mdash; it never leaves your machine.</p>
 
   <h3>To uninstall</h3>
-  <pre><code>bash dashboard/uninstall.command</code></pre>
-  <p class="muted">Unloads the login agent, removes the plist, kills anything on port 3001. Your files, spreadsheet, and profile are untouched.</p>
+  <p>From the repo root:</p>
+  <pre><code># macOS
+bash dashboard/uninstall.command
+
+# Windows
+.\dashboard\uninstall.cmd</code></pre>
+  <p class="muted">Unregisters the auto-start (launchd agent on macOS, Scheduled Task on Windows), kills anything on port 3001, and stops there. Your files, spreadsheet, and profile are untouched.</p>
 
   <details>
-    <summary>Non-Mac / run it manually</summary>
-    <p>The installer uses <code>launchd</code> (macOS only), but the server itself runs anywhere Node does. You'll need Node 18+. From the repo root:</p>
+    <summary>Run it manually (Linux / other)</summary>
+    <p>The installers use <code>launchd</code> (macOS) and Task Scheduler (Windows), but the server itself runs anywhere Node does. You'll need Node 18+. From the repo root:</p>
     <pre><code>cd dashboard
 npm install
 cd client &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; cd ..

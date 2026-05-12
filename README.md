@@ -32,7 +32,9 @@ The demo needs Node.js. If it isn't installed, `Start-Demo.command` will tell yo
 
 ## 2. Install
 
-Three ways, ranked by least friction. All end with the dashboard running at `http://localhost:3001` and auto-starting at login.
+All paths end with the dashboard running at `http://localhost:3001` and auto-starting at login.
+
+### macOS
 
 **Option A — one-line Terminal install (recommended):**
 ```
@@ -54,13 +56,36 @@ Download [AI2FI.zip](https://github.com/anorby515/AI2FI/archive/refs/heads/relea
 
 > **Finder path hits Gatekeeper.** If you try to double-click `dashboard/setup.command` directly from a ZIP download on macOS 15+, you'll see a "cannot be opened" dialog. Options A and B above avoid this entirely. If you hit it: **System Settings → Privacy & Security** → scroll down → **Open Anyway**.
 
+### Windows
+
+**Option A — PowerShell install (recommended):**
+```
+iwr https://github.com/anorby515/AI2FI/archive/refs/heads/release.zip -OutFile ai2fi.zip; Expand-Archive ai2fi.zip -DestinationPath . -Force; cd AI2FI-release; .\dashboard\setup.cmd
+```
+Downloads, unpacks, installs. The script runs winget and Node checks (installs Node via winget if missing), installs dependencies, builds the client, registers a Scheduled Task so the dashboard auto-starts at login, and opens it in your browser.
+
+**Option B — git clone:**
+```
+git clone --branch release https://github.com/anorby515/AI2FI.git
+cd AI2FI
+.\dashboard\setup.cmd
+```
+
+**Option C — ZIP download + File Explorer:**
+
+Download [AI2FI.zip](https://github.com/anorby515/AI2FI/archive/refs/heads/release.zip), right-click → **Extract All**. Open the extracted `AI2FI-release\dashboard\` folder and double-click `setup.cmd`.
+
+> **Windows SmartScreen may warn** on the first double-click from a downloaded ZIP. Click **More info** → **Run anyway**. The PowerShell path in Option A bypasses this entirely.
+
 ## 3. After install
 
-When the installer finishes, your browser opens `http://localhost:3001` and you're looking at the dashboard. It auto-starts every time you log into your Mac.
+When the installer finishes, your browser opens `http://localhost:3001` and you're looking at the dashboard. It auto-starts every time you log into your machine.
 
 **Drop in your spreadsheet.** The dashboard reads a local spreadsheet to render portfolio, net worth, and benchmark views. Put yours at `user-profiles/<your-name>/private/Finances.xlsx`. Start from `user-profiles/example/` as a template. Everything under your profile folder is gitignored — it never leaves your machine.
 
-**Uninstall:** `bash dashboard/uninstall.command` from the repo root.
+**Uninstall:**
+- macOS: `bash dashboard/uninstall.command` from the repo root.
+- Windows: double-click `dashboard\uninstall.cmd` or run `.\dashboard\uninstall.cmd` from PowerShell.
 
 ## 4. Start coaching with Claude
 
@@ -88,8 +113,8 @@ The current release is summarized in [`RELEASE.md`](./RELEASE.md). The [hosted w
 ```
 AI2FI/
 ├── Start-Demo.html             # Double-click first — three-click guide to the demo
-├── Start-Demo.command          # Right-click → Open to spin up the demo (no install)
-├── Install-AI2FI.html          # Double-click for the full install (auto-start at login)
+├── Start-Demo.command          # Right-click → Open to spin up the demo (no install, macOS)
+├── Install-AI2FI.html          # Double-click for the full install (auto-detects macOS / Windows)
 ├── README.md                   # You are here
 ├── RELEASE.md                  # Current release summary (rendered by the welcome page)
 ├── RELEASING.md                # How to cut a release

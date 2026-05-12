@@ -282,6 +282,40 @@
       color: var(--fg-dim);
       word-break: break-all;
     }
+
+    /* OS toggle + show/hide */
+    .os-toggle {
+      display: inline-flex;
+      gap: 0.4rem;
+      margin: 0.5rem 0 1rem;
+    }
+    .os-toggle button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--fg-dim);
+      padding: 0.35rem 0.9rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+    }
+    .os-toggle button.active {
+      border-color: var(--accent);
+      color: var(--fg-bright);
+      background: rgba(97,175,239,0.10);
+    }
+    .os-toggle button:hover:not(.active) {
+      color: var(--fg);
+    }
+    .os-mac-only    { display: block; }
+    .os-windows-only { display: none; }
+    body.os-windows .os-mac-only    { display: none; }
+    body.os-windows .os-windows-only { display: block; }
+    /* Inline elements need different display values */
+    span.os-mac-only, code.os-mac-only       { display: inline; }
+    span.os-windows-only, code.os-windows-only { display: none; }
+    body.os-windows span.os-mac-only, body.os-windows code.os-mac-only       { display: none; }
+    body.os-windows span.os-windows-only, body.os-windows code.os-windows-only { display: inline; }
   </style>
 </head>
 <body>
@@ -350,46 +384,84 @@
 
 <section id="install">
   <h2>2. Install the dashboard</h2>
-  <p>One step gets the dashboard running at <code>http://localhost:3001</code> and auto-starting at login. Same right-click trick as the demo &mdash; just on a different file.</p>
+  <p>One step gets the dashboard running at <code>http://localhost:3001</code> and auto-starting at login.</p>
 
-  <h3>Run the installer</h3>
-  <p>In Finder, navigate into the <code>dashboard/</code> folder. Find <code>setup.command</code>. <strong>Right-click</strong> (or Control-click) it &rarr; click <strong>Open</strong> &rarr; click <strong>Open</strong> in the security dialog.</p>
-  <p>A Terminal window will open and the installer will run. You'll be prompted for your Mac password once so the installer can register the login agent. When it finishes, your browser opens at <a href="http://localhost:3001">http://localhost:3001</a>.</p>
+  <div class="os-toggle" role="tablist" aria-label="Operating system">
+    <button type="button" data-os="mac" id="os-btn-mac" role="tab">macOS</button>
+    <button type="button" data-os="windows" id="os-btn-windows" role="tab">Windows</button>
+  </div>
 
-  <p>The installer:</p>
-  <ol>
-    <li>Checks for Homebrew and Node, installing them via Homebrew if missing.</li>
-    <li>Installs dashboard dependencies and builds the client.</li>
-    <li>Registers a macOS login agent so the dashboard auto-starts every login.</li>
-    <li>Opens the dashboard in your browser.</li>
-  </ol>
-  <p class="muted">First run takes a couple of minutes.</p>
+  <!-- ── macOS ─────────────────────────────────────────────── -->
+  <div class="os-mac-only">
+    <h3>Run the installer (macOS)</h3>
+    <p>In Finder, navigate into the <code>dashboard/</code> folder. Find <code>setup.command</code>. <strong>Right-click</strong> (or Control-click) it &rarr; click <strong>Open</strong> &rarr; click <strong>Open</strong> in the security dialog.</p>
+    <p>A Terminal window will open and the installer will run. You'll be prompted for your Mac password once so the installer can register the login agent. When it finishes, your browser opens at <a href="http://localhost:3001">http://localhost:3001</a>.</p>
 
-  <details>
-    <summary>Prefer Terminal? Use this command instead.</summary>
-    <p>Open Terminal (<code>&#8984;-Space</code>, type "Terminal") and paste:</p>
-    <div class="install-block" style="margin: 0.6rem 0;">
-      <div class="install-cmd">
-        <span id="install-cmd-text">cd "&lt;detecting&hellip;&gt;" &amp;&amp; bash dashboard/setup.command</span>
-        <button class="copy-btn" id="copy-btn" type="button">Copy</button>
+    <p>The installer:</p>
+    <ol>
+      <li>Checks for Homebrew and Node, installing them via Homebrew if missing.</li>
+      <li>Installs dashboard dependencies and builds the client.</li>
+      <li>Registers a macOS login agent so the dashboard auto-starts every login.</li>
+      <li>Opens the dashboard in your browser.</li>
+    </ol>
+    <p class="muted">First run takes a couple of minutes.</p>
+
+    <details>
+      <summary>Prefer Terminal? Use this command instead.</summary>
+      <p>Open Terminal (<code>&#8984;-Space</code>, type "Terminal") and paste:</p>
+      <div class="install-block" style="margin: 0.6rem 0;">
+        <div class="install-cmd">
+          <span id="install-cmd-text">cd "&lt;detecting&hellip;&gt;" &amp;&amp; bash dashboard/setup.command</span>
+          <button class="copy-btn" id="copy-btn" type="button">Copy</button>
+        </div>
+        <p class="muted" style="margin: 0.6rem 0 0;">
+          Folder detected as: <span id="folder-path">(detecting&hellip;)</span>
+        </p>
       </div>
-      <p class="muted" style="margin: 0.6rem 0 0;">
-        Folder detected as: <span id="folder-path">(detecting&hellip;)</span>
-      </p>
-    </div>
-    <p>Same script, same install &mdash; this just bypasses Gatekeeper without the right-click dance.</p>
-  </details>
+      <p>Same script, same install &mdash; this just bypasses Gatekeeper without the right-click dance.</p>
+    </details>
+
+    <details>
+      <summary>Why right-click? (and the Gatekeeper backstory)</summary>
+      <p>macOS blocks unsigned downloaded scripts from running on a plain double-click &mdash; you'd get a "cannot be opened" dialog with no Open button. Right-click &rarr; Open is the standard macOS way to tell Gatekeeper "yes, I trust this." After the first time, plain double-click works on the same file.</p>
+      <p>The Terminal path under the previous toggle bypasses Gatekeeper a different way (it reads the file with <code>bash</code> rather than executing it directly). Same destination, different door.</p>
+      <p>If you've already cloned this repo with <code>git</code> (not downloaded a ZIP), the files aren't quarantined &mdash; plain double-click works without any ceremony.</p>
+    </details>
+  </div>
+
+  <!-- ── Windows ───────────────────────────────────────────── -->
+  <div class="os-windows-only">
+    <h3>Run the installer (Windows)</h3>
+    <p>In File Explorer, navigate into the <code>dashboard\</code> folder. Find <code>setup.cmd</code> and <strong>double-click</strong> it.</p>
+    <p>A PowerShell window will open and the installer will run. You'll be prompted for your password once (so winget can install Node if it isn't already there). When it finishes, your browser opens at <a href="http://localhost:3001">http://localhost:3001</a>.</p>
+
+    <p>The installer:</p>
+    <ol>
+      <li>Checks for winget and Node, installing Node via winget if missing.</li>
+      <li>Installs dashboard dependencies and builds the client.</li>
+      <li>Registers a Scheduled Task (<code>AI2FI Dashboard</code>) so the dashboard auto-starts every login.</li>
+      <li>Opens the dashboard in your browser.</li>
+    </ol>
+    <p class="muted">First run takes a couple of minutes.</p>
+
+    <details>
+      <summary>Prefer PowerShell? Use this command instead.</summary>
+      <p>Open PowerShell (Start menu &rarr; type "PowerShell") and paste:</p>
+      <pre><code>cd "&lt;path-to-this-folder&gt;"
+.\dashboard\setup.cmd</code></pre>
+      <p>Same script, same install &mdash; just from PowerShell instead of a double-click.</p>
+    </details>
+
+    <details>
+      <summary>SmartScreen warning?</summary>
+      <p>On the first run of <code>setup.cmd</code> from a freshly downloaded ZIP, Windows may show <em>"Windows protected your PC."</em> Click <strong>More info</strong>, then <strong>Run anyway</strong>. After the first time, the dialog stops appearing.</p>
+      <p>If you cloned this repo with <code>git</code> instead of downloading a ZIP, files aren't flagged &mdash; SmartScreen stays silent.</p>
+    </details>
+  </div>
 
   <details>
-    <summary>Why right-click? (and the Gatekeeper backstory)</summary>
-    <p>macOS blocks unsigned downloaded scripts from running on a plain double-click &mdash; you'd get a "cannot be opened" dialog with no Open button. Right-click &rarr; Open is the standard macOS way to tell Gatekeeper "yes, I trust this." After the first time, plain double-click works on the same file.</p>
-    <p>The Terminal path under the previous toggle bypasses Gatekeeper a different way (it reads the file with <code>bash</code> rather than executing it directly). Same destination, different door.</p>
-    <p>If you've already cloned this repo with <code>git</code> (not downloaded a ZIP), the files aren't quarantined &mdash; plain double-click works without any ceremony.</p>
-  </details>
-
-  <details>
-    <summary>Non-Mac / manual install</summary>
-    <p>The installer script uses <code>launchd</code> (macOS only), but the dashboard server itself runs anywhere Node does. You'll need Node 18+. From Terminal:</p>
+    <summary>Non-Mac / non-Windows / manual install</summary>
+    <p>The installers use <code>launchd</code> (macOS) and Task Scheduler (Windows), but the dashboard server itself runs anywhere Node does. You'll need Node 18+. From a Terminal:</p>
     <pre><code>cd dashboard
 npm install
 cd client &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; cd ..
@@ -410,17 +482,25 @@ npm start</code></pre>
   <p class="muted">Start from <code>user-profiles/example/</code> as a template if you want the expected shape. Everything under <code>user-profiles/&lt;your-name&gt;/</code> is gitignored &mdash; it never leaves your machine.</p>
 
   <h3>Restart the server</h3>
-  <p>The dashboard runs as a macOS login agent (label <code>com.ai2fi.dashboard</code>, listening on port 3001). If it stops responding &mdash; or after you've pulled new server code &mdash; you can bounce it right here:</p>
+  <p>
+    The dashboard runs as a
+    <span class="os-mac-only">macOS login agent (<code>com.ai2fi.dashboard</code>)</span><span class="os-windows-only">Windows Scheduled Task (<code>AI2FI Dashboard</code>)</span>,
+    listening on port 3001. If it stops responding &mdash; or after you've pulled new server code &mdash; you can bounce it right here:
+  </p>
 
   <div class="install-block">
     <div class="label">One-click restart</div>
     <button id="restart-btn" class="copy-btn" type="button" style="position: static;">Restart server</button>
     <span id="restart-status" class="muted" style="margin-left: 0.75rem;"></span>
-    <p class="muted" style="margin: 0.6rem 0 0;">Tells the running server to exit; launchd auto-respawns it within a couple of seconds. Only works after the install above is complete &mdash; if you're still in demo mode, this button has nothing to talk to.</p>
+    <p class="muted" style="margin: 0.6rem 0 0;">
+      Tells the running server to exit;
+      <span class="os-mac-only">launchd</span><span class="os-windows-only">Task Scheduler</span>
+      auto-respawns it within a couple of seconds. Only works after the install above is complete.
+    </p>
   </div>
 
-  <details>
-    <summary>Restart from Terminal instead</summary>
+  <details class="os-mac-only">
+    <summary>Restart from Terminal instead (macOS)</summary>
     <p>One-liner:</p>
     <pre><code>launchctl kickstart -k gui/$(id -u)/com.ai2fi.dashboard</code></pre>
     <p>Long form (unload + load):</p>
@@ -431,10 +511,24 @@ launchctl load   ~/Library/LaunchAgents/com.ai2fi.dashboard.plist</code></pre>
     <p class="muted">Server logs live at <code>dashboard/logs/server.log</code> and <code>dashboard/logs/server.err.log</code>.</p>
   </details>
 
+  <details class="os-windows-only">
+    <summary>Restart from PowerShell instead (Windows)</summary>
+    <p>Stop and start the task:</p>
+    <pre><code>Stop-ScheduledTask  -TaskName "AI2FI Dashboard"
+Start-ScheduledTask -TaskName "AI2FI Dashboard"</code></pre>
+    <p>If port 3001 is wedged, force-kill &mdash; Task Scheduler will auto-restart within ~10 seconds:</p>
+    <pre><code>Get-NetTCPConnection -LocalPort 3001 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }</code></pre>
+    <p class="muted">Server logs live at <code>dashboard\logs\server.log</code> and <code>dashboard\logs\server.err.log</code>.</p>
+  </details>
+
   <h3>Uninstall anytime</h3>
-  <p>From Terminal, in this folder:</p>
-  <pre><code>bash dashboard/uninstall.command</code></pre>
-  <p class="muted">Unloads the login agent, removes the plist, kills anything on port 3001. Your files, spreadsheet, and profile are untouched &mdash; and the demo path stays intact, so you can still right-click <code>Start-Demo.command</code> to spin up a preview.</p>
+  <p class="os-mac-only">From Terminal, in this folder:</p>
+  <pre class="os-mac-only"><code>bash dashboard/uninstall.command</code></pre>
+  <p class="os-windows-only">Double-click <code>dashboard\uninstall.cmd</code>, or run it from PowerShell:</p>
+  <pre class="os-windows-only"><code>.\dashboard\uninstall.cmd</code></pre>
+  <p class="muted">
+    Unregisters the auto-start (<span class="os-mac-only">launchd agent</span><span class="os-windows-only">Scheduled Task</span>), kills anything on port 3001. Your files, spreadsheet, and profile are untouched.
+  </p>
 </section>
 
 <hr class="section-divider" />
@@ -481,12 +575,51 @@ launchctl load   ~/Library/LaunchAgents/com.ai2fi.dashboard.plist</code></pre>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script>
 (function () {
-  // ── Path detection + install-command hydration ─────────────────
+  // ── OS detection + toggle ──────────────────────────────────────
+  //
+  // Auto-detect the user's OS so a Windows user double-clicking this
+  // file from File Explorer sees Windows instructions immediately,
+  // and a Mac user sees Mac. The toggle buttons let either user
+  // override (e.g. for sharing the link to a friend on the other OS).
+  function detectOS() {
+    var ua = navigator.userAgent || '';
+    var plat = navigator.platform || '';
+    if (/Win/i.test(plat) || /Windows/i.test(ua)) return 'windows';
+    return 'mac';
+  }
+
+  function setOS(os) {
+    if (os === 'windows') {
+      document.body.classList.add('os-windows');
+    } else {
+      document.body.classList.remove('os-windows');
+    }
+    var macBtn = document.getElementById('os-btn-mac');
+    var winBtn = document.getElementById('os-btn-windows');
+    if (macBtn && winBtn) {
+      macBtn.classList.toggle('active', os === 'mac');
+      winBtn.classList.toggle('active', os === 'windows');
+    }
+  }
+
+  setOS(detectOS());
+
+  var macBtn = document.getElementById('os-btn-mac');
+  var winBtn = document.getElementById('os-btn-windows');
+  if (macBtn) macBtn.addEventListener('click', function () { setOS('mac'); });
+  if (winBtn) winBtn.addEventListener('click', function () { setOS('windows'); });
+
+  // ── Path detection + install-command hydration (macOS only) ────
   //
   // window.location.href on file:// gives us an absolute path to
   // THIS HTML file; stripping the filename leaves the folder.
   // We URL-decode (spaces → %20 etc.) and shell-escape by wrapping
   // in double quotes and escaping any embedded " characters.
+  //
+  // The path-aware command only renders for macOS (the toggle hides
+  // its container on Windows). On Windows users double-click
+  // setup.cmd directly, so a copy-paste shell command would be
+  // redundant.
   var rawHref = window.location.href;
   var folderPath = null;
 
@@ -510,13 +643,13 @@ launchctl load   ~/Library/LaunchAgents/com.ai2fi.dashboard.plist</code></pre>
 
   var commandText;
   if (folderPath) {
-    pathEl.textContent = folderPath;
+    if (pathEl) pathEl.textContent = folderPath;
     commandText = 'cd ' + shellQuote(folderPath) + ' && bash dashboard/setup.command';
   } else {
-    pathEl.textContent = "couldn't detect — open Terminal, cd to this folder, then run: bash dashboard/setup.command";
+    if (pathEl) pathEl.textContent = "couldn't detect — open Terminal, cd to this folder, then run: bash dashboard/setup.command";
     commandText = 'cd /path/to/this/folder && bash dashboard/setup.command';
   }
-  cmdEl.textContent = commandText;
+  if (cmdEl) cmdEl.textContent = commandText;
 
   // ── Copy button ────────────────────────────────────────────────
   var btn = document.getElementById('copy-btn');

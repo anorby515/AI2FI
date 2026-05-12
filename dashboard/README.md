@@ -7,8 +7,8 @@ Everything runs locally. No data leaves your machine. No account to create.
 ## Prerequisites
 
 - macOS (the setup script is macOS-specific — launchd, `open`, Homebrew)
-- Homebrew — installed via the command at https://brew.sh
-- Node.js — the setup script will install it via Homebrew if it's missing
+- Homebrew — the setup script will install it for you if missing (one Y/N prompt; the official installer asks for your password once)
+- Node.js — the setup script will install it via Homebrew if missing
 
 Note on Node: if you use `nvm`, see the caveat at the bottom. The short version is that a Homebrew-managed Node is more stable for something that needs to auto-start on login.
 
@@ -49,7 +49,7 @@ The `bash dashboard/setup.command` path above avoids all of this — `bash` read
 
 In order:
 
-1. Verifies Homebrew is installed (bails with instructions if not).
+1. Verifies Homebrew is installed (offers to install it via the official installer if not).
 2. Verifies Node is installed (offers to install via Homebrew if not).
 3. Runs `npm install` in `dashboard/` and `dashboard/client/`.
 4. Runs `npm run build` in `dashboard/client/` to produce the production bundle in `client/dist/`.

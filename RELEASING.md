@@ -66,8 +66,8 @@ In Claude Code, with `main` clean, just type:
 /create-release
 ```
 
-The [`create-release` skill](./skills/create-release/SKILL.md) runs the
-whole checklist below: reads `VERSION`, proposes the next minor bump,
+The [`create-release` skill](./.claude/skills/create-release/SKILL.md)
+runs the whole checklist below: reads `VERSION`, proposes the next minor bump,
 confirms with you, updates `VERSION` / `version.json` / `RELEASE.md`,
 commits on `main`, fast-forwards `release`, tags, pushes, and creates the
 GitHub Release with `gh`. You only have to (a) make sure `RELEASE.md`
